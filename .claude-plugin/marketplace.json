@@ -1,0 +1,23 @@
+{
+  "name": "awf-marketplace",
+  "owner": {
+    "name": "Alex pocky Balmes",
+    "email": "alexandre@vanoix.com"
+  },
+  "metadata": {
+    "description": "AWF plugin for Claude Code",
+    "homepage": "https://vanoix.com",
+    "version": "0.3.0"
+  },
+  "plugins": [
+    {
+      "name": "awf",
+      "source": "./awf",
+      "description": "AWF CLI - skills, agents, and commands",
+      "version": "0.3.0",
+      "author": { "name": "Alex pocky Balmes" },
+      "homepage": "https://vanoix.com",
+      "license": "EUPL-1.2"
+    }
+  ]
+}
