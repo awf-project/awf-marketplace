@@ -37,15 +37,62 @@ Interfaces → Application → Domain ← Infrastructure
 ## Project Structure
 
 ```
-cmd/awf/main.go              # CLI entry point
-internal/
-├── domain/
-│   ├── workflow/            # Workflow, Step, State entities
-│   └── ports/               # Repository, StateStore, Executor interfaces
-├── application/             # WorkflowService, ExecutionService
-├── infrastructure/          # YAML repo, JSON store, Shell executor
-└── interfaces/cli/          # Cobra commands
-pkg/                         # Public: interpolation, validation, retry
+awf/
+├── cmd/awf/main.go              # CLI entry point
+├── internal/
+│   ├── domain/
+│   │   ├── workflow/            # Workflow, Step, State entities
+│   │   │   ├── workflow.go      # Workflow struct
+│   │   │   ├── state.go         # State types
+│   │   │   ├── step.go          # Step execution
+│   │   │   ├── context.go       # Execution context
+│   │   │   └── validation.go    # Input validation
+│   │   ├── operation/           # Operation interface
+│   │   └── ports/               # Repository, StateStore, Executor
+│   ├── application/             # Services
+│   │   ├── workflow_service.go  # Loading/validation
+│   │   ├── execution_service.go # Execution engine
+│   │   ├── state_manager.go     # State persistence
+│   │   └── template_service.go  # Template resolution
+│   ├── infrastructure/          # Adapters
+│   │   ├── repository/yaml.go   # YAML file loader
+│   │   ├── state/json.go        # JSON state store
+│   │   ├── executor/shell.go    # Shell executor
+│   │   └── store/sqlite.go      # History storage
+│   └── interfaces/cli/          # Cobra commands
+├── pkg/                         # Public packages
+│   ├── interpolation/           # Variable substitution
+│   ├── validation/              # Input validation
+│   └── retry/                   # Backoff strategies
+├── tests/                       # Integration tests
+│   ├── integration/             # E2E tests
+│   └── fixtures/workflows/      # Test fixtures
+└── docs/                        # Documentation
+```
+
+## Naming Conventions
+
+| Pattern | Location | Example |
+|---------|----------|---------|
+| `*_service.go` | Application layer | `workflow_service.go` |
+| `*_test.go` | Same directory | `yaml_test.go` |
+| Interfaces | `ports/` | `repository.go` |
+| Adapters | Infrastructure subdirs | `repository/yaml.go` |
+
+## Import Paths
+
+```go
+// Domain (no external imports)
+import "github.com/vanoix/awf/internal/domain/workflow"
+
+// Application (imports domain only)
+import "github.com/vanoix/awf/internal/application"
+
+// Infrastructure (imports domain ports)
+import "github.com/vanoix/awf/internal/infrastructure/repository"
+
+// Public packages (safe for external use)
+import "github.com/vanoix/awf/pkg/interpolation"
 ```
 
 ## Domain Layer

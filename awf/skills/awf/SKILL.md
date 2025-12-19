@@ -149,6 +149,22 @@ check:
 
 ## Resources
 
-- **[references/workflow-syntax.md](references/workflow-syntax.md)** - Complete YAML syntax
-- **[references/cli-commands.md](references/cli-commands.md)** - All CLI commands and flags
-- **[references/architecture.md](references/architecture.md)** - Hexagonal architecture details
+**Getting Started**
+- [references/installation.md](references/installation.md) - Prerequisites & setup
+
+**User Guide**
+- [references/workflow-syntax.md](references/workflow-syntax.md) - Complete YAML syntax
+- [references/cli-commands.md](references/cli-commands.md) - All CLI commands and flags
+- [references/configuration.md](references/configuration.md) - Project configuration
+- [references/plugins.md](references/plugins.md) - Plugin system & SDK
+- [references/templates.md](references/templates.md) - Workflow templates
+- [references/examples.md](references/examples.md) - Real-world examples
+
+**Reference**
+- [references/interpolation.md](references/interpolation.md) - Variable substitution
+- [references/exit-codes.md](references/exit-codes.md) - Error codes
+- [references/validation.md](references/validation.md) - Input validation
+
+**Development**
+- [references/architecture.md](references/architecture.md) - Architecture & project structure
+- [references/testing.md](references/testing.md) - Testing conventions
