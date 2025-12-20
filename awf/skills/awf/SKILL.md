@@ -67,10 +67,13 @@ awf run hello --input name=Claude
 |---------|-------------|
 | `awf init` | Initialize AWF in directory |
 | `awf run <workflow>` | Execute workflow |
+| `awf run <workflow> --help` | Show workflow inputs |
 | `awf validate <workflow>` | Check syntax |
 | `awf list` | List workflows |
 | `awf resume` | Resume interrupted |
 | `awf history` | Show history |
+| `awf config show` | Display project config |
+| `awf plugin list` | List plugins |
 
 **Details**: [CLI Commands Reference](references/cli-commands.md)
 
@@ -83,6 +86,8 @@ awf run hello --input name=Claude
 | `terminal` | End workflow |
 | `for_each` | Iterate over list |
 | `while` | Repeat until false |
+| `operation` | Invoke plugin operation |
+| `call_workflow` | Execute sub-workflow |
 
 **Details**: [Workflow Syntax Reference](references/workflow-syntax.md)
 

@@ -6,11 +6,16 @@
 |---------|-------------|
 | `awf init` | Initialize AWF in directory |
 | `awf run <workflow>` | Execute a workflow |
+| `awf run <workflow> --help` | Show workflow inputs |
 | `awf resume [id]` | Resume interrupted workflow |
 | `awf list` | List available workflows |
 | `awf status <id>` | Show execution status |
 | `awf validate <workflow>` | Validate syntax |
 | `awf history` | Show execution history |
+| `awf config show` | Display project config |
+| `awf plugin list` | List installed plugins |
+| `awf plugin enable <name>` | Enable a plugin |
+| `awf plugin disable <name>` | Disable a plugin |
 | `awf version` | Show version |
 | `awf completion <shell>` | Generate autocompletion |
 
@@ -31,8 +36,13 @@
 Initialize AWF in current directory.
 
 ```bash
-awf init [--force]
+awf init [--force] [--global]
 ```
+
+| Flag | Description |
+|------|-------------|
+| `--force` | Overwrite existing files |
+| `--global` | Create global prompts in `$XDG_CONFIG_HOME/awf/prompts/` |
 
 Creates:
 ```
@@ -40,7 +50,14 @@ Creates:
 .awf/
 ├── workflows/example.yaml
 ├── templates/
+├── prompts/           # Local prompts
 └── storage/
+```
+
+With `--global`:
+```
+$XDG_CONFIG_HOME/awf/
+└── prompts/           # Global prompts (shared across projects)
 ```
 
 ## awf run
@@ -49,10 +66,12 @@ Execute a workflow.
 
 ```bash
 awf run <workflow> [flags]
+awf run <workflow> --help    # Show workflow inputs
 ```
 
 | Flag | Description |
 |------|-------------|
+| `--help` | Display workflow inputs and description |
 | `--input, -i` | Input (key=value), repeatable |
 | `--output, -o` | Output mode: silent, streaming, buffered |
 | `--step, -s` | Execute single step |
@@ -60,6 +79,16 @@ awf run <workflow> [flags]
 | `--dry-run` | Preview without executing |
 | `--interactive` | Step-by-step mode |
 | `--breakpoint, -b` | Pause at specific steps |
+
+### Workflow Help
+
+```bash
+awf run deploy --help
+```
+
+Displays:
+- Workflow description
+- Input parameters (name, type, required/optional, defaults)
 
 **Examples:**
 
@@ -180,6 +209,51 @@ awf history -w deploy -s failed --since 2025-12-01
 
 # Stats
 awf history --stats
+```
+
+## awf config
+
+Manage project configuration.
+
+```bash
+awf config show [-f text|json|quiet]
+```
+
+Displays contents of `.awf/config.yaml` with current input defaults.
+
+```bash
+# Text output (default)
+awf config show
+
+# JSON for scripting
+awf config show -f json
+```
+
+## awf plugin
+
+Manage AWF plugins.
+
+```bash
+awf plugin list                     # List all plugins with status
+awf plugin enable <plugin-name>     # Enable a plugin
+awf plugin disable <plugin-name>    # Disable a plugin
+```
+
+**Plugin location:** `$XDG_DATA_HOME/awf/plugins/` (~/.local/share/awf/plugins/)
+
+```bash
+# List plugins
+awf plugin list
+# Output:
+# NAME                STATUS    VERSION
+# awf-plugin-slack    enabled   1.0.0
+# awf-plugin-github   disabled  0.5.0
+
+# Enable plugin
+awf plugin enable awf-plugin-slack
+
+# Disable plugin
+awf plugin disable awf-plugin-slack
 ```
 
 ## awf completion

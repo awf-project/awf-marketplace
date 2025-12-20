@@ -39,6 +39,8 @@ states:
 | `parallel` | Run steps concurrently |
 | `for_each` | Iterate over list |
 | `while` | Repeat until false |
+| `operation` | Invoke plugin operation |
+| `call_workflow` | Execute sub-workflow |
 
 ## Step State
 
@@ -124,6 +126,80 @@ poll_status:
     - wait
   on_complete: proceed
 ```
+
+### Dynamic Loop Bounds
+
+Loop bounds support variable interpolation and arithmetic:
+
+```yaml
+process_pages:
+  type: for_each
+  items: "{{.inputs.files}}"
+  max_iterations: "{{.inputs.pages * .inputs.retries_per_page}}"
+  body:
+    - process
+  on_complete: done
+```
+
+**Operators:** `+`, `-`, `*`, `/`, `%`
+
+```yaml
+# Environment variable
+max_iterations: "{{.env.MAX_RETRIES}}"
+
+# Arithmetic expression
+max_iterations: "{{.inputs.count + 10}}"
+```
+
+## Operation State
+
+Invoke plugin-provided operations:
+
+```yaml
+notify:
+  type: operation
+  operation: slack.send_message    # plugin.operation_name
+  inputs:
+    channel: "#deployments"
+    message: "Deploy: {{.states.deploy.output}}"
+  on_success: done
+  on_failure: error
+```
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `operation` | string | `plugin_name.operation_name` |
+| `inputs` | map | Parameters for the operation |
+| `on_success` | string | Next state on success |
+| `on_failure` | string | Next state on failure |
+
+## Call Workflow State
+
+Execute sub-workflows with input/output mapping:
+
+```yaml
+run_tests:
+  type: call_workflow
+  workflow: test-suite
+  inputs:
+    project: "{{.inputs.project}}"
+    coverage: true
+  outputs:
+    test_results: result
+    coverage_pct: coverage
+  on_success: deploy
+  on_failure: error
+```
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `workflow` | string | Sub-workflow name |
+| `inputs` | map | Input mapping (parent → child) |
+| `outputs` | map | Output mapping (child → parent) |
+| `on_success` | string | Next state on success |
+| `on_failure` | string | Next state on failure |
+
+**Safety:** Circular call detection prevents infinite recursion.
 
 ## Retry Configuration
 

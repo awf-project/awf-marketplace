@@ -63,7 +63,8 @@ awf/
 ├── pkg/                         # Public packages
 │   ├── interpolation/           # Variable substitution
 │   ├── validation/              # Input validation
-│   └── retry/                   # Backoff strategies
+│   ├── retry/                   # Backoff strategies
+│   └── plugin/sdk/              # Plugin SDK for third-party plugins
 ├── tests/                       # Integration tests
 │   ├── integration/             # E2E tests
 │   └── fixtures/workflows/      # Test fixtures
@@ -163,7 +164,7 @@ Implements domain ports with concrete tech.
 - `repository/` - YAML file loader
 - `state/` - JSON state store
 - `executor/` - Shell executor
-- `history/` - BadgerDB history
+- `store/` - SQLite history (WAL mode for concurrent execution)
 
 ## Key Patterns
 

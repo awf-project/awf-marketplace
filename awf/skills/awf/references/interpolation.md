@@ -47,6 +47,26 @@ command: echo "{{.env.HOME}}"
 command: echo "outer={{.loop.parent.item}} inner={{.loop.item}}"
 ```
 
+## Arithmetic Expressions
+
+Loop bounds (`max_iterations`, `while`, `until`) support arithmetic:
+
+```yaml
+# Variable interpolation
+max_iterations: "{{.inputs.pages}}"
+
+# Environment variable
+max_iterations: "{{.env.MAX_RETRIES}}"
+
+# Arithmetic expressions
+max_iterations: "{{.inputs.pages * .inputs.retries_per_page}}"
+max_iterations: "{{.inputs.count + 10}}"
+```
+
+**Operators:** `+`, `-`, `*`, `/`, `%`
+
+Values resolved at loop initialization. `awf validate` warns about undefined variables.
+
 ## Interpolation Contexts
 
 | Context | Example |
