@@ -69,6 +69,7 @@ awf run hello --input name=Claude
 | `awf run <workflow>` | Execute workflow |
 | `awf run <workflow> --help` | Show workflow inputs |
 | `awf validate <workflow>` | Check syntax |
+| `awf diagram <workflow>` | Generate visualization |
 | `awf list` | List workflows |
 | `awf resume` | Resume interrupted |
 | `awf history` | Show history |

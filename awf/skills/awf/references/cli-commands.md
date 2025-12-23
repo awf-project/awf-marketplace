@@ -11,6 +11,7 @@
 | `awf list` | List available workflows |
 | `awf status <id>` | Show execution status |
 | `awf validate <workflow>` | Validate syntax |
+| `awf diagram <workflow>` | Generate workflow visualization |
 | `awf history` | Show execution history |
 | `awf config show` | Display project config |
 | `awf plugin list` | List installed plugins |
@@ -183,6 +184,65 @@ awf validate <workflow> [-v]
 - Template references
 - Input definitions
 - Parallel strategies
+
+## awf diagram
+
+Generate DOT format workflow visualizations.
+
+```bash
+awf diagram <workflow> [flags]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--output, -o` | Output file (default: stdout). Extension determines format |
+| `--direction, -d` | Graph direction: TB, LR, BT, RL (default: TB) |
+| `--highlight` | Comma-separated steps to highlight |
+
+**Output formats:**
+- `.dot` - Raw DOT format
+- `.png` - PNG image (requires Graphviz)
+- `.svg` - SVG image (requires Graphviz)
+- `.pdf` - PDF document (requires Graphviz)
+
+**Node shapes:**
+- Ellipse: terminal states
+- Box: step states
+- Diamond: parallel states
+
+**Edge styles:**
+- Solid: success transitions
+- Dashed: failure transitions
+
+**Examples:**
+
+```bash
+# Print DOT to stdout
+awf diagram deploy
+
+# Export to PNG
+awf diagram deploy -o workflow.png
+
+# Left-to-right layout with highlighted steps
+awf diagram deploy -d LR --highlight build,test
+
+# Export to SVG
+awf diagram deploy -o workflow.svg
+```
+
+**Graphviz requirement:**
+Image export (PNG/SVG/PDF) requires the `dot` command from Graphviz:
+
+```bash
+# Debian/Ubuntu
+sudo apt install graphviz
+
+# macOS
+brew install graphviz
+
+# Verify installation
+dot -V
+```
 
 ## awf history
 
