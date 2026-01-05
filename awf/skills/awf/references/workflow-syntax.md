@@ -35,6 +35,7 @@ states:
 | Type | Description |
 |------|-------------|
 | `step` | Execute a command |
+| `agent` | Invoke AI agent (Claude, Codex, Gemini, OpenCode) |
 | `terminal` | End with success/failure |
 | `parallel` | Run steps concurrently |
 | `for_each` | Iterate over list |
@@ -106,13 +107,13 @@ process_files:
 
 | Variable | Description |
 |----------|-------------|
-| `{{.loop.item}}` | Current item |
-| `{{.loop.index}}` | 0-based index |
-| `{{.loop.index1}}` | 1-based index |
-| `{{.loop.first}}` | True on first |
-| `{{.loop.last}}` | True on last |
-| `{{.loop.length}}` | Total count |
-| `{{.loop.parent}}` | Parent loop (nested) |
+| `{{.loop.Item}}` | Current item |
+| `{{.loop.Index}}` | 0-based index |
+| `{{.loop.Index1}}` | 1-based index |
+| `{{.loop.First}}` | True on first |
+| `{{.loop.Last}}` | True on last |
+| `{{.loop.Length}}` | Total count |
+| `{{.loop.Parent}}` | Parent loop (nested) |
 
 ## While Loop
 
@@ -200,6 +201,56 @@ run_tests:
 | `on_failure` | string | Next state on failure |
 
 **Safety:** Circular call detection prevents infinite recursion.
+
+## Agent State
+
+Invoke AI agents (Claude, Codex, Gemini, OpenCode) with prompt templates:
+
+```yaml
+analyze:
+  type: agent
+  provider: claude
+  prompt: |
+    Analyze this code for issues:
+    {{.inputs.code}}
+  options:
+    model: claude-sonnet-4-20250514
+    max_tokens: 2048
+  timeout: 120
+  on_success: review
+  on_failure: error
+```
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `provider` | string | Yes | `claude`, `codex`, `gemini`, `opencode`, `custom` |
+| `prompt` | string | Yes | Prompt template (supports interpolation) |
+| `command` | string | No | Custom provider command (use `{{prompt}}` placeholder) |
+| `options` | map | No | Provider options (model, temperature, max_tokens) |
+| `timeout` | int | No | Timeout in seconds |
+| `on_success` | string | No | Next state on success |
+| `on_failure` | string | No | Next state on failure |
+
+**Agent Output:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `{{.states.step.Output}}` | string | Raw response text |
+| `{{.states.step.Response}}` | object | Parsed JSON (if valid) |
+| `{{.states.step.Tokens}}` | object | Token usage metadata |
+
+**Custom Provider:**
+
+```yaml
+my_ai:
+  type: agent
+  provider: custom
+  command: "my-ai-tool --prompt={{prompt}} --json"
+  prompt: "Analyze: {{.inputs.data}}"
+  on_success: next
+```
+
+**Details:** [Agent Steps Reference](agent-steps.md)
 
 ## Retry Configuration
 
@@ -293,7 +344,7 @@ See [Interactive Inputs](interactive-inputs.md) for details.
 command: echo "{{.inputs.variable_name}}"
 
 # Previous outputs
-command: echo "{{.states.step_name.output}}"
+command: echo "{{.states.step_name.Output}}"
 
 # Workflow metadata
 command: echo "ID: {{.workflow.id}}"
@@ -302,7 +353,7 @@ command: echo "ID: {{.workflow.id}}"
 command: echo "{{.env.HOME}}"
 
 # Loop context
-command: echo "{{.loop.item}} ({{.loop.index1}}/{{.loop.length}})"
+command: echo "{{.loop.Item}} ({{.loop.Index1}}/{{.loop.Length}})"
 ```
 
 ## Hooks
