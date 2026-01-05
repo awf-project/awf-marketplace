@@ -84,6 +84,7 @@ awf run hello --input name=Claude
 | Type | Use |
 |------|-----|
 | `step` | Execute command |
+| `agent` | Invoke AI agent (Claude, Codex, Gemini, OpenCode) |
 | `parallel` | Run concurrent steps |
 | `terminal` | End workflow |
 | `for_each` | Iterate over list |
@@ -154,6 +155,26 @@ check:
     - goto: error
 ```
 
+### AI Agent Execution
+
+```yaml
+analyze:
+  type: agent
+  provider: claude
+  prompt: |
+    Review this code for issues:
+    {{.inputs.code}}
+  options:
+    model: claude-sonnet-4-20250514
+  timeout: 120
+  on_success: process
+
+process:
+  type: step
+  command: echo "Result: {{.states.analyze.output}}"
+  on_success: done
+```
+
 ## Resources
 
 **Getting Started**
@@ -170,6 +191,7 @@ check:
 **Reference**
 - [references/interpolation.md](references/interpolation.md) - Variable substitution
 - [references/interactive-inputs.md](references/interactive-inputs.md) - Auto-prompting for missing inputs
+- [references/agent-steps.md](references/agent-steps.md) - AI agent integration
 - [references/exit-codes.md](references/exit-codes.md) - Error codes
 - [references/validation.md](references/validation.md) - Input validation
 

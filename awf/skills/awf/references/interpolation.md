@@ -17,6 +17,21 @@ command: echo "{{.states.read_file.output}}"
 command: echo "Exit: {{.states.step1.exit_code}}"
 ```
 
+### Agent State Outputs
+
+For `type: agent` steps, additional fields are available:
+
+```yaml
+# Raw text response
+command: echo "{{.states.analyze.output}}"
+
+# Parsed JSON response (if valid JSON returned)
+command: echo "Issues: {{.states.analyze.response.issues}}"
+
+# Token usage metadata
+command: echo "Tokens: {{.states.analyze.tokens.total}}"
+```
+
 ### Workflow Metadata
 
 ```yaml
