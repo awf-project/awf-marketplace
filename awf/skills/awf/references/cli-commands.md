@@ -81,6 +81,45 @@ awf run <workflow> --help    # Show workflow inputs
 | `--interactive` | Step-by-step mode |
 | `--breakpoint, -b` | Pause at specific steps |
 
+### Interactive Input Collection
+
+When required inputs are missing and stdin is connected to a terminal, AWF prompts for values:
+
+```bash
+awf run deploy
+# env (string, required):
+# > prod
+#
+# version (string, required):
+# > 1.2.3
+```
+
+**Behavior:**
+- **Terminal**: Prompts interactively for each missing required input
+- **Non-terminal** (pipes, scripts, CI/CD): Returns error requiring `--input` flags
+- **All inputs provided**: Executes immediately without prompts
+
+**Enum inputs** display numbered options:
+
+```bash
+# env (string, required):
+# Options:
+#   1. dev
+#   2. staging
+#   3. prod
+# Select (1-3): 2
+```
+
+**Optional inputs** can be skipped by pressing Enter:
+
+```bash
+# timeout (integer, optional, default: 300):
+# >
+# Using default: 300
+```
+
+**Details**: [Interactive Input Collection](interactive-inputs.md)
+
 ### Workflow Help
 
 ```bash

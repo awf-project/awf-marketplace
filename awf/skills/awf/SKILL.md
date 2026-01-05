@@ -18,9 +18,10 @@ description: |
 
 **Running a workflow?**
 1. `awf run <name> --input key=value`
-2. Use `--dry-run` to preview
-3. Use `--interactive` for step-by-step
-4. See [CLI Commands](references/cli-commands.md)
+2. Missing inputs? AWF prompts in terminal - see [Interactive Inputs](references/interactive-inputs.md)
+3. Use `--dry-run` to preview
+4. Use `--interactive` for step-by-step
+5. See [CLI Commands](references/cli-commands.md)
 
 **Debugging issues?**
 1. `awf validate <name>` to check syntax
@@ -168,6 +169,7 @@ check:
 
 **Reference**
 - [references/interpolation.md](references/interpolation.md) - Variable substitution
+- [references/interactive-inputs.md](references/interactive-inputs.md) - Auto-prompting for missing inputs
 - [references/exit-codes.md](references/exit-codes.md) - Error codes
 - [references/validation.md](references/validation.md) - Input validation
 

@@ -265,10 +265,26 @@ inputs:
 
 **Validation Rules:**
 - `pattern` - Regex match
-- `enum` - Allowed values
+- `enum` - Allowed values (interactive mode shows numbered selection for <=9 options)
 - `min`/`max` - Integer bounds
 - `file_exists` - Must exist
 - `file_extension` - Allowed extensions
+
+**Interactive Input Collection:**
+
+When required inputs are missing in terminal, AWF prompts automatically. Enum inputs show numbered options:
+
+```bash
+$ awf run deploy
+env (string, required)
+Options:
+  1. dev
+  2. staging
+  3. prod
+Select (1-3): 2
+```
+
+See [Interactive Inputs](interactive-inputs.md) for details.
 
 ## Variable Interpolation
 
