@@ -175,6 +175,21 @@ process:
   on_success: done
 ```
 
+### Multi-Turn Conversation
+
+```yaml
+review:
+  type: agent
+  provider: claude
+  mode: conversation
+  system_prompt: "You are a code reviewer. Say APPROVED when done."
+  initial_prompt: "Review: {{.inputs.code}}"
+  conversation:
+    max_turns: 10
+    stop_condition: "response contains 'APPROVED'"
+  on_success: done
+```
+
 ## Resources
 
 **Getting Started**
@@ -192,6 +207,7 @@ process:
 - [references/interpolation.md](references/interpolation.md) - Variable substitution
 - [references/interactive-inputs.md](references/interactive-inputs.md) - Auto-prompting for missing inputs
 - [references/agent-steps.md](references/agent-steps.md) - AI agent integration
+- [references/conversation-steps.md](references/conversation-steps.md) - Multi-turn agent conversations
 - [references/exit-codes.md](references/exit-codes.md) - Error codes
 - [references/validation.md](references/validation.md) - Input validation
 

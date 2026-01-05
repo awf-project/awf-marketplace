@@ -8,7 +8,8 @@ Agent steps integrate AI CLI tools into AWF workflows. Define prompts as templat
 
 **Features:**
 - Non-interactive execution for CI/CD automation
-- Multi-turn conversations via state passing
+- **Conversation mode** for multi-turn interactions with automatic context management
+- Multi-turn conversations via state passing (legacy)
 - Automatic JSON response parsing
 - Token usage tracking
 
@@ -175,6 +176,33 @@ process:
 ```
 
 ## Multi-Turn Conversations
+
+### Conversation Mode (Recommended)
+
+Use conversation mode for iterative workflows with automatic context management:
+
+```yaml
+review:
+  type: agent
+  provider: claude
+  mode: conversation
+  system_prompt: "You are a code reviewer."
+  initial_prompt: "Review: {{.inputs.code}}"
+  conversation:
+    max_turns: 10
+    stop_condition: "response contains 'APPROVED'"
+  on_success: done
+```
+
+**Benefits:**
+- Automatic turn management
+- Context window handling (token limits)
+- Stop conditions for early exit
+- Token tracking per turn
+
+**Details:** [Conversation Mode Reference](conversation-steps.md)
+
+### State Passing (Legacy)
 
 Chain agent steps with state passing:
 
