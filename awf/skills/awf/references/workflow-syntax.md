@@ -204,7 +204,9 @@ run_tests:
 
 ## Agent State
 
-Invoke AI agents (Claude, Codex, Gemini, OpenCode) with prompt templates:
+Invoke AI agents (Claude, Codex, Gemini, OpenCode) with prompt templates.
+
+### Basic Agent Step
 
 ```yaml
 analyze:
@@ -221,25 +223,69 @@ analyze:
   on_failure: error
 ```
 
+### Conversation Mode
+
+Enable multi-turn conversations with automatic context management:
+
+```yaml
+refine_code:
+  type: agent
+  provider: claude
+  mode: conversation
+  system_prompt: |
+    You are a code reviewer. Iterate until code is approved.
+    Say "APPROVED" when done.
+  initial_prompt: |
+    Review this code:
+    {{.inputs.code}}
+  options:
+    model: claude-sonnet-4-20250514
+    max_tokens: 4096
+  conversation:
+    max_turns: 10
+    max_context_tokens: 100000
+    strategy: sliding_window
+    stop_condition: "response contains 'APPROVED'"
+  on_success: deploy
+  on_failure: error
+```
+
+### Agent Options
+
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
 | `provider` | string | Yes | `claude`, `codex`, `gemini`, `opencode`, `custom` |
-| `prompt` | string | Yes | Prompt template (supports interpolation) |
-| `command` | string | No | Custom provider command (use `{{prompt}}` placeholder) |
+| `mode` | string | No | Set to `conversation` for multi-turn mode |
+| `prompt` | string | Yes* | Prompt template (supports interpolation) |
+| `system_prompt` | string | No | System message (for conversation mode, preserved across turns) |
+| `initial_prompt` | string | No* | First user message (for conversation mode) |
+| `conversation` | object | No | Conversation configuration (required if mode=conversation) |
 | `options` | map | No | Provider options (model, temperature, max_tokens) |
 | `timeout` | int | No | Timeout in seconds |
 | `on_success` | string | No | Next state on success |
 | `on_failure` | string | No | Next state on failure |
 
-**Agent Output:**
+\* Use `prompt` for single-turn mode, `initial_prompt` for conversation mode.
+
+### Conversation Configuration
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `max_turns` | int | 10 | Maximum conversation turns |
+| `max_context_tokens` | int | model limit | Token budget for conversation |
+| `strategy` | string | `sliding_window` | Context window strategy |
+| `stop_condition` | string | - | Expression to exit early |
+
+### Agent Output
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `{{.states.step.Output}}` | string | Raw response text |
 | `{{.states.step.Response}}` | object | Parsed JSON (if valid) |
 | `{{.states.step.Tokens}}` | object | Token usage metadata |
+| `{{.states.step.conversation}}` | object | Conversation state (if mode=conversation) |
 
-**Custom Provider:**
+### Custom Provider
 
 ```yaml
 my_ai:
@@ -250,7 +296,7 @@ my_ai:
   on_success: next
 ```
 
-**Details:** [Agent Steps Reference](agent-steps.md)
+**Details:** [Agent Steps Reference](agent-steps.md) | [Conversation Mode](conversation-steps.md)
 
 ## Retry Configuration
 

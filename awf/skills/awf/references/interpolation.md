@@ -32,6 +32,23 @@ command: echo "Issues: {{.states.analyze.response.issues}}"
 command: echo "Tokens: {{.states.analyze.tokens.total}}"
 ```
 
+### Conversation State Outputs
+
+For agent steps with `mode: conversation`, additional conversation state is available:
+
+```yaml
+# Total turns in conversation
+command: echo "Turns: {{.states.review.conversation.total_turns}}"
+
+# Total tokens used across all turns
+command: echo "Tokens: {{.states.review.conversation.total_tokens}}"
+
+# Exit reason: "condition", "max_turns", or "max_tokens"
+command: echo "Stopped by: {{.states.review.conversation.stopped_by}}"
+```
+
+See [Conversation Mode](conversation-steps.md) for details.
+
 ### Workflow Metadata
 
 ```yaml
