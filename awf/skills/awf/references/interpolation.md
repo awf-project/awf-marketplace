@@ -73,6 +73,43 @@ command: echo "{{.env.HOME}}"
 {{.loop.parent}}    # Parent loop context (nested)
 ```
 
+### Loop Item JSON Serialization
+
+When `{{.loop.item}}` contains complex types (objects, arrays), it is automatically serialized to JSON:
+
+- **Objects** → JSON object: `{"name":"value","nested":{"key":"data"}}`
+- **Arrays** → JSON array: `[1,2,3]` or `["a","b","c"]`
+- **Primitives** → Pass through unchanged: strings, numbers, booleans
+
+This is useful when passing loop items to `call_workflow`:
+
+```yaml
+# Parent workflow with objects
+process_reviews:
+  type: step
+  command: |
+    echo '[{"file":"main.go","type":"fix"},{"file":"test.go","type":"chore"}]'
+  capture:
+    stdout: reviews_json
+  on_success: loop_reviews
+
+loop_reviews:
+  type: for_each
+  items: "{{.states.process_reviews.output}}"
+  body:
+    - call_child_workflow
+
+call_child_workflow:
+  type: call_workflow
+  workflow: review-file
+  inputs:
+    review: "{{.loop.item}}"  # Passed as valid JSON object to child
+
+# Child workflow receives: {"file":"main.go","type":"fix"}
+```
+
+**Note**: Primitive values remain unchanged. `{{.loop.item}}` with `"main.go"` stays as `main.go`.
+
 ### Nested Loop Example
 
 ```yaml
@@ -127,6 +164,24 @@ Variables with these prefixes are masked in logs:
 import "github.com/vanoix/awf/pkg/interpolation"
 escaped := interpolation.ShellEscape(userInput)
 ```
+
+## Template Functions
+
+### Shell Escape
+
+```yaml
+command: echo "{{escape .inputs.user_input}}"
+```
+
+Escapes shell metacharacters to prevent injection.
+
+### JSON Serialization
+
+```yaml
+command: echo '{{json .inputs.data}}'
+```
+
+Explicitly serialize any value to JSON. Useful when you need JSON output for non-loop variables or want explicit control over serialization.
 
 ## Template Parameters
 
