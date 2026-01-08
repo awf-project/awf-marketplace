@@ -107,13 +107,15 @@ process_files:
 
 | Variable | Description |
 |----------|-------------|
-| `{{.loop.Item}}` | Current item |
-| `{{.loop.Index}}` | 0-based index |
-| `{{.loop.Index1}}` | 1-based index |
-| `{{.loop.First}}` | True on first |
-| `{{.loop.Last}}` | True on last |
-| `{{.loop.Length}}` | Total count |
-| `{{.loop.Parent}}` | Parent loop (nested) |
+| `{{.loop.item}}` | Current item |
+| `{{.loop.index}}` | 0-based index |
+| `{{.loop.index1}}` | 1-based index |
+| `{{.loop.first}}` | True on first |
+| `{{.loop.last}}` | True on last |
+| `{{.loop.length}}` | Total count |
+| `{{.loop.parent}}` | Parent loop (nested) |
+
+**Advanced patterns**: [Loop Reference](loop.md) - transitions within body, early exit, nested loops.
 
 ## While Loop
 
@@ -127,6 +129,8 @@ poll_status:
     - wait
   on_complete: proceed
 ```
+
+**Loop body transitions**: Body steps can define `transitions` to skip steps or exit early. See [Loop Reference](loop.md).
 
 ### Dynamic Loop Bounds
 

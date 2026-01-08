@@ -87,8 +87,8 @@ awf run hello --input name=Claude
 | `agent` | Invoke AI agent (Claude, Codex, Gemini, OpenCode) |
 | `parallel` | Run concurrent steps |
 | `terminal` | End workflow |
-| `for_each` | Iterate over list |
-| `while` | Repeat until false |
+| `for_each` | Iterate over list (supports transitions) |
+| `while` | Repeat until false (supports transitions) |
 | `operation` | Invoke plugin operation |
 | `call_workflow` | Execute sub-workflow |
 
@@ -208,6 +208,7 @@ review:
 - [references/interactive-inputs.md](references/interactive-inputs.md) - Auto-prompting for missing inputs
 - [references/agent-steps.md](references/agent-steps.md) - AI agent integration
 - [references/conversation-steps.md](references/conversation-steps.md) - Multi-turn agent conversations
+- [references/loop.md](references/loop.md) - Loop control flow and transitions
 - [references/exit-codes.md](references/exit-codes.md) - Error codes
 - [references/validation.md](references/validation.md) - Input validation
 
