@@ -177,28 +177,27 @@ process:
 
 ## Multi-Turn Conversations
 
-### Conversation Mode (Recommended)
+### Conversation Mode
 
-Use conversation mode for iterative workflows with automatic context management:
+Use conversation mode for autonomous multi-turn execution:
 
 ```yaml
 review:
   type: agent
   provider: claude
   mode: conversation
-  system_prompt: "You are a code reviewer."
-  initial_prompt: "Review: {{.inputs.code}}"
+  system_prompt: "You are a code reviewer. Say APPROVED when done."
+  prompt: "Review: {{.inputs.code}}"
   conversation:
     max_turns: 10
-    stop_condition: "response contains 'APPROVED'"
+    stop_condition: "inputs.response contains 'APPROVED'"
   on_success: done
 ```
 
-**Benefits:**
-- Automatic turn management
-- Context window handling (token limits)
-- Stop conditions for early exit
-- Token tracking per turn
+**Key points:**
+- Same prompt executed each turn (not interactive back-and-forth)
+- Use `inputs.` prefix in stop conditions (`inputs.response`, `inputs.turn_count`)
+- Only `sliding_window` strategy implemented
 
 **Details:** [Conversation Mode Reference](conversation-steps.md)
 

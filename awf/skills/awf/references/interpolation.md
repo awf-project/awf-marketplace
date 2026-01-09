@@ -34,17 +34,20 @@ command: echo "Tokens: {{.states.analyze.tokens.total}}"
 
 ### Conversation State Outputs
 
-For agent steps with `mode: conversation`, additional conversation state is available:
+For agent steps with `mode: conversation`, conversation state uses Go-style field names:
 
 ```yaml
+# Final response output
+command: echo "{{.states.review.Output}}"
+
 # Total turns in conversation
-command: echo "Turns: {{.states.review.conversation.total_turns}}"
+command: echo "Turns: {{.states.review.Conversation.TotalTurns}}"
 
 # Total tokens used across all turns
-command: echo "Tokens: {{.states.review.conversation.total_tokens}}"
+command: echo "Tokens: {{.states.review.TokensUsed}}"
 
 # Exit reason: "condition", "max_turns", or "max_tokens"
-command: echo "Stopped by: {{.states.review.conversation.stopped_by}}"
+command: echo "Stopped by: {{.states.review.Conversation.StoppedBy}}"
 ```
 
 See [Conversation Mode](conversation-steps.md) for details.

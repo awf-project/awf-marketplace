@@ -301,7 +301,7 @@ refine_code:
   system_prompt: |
     You are a code reviewer. Iterate until code is approved.
     Say "APPROVED" when done.
-  initial_prompt: |
+  prompt: |
     Review this code:
     {{.inputs.code}}
   options:
@@ -311,27 +311,26 @@ refine_code:
     max_turns: 10
     max_context_tokens: 100000
     strategy: sliding_window
-    stop_condition: "response contains 'APPROVED'"
+    stop_condition: "inputs.response contains 'APPROVED'"
   on_success: deploy
   on_failure: error
 ```
+
+> **Note**: Conversation mode executes the same `prompt` each turn. Use `inputs.` prefix in stop conditions.
 
 ### Agent Options
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
-| `provider` | string | Yes | `claude`, `codex`, `gemini`, `opencode`, `custom` |
-| `mode` | string | No | Set to `conversation` for multi-turn mode |
-| `prompt` | string | Yes* | Prompt template (supports interpolation) |
-| `system_prompt` | string | No | System message (for conversation mode, preserved across turns) |
-| `initial_prompt` | string | No* | First user message (for conversation mode) |
+| `provider` | string | Yes | `claude`, `codex`, `gemini`, `opencode` |
+| `mode` | string | No | `single` (default) or `conversation` for multi-turn |
+| `prompt` | string | Yes | Prompt template (executed each turn in conversation mode) |
+| `system_prompt` | string | No | System message (preserved across turns) |
 | `conversation` | object | No | Conversation configuration (required if mode=conversation) |
 | `options` | map | No | Provider options (model, temperature, max_tokens) |
 | `timeout` | int | No | Timeout in seconds |
 | `on_success` | string | No | Next state on success |
 | `on_failure` | string | No | Next state on failure |
-
-\* Use `prompt` for single-turn mode, `initial_prompt` for conversation mode.
 
 ### Conversation Configuration
 

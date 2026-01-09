@@ -183,12 +183,14 @@ review:
   provider: claude
   mode: conversation
   system_prompt: "You are a code reviewer. Say APPROVED when done."
-  initial_prompt: "Review: {{.inputs.code}}"
+  prompt: "Review: {{.inputs.code}}"
   conversation:
     max_turns: 10
-    stop_condition: "response contains 'APPROVED'"
+    stop_condition: "inputs.response contains 'APPROVED'"
   on_success: done
 ```
+
+> **Note**: Conversation mode executes the same prompt each turn. Use `inputs.` prefix for stop condition variables.
 
 ## Resources
 
