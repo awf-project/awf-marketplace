@@ -26,7 +26,7 @@ description: |
 **Debugging issues?**
 1. `awf validate <name>` to check syntax
 2. Run with `--verbose` for details
-3. Check `storage/logs/` for logs
+3. Check `$XDG_STATE_HOME/awf/` for logs (~/.local/state/awf/)
 
 **Developing AWF?**
 1. See [Architecture](references/architecture.md)
