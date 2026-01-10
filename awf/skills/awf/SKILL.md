@@ -219,4 +219,5 @@ review:
 
 **Development**
 - [references/architecture.md](references/architecture.md) - Architecture & project structure
+- [references/code-quality.md](references/code-quality.md) - Linting, formatting, CI quality gates
 - [references/testing.md](references/testing.md) - Testing conventions

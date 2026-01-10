@@ -108,6 +108,8 @@ func TestExecution(t *testing.T) {
 
 ## Assertions (testify)
 
+AWF uses the [testify](https://github.com/stretchr/testify) library for all test assertions. As of v0.5.13, manual `if` checks have been migrated to testify assertions.
+
 ```go
 import (
     "github.com/stretchr/testify/assert"
@@ -115,13 +117,33 @@ import (
 )
 
 func TestExample(t *testing.T) {
-    require.NoError(t, err)      // Stops on failure
+    // require.* stops test on failure (use for preconditions)
+    require.NoError(t, err)
     require.NotNil(t, result)
 
-    assert.Equal(t, expected, actual)  // Continues
+    // assert.* continues test on failure (use for verifications)
+    assert.Equal(t, expected, actual)
     assert.Contains(t, haystack, needle)
+    assert.True(t, condition)
+    assert.Len(t, slice, 3)
 }
 ```
+
+**Migration from manual checks**:
+
+```go
+// Before (manual check)
+if result != expected {
+    t.Errorf("got %v, want %v", result, expected)
+}
+
+// After (testify)
+assert.Equal(t, expected, result)
+```
+
+**When to use require vs assert**:
+- `require.*` - Preconditions that must pass for test to continue
+- `assert.*` - Verifications where multiple failures are informative
 
 ## Test Naming
 

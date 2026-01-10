@@ -218,9 +218,13 @@ make build          # Build to ./bin/awf
 make install        # Install to /usr/local/bin
 make test           # All tests
 make test-unit      # Unit tests
-make lint           # golangci-lint
-make fmt            # go fmt
+make lint           # golangci-lint (17 linters)
+make lint-fix       # Auto-fix linter issues
+make fmt            # gofumpt (stricter than gofmt)
+make quality        # lint + fmt + vet + test
 ```
+
+**Details**: [Code Quality Reference](code-quality.md)
 
 ## Testing Strategy
 
