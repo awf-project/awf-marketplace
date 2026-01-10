@@ -100,8 +100,9 @@ awf run hello --input name=Claude
 # Inputs
 command: echo "{{.inputs.file}}"
 
-# Previous outputs
-command: echo "{{.states.prev.output}}"
+# Previous outputs (uppercase property names required)
+command: echo "{{.states.prev.Output}}"
+command: echo "Exit: {{.states.prev.ExitCode}}"
 
 # Environment
 command: echo "{{.env.HOME}}"
@@ -109,6 +110,8 @@ command: echo "{{.env.HOME}}"
 # Loop context
 command: echo "{{.loop.index1}}/{{.loop.length}}"
 ```
+
+> **Breaking Change (v0.5.12)**: State property names must be uppercase: `.Output`, `.ExitCode`, `.Status`, `.Stderr`. Lowercase was never functional with Go templates. Use `awf validate` to detect casing issues.
 
 ## Common Patterns
 
@@ -148,9 +151,9 @@ check:
   type: step
   command: ./check.sh
   transitions:
-    - when: "states.check.exit_code == 0 and inputs.env == 'prod'"
+    - when: "states.check.ExitCode == 0 and inputs.env == 'prod'"
       goto: deploy_prod
-    - when: "states.check.exit_code == 0"
+    - when: "states.check.ExitCode == 0"
       goto: deploy_staging
     - goto: error
 ```
@@ -171,7 +174,7 @@ analyze:
 
 process:
   type: step
-  command: echo "Result: {{.states.analyze.output}}"
+  command: echo "Result: {{.states.analyze.Output}}"
   on_success: done
 ```
 

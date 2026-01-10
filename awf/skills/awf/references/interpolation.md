@@ -12,10 +12,16 @@ command: echo "{{.inputs.file_path}}"
 
 ### State Outputs
 
+State property names must be uppercase (Go template convention):
+
 ```yaml
-command: echo "{{.states.read_file.output}}"
-command: echo "Exit: {{.states.step1.exit_code}}"
+command: echo "{{.states.read_file.Output}}"
+command: echo "Exit: {{.states.step1.ExitCode}}"
+command: echo "Error: {{.states.step1.Stderr}}"
+command: echo "Status: {{.states.step1.Status}}"
 ```
+
+> **Breaking Change (v0.5.12)**: Lowercase properties (`.output`, `.exit_code`) were never functional. Use `awf validate` to detect casing issues.
 
 ### Agent State Outputs
 
@@ -23,13 +29,13 @@ For `type: agent` steps, additional fields are available:
 
 ```yaml
 # Raw text response
-command: echo "{{.states.analyze.output}}"
+command: echo "{{.states.analyze.Output}}"
 
 # Parsed JSON response (if valid JSON returned)
-command: echo "Issues: {{.states.analyze.response.issues}}"
+command: echo "Issues: {{.states.analyze.Response.issues}}"
 
 # Token usage metadata
-command: echo "Tokens: {{.states.analyze.tokens.total}}"
+command: echo "Tokens: {{.states.analyze.Tokens.total}}"
 ```
 
 ### Conversation State Outputs
@@ -98,7 +104,7 @@ process_reviews:
 
 loop_reviews:
   type: for_each
-  items: "{{.states.process_reviews.output}}"
+  items: "{{.states.process_reviews.Output}}"
   body:
     - call_child_workflow
 

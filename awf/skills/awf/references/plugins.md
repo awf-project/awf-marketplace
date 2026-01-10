@@ -57,7 +57,7 @@ notify:
   operation: slack.send_message    # plugin.operation
   inputs:
     channel: "#deployments"
-    message: "Deploy completed: {{.states.deploy.output}}"
+    message: "Deploy completed: {{.states.deploy.Output}}"
   on_success: done
 ```
 

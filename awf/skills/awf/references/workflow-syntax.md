@@ -97,7 +97,7 @@ process_files:
   type: for_each
   items: '["a.txt", "b.txt", "c.txt"]'
   max_iterations: 100
-  break_when: "states.process.exit_code != 0"
+  break_when: "states.process.ExitCode != 0"
   body:
     - process
   on_complete: aggregate
@@ -166,7 +166,7 @@ notify:
   operation: slack.send_message    # plugin.operation_name
   inputs:
     channel: "#deployments"
-    message: "Deploy: {{.states.deploy.output}}"
+    message: "Deploy: {{.states.deploy.Output}}"
   on_success: done
   on_failure: error
 ```
@@ -225,7 +225,7 @@ prepare_items:
 
 process_files:
   type: for_each
-  items: "{{.states.prepare_items.output}}"
+  items: "{{.states.prepare_items.Output}}"
   body:
     - analyze_file
 
@@ -388,9 +388,9 @@ process:
   type: step
   command: analyze.sh
   transitions:
-    - when: "states.process.exit_code == 0 and inputs.mode == 'full'"
+    - when: "states.process.ExitCode == 0 and inputs.mode == 'full'"
       goto: full_report
-    - when: "states.process.exit_code == 0"
+    - when: "states.process.ExitCode == 0"
       goto: summary_report
     - goto: error  # default
 ```
@@ -450,12 +450,16 @@ See [Interactive Inputs](interactive-inputs.md) for details.
 
 ## Variable Interpolation
 
+State property names must be uppercase (Go template convention):
+
 ```yaml
 # Inputs
 command: echo "{{.inputs.variable_name}}"
 
-# Previous outputs
+# Previous outputs (uppercase required)
 command: echo "{{.states.step_name.Output}}"
+command: echo "Exit: {{.states.step_name.ExitCode}}"
+command: echo "Error: {{.states.step_name.Stderr}}"
 
 # Workflow metadata
 command: echo "ID: {{.workflow.id}}"
@@ -464,8 +468,10 @@ command: echo "ID: {{.workflow.id}}"
 command: echo "{{.env.HOME}}"
 
 # Loop context
-command: echo "{{.loop.Item}} ({{.loop.Index1}}/{{.loop.Length}})"
+command: echo "{{.loop.item}} ({{.loop.index1}}/{{.loop.length}})"
 ```
+
+> **Breaking Change (v0.5.12)**: Lowercase state properties (`.output`, `.exit_code`) were never functional. Use `awf validate` to detect casing issues.
 
 ## Hooks
 

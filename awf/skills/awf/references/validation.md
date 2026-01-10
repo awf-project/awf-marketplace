@@ -1,3 +1,48 @@
+# Validation
+
+## Template Casing Validation
+
+**Added in v0.5.12**
+
+AWF validates that state property references use uppercase names. This catches a common mistake where lowercase properties (`.output`, `.exit_code`) would silently fail with Go templates.
+
+### Valid Properties
+
+| Property | Description |
+|----------|-------------|
+| `.Output` | Command stdout |
+| `.Stderr` | Command stderr |
+| `.ExitCode` | Exit code |
+| `.Status` | State status |
+
+### Validation Example
+
+```bash
+$ awf validate my-workflow
+```
+
+```
+validation error: invalid state property casing
+  - line 15: "states.build.output" should be "states.build.Output"
+  - line 22: "states.test.exit_code" should be "states.test.ExitCode"
+```
+
+### Migration
+
+Update all workflow files to use uppercase:
+
+```yaml
+# Before (invalid)
+command: echo "{{.states.build.output}}"
+when: "states.test.exit_code == 0"
+
+# After (valid)
+command: echo "{{.states.build.Output}}"
+when: "states.test.ExitCode == 0"
+```
+
+---
+
 # Input Validation
 
 ## Input Definition

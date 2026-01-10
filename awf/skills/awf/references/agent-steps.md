@@ -431,25 +431,25 @@ process_items:
   on_complete: verify
 ```
 
-### 4. Template Syntax: Use Capital Letters
+### 4. Template Syntax: Use Uppercase for State Properties
 
-All state/loop field names use **PascalCase** in templates:
+State property names must use **uppercase** (Go template convention):
 
 ```yaml
-# ❌ WRONG: Lowercase field names
+# ❌ WRONG: Lowercase state properties
 prompt: "{{.states.step.output}}"
-command: echo "{{.loop.item}}"
+when: "states.step.exit_code == 0"
 
-# ✅ CORRECT: PascalCase field names
+# ✅ CORRECT: Uppercase state properties
 prompt: "{{.states.step.Output}}"
-command: echo "{{.loop.Item}}"
+when: "states.step.ExitCode == 0"
 ```
 
-**Correct field names:**
-| Context | Fields |
-|---------|--------|
-| States | `.Output`, `.Response`, `.Tokens`, `.ExitCode` |
-| Loop | `.Item`, `.Index`, `.Index1`, `.First`, `.Last`, `.Length` |
+**State properties (uppercase):** `.Output`, `.Stderr`, `.ExitCode`, `.Status`, `.Response`, `.Tokens`
+
+**Loop context (lowercase):** `.item`, `.index`, `.index1`, `.first`, `.last`, `.length`
+
+> Use `awf validate` to detect casing issues.
 
 ### 5. JSON in Shell Commands: Use Heredocs
 
