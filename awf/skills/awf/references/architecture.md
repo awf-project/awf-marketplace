@@ -58,7 +58,12 @@ awf/
 │   │   ├── repository/yaml.go   # YAML file loader
 │   │   ├── state/json.go        # JSON state store
 │   │   ├── executor/shell.go    # Shell executor
-│   │   └── store/sqlite.go      # History storage
+│   │   ├── store/sqlite.go      # History storage
+│   │   └── agents/              # AI provider adapters
+│   │       ├── helpers.go       # Shared utilities (cloneState, estimateTokens)
+│   │       ├── claude_provider.go
+│   │       ├── codex_provider.go
+│   │       └── gemini_provider.go
 │   └── interfaces/cli/          # Cobra commands
 ├── pkg/                         # Public packages
 │   ├── interpolation/           # Variable substitution
@@ -165,6 +170,7 @@ Implements domain ports with concrete tech.
 - `state/` - JSON state store
 - `executor/` - Shell executor
 - `store/` - SQLite history (WAL mode for concurrent execution)
+- `agents/` - AI provider adapters (Claude, Codex, Gemini) with shared helper utilities
 
 ## Key Patterns
 

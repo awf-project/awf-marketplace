@@ -30,7 +30,8 @@ Located in `tests/integration/`:
 tests/
 ├── integration/
 │   ├── cli_test.go
-│   └── workflow_test.go
+│   ├── workflow_test.go
+│   └── validation_providers_test.go  # Agent provider behavior validation
 └── fixtures/workflows/
     ├── simple.yaml
     └── parallel.yaml
@@ -94,6 +95,39 @@ func TestExecution(t *testing.T) {
     }
     service := application.NewExecutionService(repo, store, mock)
     // ... test
+}
+```
+
+## Infrastructure Helper Tests
+
+Agent providers share utility functions in `internal/infrastructure/agents/helpers.go`. Test these helpers directly:
+
+```go
+func TestCloneState(t *testing.T) {
+    original := map[string]interface{}{
+        "key": "value",
+        "nested": map[string]interface{}{"a": 1},
+    }
+    cloned := CloneState(original)
+
+    // Verify deep copy (modifications don't affect original)
+    cloned["key"] = "modified"
+    assert.Equal(t, "value", original["key"])
+}
+
+func TestEstimateTokens(t *testing.T) {
+    tests := []struct {
+        text     string
+        expected int
+    }{
+        {"hello world", 2},
+        {"", 0},
+    }
+    for _, tt := range tests {
+        t.Run(tt.text, func(t *testing.T) {
+            assert.Equal(t, tt.expected, EstimateTokens(tt.text))
+        })
+    }
 }
 ```
 

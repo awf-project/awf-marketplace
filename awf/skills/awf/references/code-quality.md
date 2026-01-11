@@ -52,6 +52,15 @@ func Validate(w *Workflow) error {
 }
 ```
 
+**Shared helper extraction**: When multiple implementations share logic, extract to a common helpers file:
+
+```go
+// internal/infrastructure/agents/helpers.go
+func CloneState(state map[string]interface{}) map[string]interface{} { ... }
+func EstimateTokens(text string) int { ... }
+func GetStringOption(opts map[string]interface{}, key, def string) string { ... }
+```
+
 ### Error Wrapping (errorlint)
 
 ```go
