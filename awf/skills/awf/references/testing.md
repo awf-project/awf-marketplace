@@ -31,7 +31,8 @@ tests/
 ├── integration/
 │   ├── cli_test.go
 │   ├── workflow_test.go
-│   └── validation_providers_test.go  # Agent provider behavior validation
+│   ├── validation_providers_test.go  # Agent provider behavior validation
+│   └── graph_algorithm_refactoring_test.go  # Cycle detection and execution order
 └── fixtures/workflows/
     ├── simple.yaml
     └── parallel.yaml
@@ -95,6 +96,38 @@ func TestExecution(t *testing.T) {
     }
     service := application.NewExecutionService(repo, store, mock)
     // ... test
+}
+```
+
+## Domain Algorithm Tests
+
+Graph algorithms in `internal/domain/workflow/graph.go` use extracted helpers for testability:
+
+```go
+func TestVisitState_Enum(t *testing.T) {
+    assert.Equal(t, VisitState(0), Unvisited)
+    assert.Equal(t, VisitState(1), Visiting)
+    assert.Equal(t, VisitState(2), Visited)
+}
+
+func TestProcessTransition_CycleDetection(t *testing.T) {
+    visited := map[string]VisitState{"a": Visiting}
+    err := ProcessTransition("a", visited, ...)
+    require.Error(t, err)
+    assert.Contains(t, err.Error(), "cycle detected")
+}
+
+func TestEnqueueIfNotVisited(t *testing.T) {
+    queue := []string{}
+    visited := map[string]bool{}
+
+    EnqueueIfNotVisited("a", &queue, visited)
+    assert.Equal(t, []string{"a"}, queue)
+    assert.True(t, visited["a"])
+
+    // Already visited - no duplicate
+    EnqueueIfNotVisited("a", &queue, visited)
+    assert.Len(t, queue, 1)
 }
 ```
 

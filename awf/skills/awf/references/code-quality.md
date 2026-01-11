@@ -61,6 +61,31 @@ func EstimateTokens(text string) int { ... }
 func GetStringOption(opts map[string]interface{}, key, def string) string { ... }
 ```
 
+**Domain algorithm refactoring**: For complex graph algorithms, extract focused helpers and use typed enums:
+
+```go
+// internal/domain/workflow/graph.go
+
+// VisitState replaces magic numbers (0, 1, 2) with self-documenting values
+type VisitState int
+const (
+    Unvisited VisitState = iota
+    Visiting
+    Visited
+)
+
+// ProcessTransition handles single edge traversal (extracted from DetectCycles)
+func ProcessTransition(target string, visited map[string]VisitState, ...) error
+
+// VisitNode performs DFS from single node (extracted from DetectCycles)
+func VisitNode(state string, visited map[string]VisitState, ...) error
+
+// EnqueueIfNotVisited handles BFS queue logic (extracted from ComputeExecutionOrder)
+func EnqueueIfNotVisited(state string, queue *[]string, visited map[string]bool)
+```
+
+This pattern reduced DetectCycles from complexity 27 to 17, and ComputeExecutionOrder from 23 to 13.
+
 ### Error Wrapping (errorlint)
 
 ```go

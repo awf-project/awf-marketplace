@@ -46,7 +46,9 @@ awf/
 │   │   │   ├── state.go         # State types
 │   │   │   ├── step.go          # Step execution
 │   │   │   ├── context.go       # Execution context
-│   │   │   └── validation.go    # Input validation
+│   │   │   ├── validation.go    # Input validation
+│   │   │   ├── graph.go         # Graph algorithms (cycle detection, execution order)
+│   │   │   └── template_validation.go  # Template validation with BFS helpers
 │   │   ├── operation/           # Operation interface
 │   │   └── ports/               # Repository, StateStore, Executor
 │   ├── application/             # Services
