@@ -86,6 +86,41 @@ func EnqueueIfNotVisited(state string, queue *[]string, visited map[string]bool)
 
 This pattern reduced DetectCycles from complexity 27 to 17, and ComputeExecutionOrder from 23 to 13.
 
+**CLI UI helper extraction**: For complex UI formatting logic, extract focused helpers to reduce cognitive complexity:
+
+```go
+// internal/interfaces/cli/ui/output.go
+
+// FormatIntFieldIfPositive returns formatted string only for positive values
+func FormatIntFieldIfPositive(value int) string {
+    if value > 0 {
+        return fmt.Sprintf("%d", value)
+    }
+    return ""
+}
+
+// BuildValidationRow constructs a table row from validation result
+func BuildValidationRow(result ValidationResult) []string {
+    return []string{
+        result.Field,
+        result.Status,
+        FormatIntFieldIfPositive(result.Count),
+    }
+}
+```
+
+```go
+// internal/interfaces/cli/list.go
+
+// buildPromptInfo extracts prompt building logic from complex list command
+func buildPromptInfo(entry WorkflowEntry) PromptInfo { ... }
+
+// shouldProcessEntry extracts filtering logic
+func shouldProcessEntry(entry WorkflowEntry, filter Filter) bool { ... }
+```
+
+This pattern reduced list.go complexity from 23 to 5, and output.go from 27 to 18.
+
 ### Error Wrapping (errorlint)
 
 ```go

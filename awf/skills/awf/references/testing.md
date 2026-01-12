@@ -131,6 +131,78 @@ func TestEnqueueIfNotVisited(t *testing.T) {
 }
 ```
 
+## CLI Helper Tests
+
+UI helpers in `internal/interfaces/cli/` and `internal/interfaces/cli/ui/` are tested with table-driven unit tests:
+
+```go
+// internal/interfaces/cli/list_helpers_test.go
+func TestBuildPromptInfo(t *testing.T) {
+    tests := []struct {
+        name     string
+        entry    WorkflowEntry
+        expected PromptInfo
+    }{
+        {
+            name:  "workflow with inputs",
+            entry: WorkflowEntry{Name: "test", Inputs: []Input{{Name: "foo"}}},
+            expected: PromptInfo{HasInputs: true, InputCount: 1},
+        },
+    }
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            result := buildPromptInfo(tt.entry)
+            assert.Equal(t, tt.expected, result)
+        })
+    }
+}
+
+func TestShouldProcessEntry(t *testing.T) {
+    tests := []struct {
+        name     string
+        entry    WorkflowEntry
+        filter   Filter
+        expected bool
+    }{
+        {"matches filter", WorkflowEntry{Name: "test"}, Filter{Name: "test"}, true},
+        {"no match", WorkflowEntry{Name: "other"}, Filter{Name: "test"}, false},
+    }
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            assert.Equal(t, tt.expected, shouldProcessEntry(tt.entry, tt.filter))
+        })
+    }
+}
+```
+
+```go
+// internal/interfaces/cli/ui/field_formatters_test.go
+func TestFormatIntFieldIfPositive(t *testing.T) {
+    tests := []struct {
+        value    int
+        expected string
+    }{
+        {5, "5"},
+        {0, ""},
+        {-1, ""},
+    }
+    for _, tt := range tests {
+        t.Run(fmt.Sprintf("value_%d", tt.value), func(t *testing.T) {
+            assert.Equal(t, tt.expected, FormatIntFieldIfPositive(tt.value))
+        })
+    }
+}
+```
+
+```go
+// internal/interfaces/cli/ui/row_builders_test.go
+func TestBuildValidationRow(t *testing.T) {
+    result := ValidationResult{Field: "name", Status: "ok", Count: 3}
+    row := BuildValidationRow(result)
+    assert.Equal(t, []string{"name", "ok", "3"}, row)
+}
+```
+
 ## Infrastructure Helper Tests
 
 Agent providers share utility functions in `internal/infrastructure/agents/helpers.go`. Test these helpers directly:

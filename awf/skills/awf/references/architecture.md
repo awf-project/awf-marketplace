@@ -67,6 +67,12 @@ awf/
 │   │       ├── codex_provider.go
 │   │       └── gemini_provider.go
 │   └── interfaces/cli/          # Cobra commands
+│       ├── ui/                  # UI formatting helpers
+│       │   ├── output.go        # Table output, row builders
+│       │   ├── dry_run_formatter.go  # Dry-run display formatting
+│       │   └── field_formatters_test.go  # Field formatter tests
+│       ├── list.go              # List command with prompt helpers
+│       └── list_helpers_test.go # List helper unit tests
 ├── pkg/                         # Public packages
 │   ├── interpolation/           # Variable substitution
 │   ├── validation/              # Input validation
