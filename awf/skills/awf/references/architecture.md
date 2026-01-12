@@ -54,8 +54,10 @@ awf/
 │   ├── application/             # Services
 │   │   ├── workflow_service.go  # Loading/validation
 │   │   ├── execution_service.go # Execution engine
+│   │   ├── interactive_executor.go  # Step execution with result handlers
+│   │   ├── parallel_executor.go     # Parallel step coordination
 │   │   ├── state_manager.go     # State persistence
-│   │   └── template_service.go  # Template resolution
+│   │   └── template_service.go  # Template resolution with param helpers
 │   ├── infrastructure/          # Adapters
 │   │   ├── repository/yaml.go   # YAML file loader
 │   │   ├── state/json.go        # JSON state store
@@ -164,8 +166,10 @@ Orchestrates use cases using domain and ports.
 **Services:**
 - `WorkflowService` - Loading, validation, listing
 - `ExecutionService` - Execution engine
+- `InteractiveExecutor` - Step-by-step execution with extracted result handlers
+- `ParallelExecutor` - Concurrent step coordination with branch helpers
 - `StateManager` - State persistence
-- `TemplateService` - Template resolution
+- `TemplateService` - Template resolution with parameter processing helpers
 
 ## Infrastructure Layer
 

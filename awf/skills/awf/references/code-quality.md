@@ -121,6 +121,49 @@ func shouldProcessEntry(entry WorkflowEntry, filter Filter) bool { ... }
 
 This pattern reduced list.go complexity from 23 to 5, and output.go from 27 to 18.
 
+**Application layer helper extraction**: For complex executor logic, extract focused method handlers:
+
+```go
+// internal/application/interactive_executor.go
+
+// handleStepSuccess extracts success result processing from executeStep
+func (e *InteractiveExecutor) handleStepSuccess(ctx context.Context, result StepResult) error { ... }
+
+// handleStepFailure extracts failure result processing from executeStep
+func (e *InteractiveExecutor) handleStepFailure(ctx context.Context, result StepResult) error { ... }
+
+// handleStepRetry extracts retry logic from executeStep
+func (e *InteractiveExecutor) handleStepRetry(ctx context.Context, step Step, attempt int) error { ... }
+```
+
+```go
+// internal/application/parallel_executor.go
+
+// coordinateBranches extracts branch coordination from executeAnySucceed
+func (e *ParallelExecutor) coordinateBranches(ctx context.Context, branches []Branch) error { ... }
+
+// collectBranchResults extracts result aggregation logic
+func (e *ParallelExecutor) collectBranchResults(results chan BranchResult) []BranchResult { ... }
+
+// determineBranchOutcome extracts outcome decision logic
+func (e *ParallelExecutor) determineBranchOutcome(results []BranchResult) Outcome { ... }
+```
+
+```go
+// internal/application/template_service.go
+
+// expandParameters extracts parameter expansion pipeline from expandStep
+func (s *TemplateService) expandParameters(params map[string]interface{}, ctx Context) (map[string]interface{}, error) { ... }
+
+// resolveTemplateValue extracts single value resolution
+func (s *TemplateService) resolveTemplateValue(value interface{}, ctx Context) (interface{}, error) { ... }
+
+// validateExpandedParams extracts validation of expanded parameters
+func (s *TemplateService) validateExpandedParams(params map[string]interface{}) error { ... }
+```
+
+This pattern reduced executeStep complexity significantly and improved testability with 2,873 lines of dedicated helper tests.
+
 ### Error Wrapping (errorlint)
 
 ```go

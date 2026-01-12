@@ -32,7 +32,8 @@ tests/
 │   ├── cli_test.go
 │   ├── workflow_test.go
 │   ├── validation_providers_test.go  # Agent provider behavior validation
-│   └── graph_algorithm_refactoring_test.go  # Cycle detection and execution order
+│   ├── graph_algorithm_refactoring_test.go  # Cycle detection and execution order
+│   └── cognitive_complexity_refactoring_test.go  # Executor helper refactoring
 └── fixtures/workflows/
     ├── simple.yaml
     └── parallel.yaml
@@ -200,6 +201,110 @@ func TestBuildValidationRow(t *testing.T) {
     result := ValidationResult{Field: "name", Status: "ok", Count: 3}
     row := BuildValidationRow(result)
     assert.Equal(t, []string{"name", "ok", "3"}, row)
+}
+```
+
+## Application Helper Tests
+
+Executor helpers in `internal/application/` are tested with comprehensive table-driven tests:
+
+```go
+// internal/application/interactive_executor_handlers_test.go
+func TestHandleStepSuccess(t *testing.T) {
+    tests := []struct {
+        name     string
+        result   StepResult
+        expected error
+    }{
+        {
+            name:     "successful step transitions",
+            result:   StepResult{ExitCode: 0, Output: "done"},
+            expected: nil,
+        },
+        {
+            name:     "step with warnings",
+            result:   StepResult{ExitCode: 0, Warnings: []string{"deprecated"}},
+            expected: nil,
+        },
+    }
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            executor := NewInteractiveExecutor(mockRepo, mockStore)
+            err := executor.handleStepSuccess(context.Background(), tt.result)
+            assert.Equal(t, tt.expected, err)
+        })
+    }
+}
+```
+
+```go
+// internal/application/parallel_executor_coordination_test.go
+func TestCoordinateBranches(t *testing.T) {
+    tests := []struct {
+        name     string
+        branches []Branch
+        wantErr  bool
+    }{
+        {
+            name:     "all branches succeed",
+            branches: []Branch{{Name: "a"}, {Name: "b"}},
+            wantErr:  false,
+        },
+        {
+            name:     "one branch fails with any_succeed",
+            branches: []Branch{{Name: "a", Fail: true}, {Name: "b"}},
+            wantErr:  false, // any_succeed tolerates failures
+        },
+    }
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            executor := NewParallelExecutor(mockCtx)
+            err := executor.coordinateBranches(context.Background(), tt.branches)
+            if tt.wantErr {
+                require.Error(t, err)
+            } else {
+                require.NoError(t, err)
+            }
+        })
+    }
+}
+```
+
+```go
+// internal/application/template_service_helpers_test.go
+func TestExpandParameters(t *testing.T) {
+    tests := []struct {
+        name     string
+        params   map[string]interface{}
+        ctx      Context
+        expected map[string]interface{}
+        wantErr  bool
+    }{
+        {
+            name:     "simple substitution",
+            params:   map[string]interface{}{"file": "{{.inputs.path}}"},
+            ctx:      Context{Inputs: map[string]interface{}{"path": "/tmp/test"}},
+            expected: map[string]interface{}{"file": "/tmp/test"},
+        },
+        {
+            name:     "nested template",
+            params:   map[string]interface{}{"cmd": "echo {{.states.prev.Output}}"},
+            ctx:      Context{States: map[string]StateResult{"prev": {Output: "hello"}}},
+            expected: map[string]interface{}{"cmd": "echo hello"},
+        },
+    }
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            svc := NewTemplateService()
+            result, err := svc.expandParameters(tt.params, tt.ctx)
+            if tt.wantErr {
+                require.Error(t, err)
+            } else {
+                require.NoError(t, err)
+                assert.Equal(t, tt.expected, result)
+            }
+        })
+    }
 }
 ```
 
