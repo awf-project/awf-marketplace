@@ -411,6 +411,46 @@ func TestShouldTerminateLoop(t *testing.T) {
 }
 ```
 
+## Expression Context Normalization Tests
+
+Expression evaluator tests in `pkg/expression/` validate PascalCase normalization (v0.5.20):
+
+```go
+// pkg/expression/evaluator_test.go
+func TestContextNormalization(t *testing.T) {
+    tests := []struct {
+        name     string
+        ctx      map[string]interface{}
+        expected map[string]interface{}
+    }{
+        {
+            name: "lowercase context normalized",
+            ctx:  map[string]interface{}{"context": map[string]interface{}{"retryCount": 3}},
+            expected: map[string]interface{}{"Context": map[string]interface{}{"RetryCount": 3}},
+        },
+        {
+            name: "mixed case error normalized",
+            ctx:  map[string]interface{}{"error": map[string]interface{}{"message": "timeout"}},
+            expected: map[string]interface{}{"Error": map[string]interface{}{"Message": "timeout"}},
+        },
+        {
+            name:     "PascalCase preserved",
+            ctx:      map[string]interface{}{"Context": map[string]interface{}{"WorkflowID": "abc"}},
+            expected: map[string]interface{}{"Context": map[string]interface{}{"WorkflowID": "abc"}},
+        },
+    }
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            eval := NewEvaluator()
+            normalized := eval.normalizeContext(tt.ctx)
+            assert.Equal(t, tt.expected, normalized)
+        })
+    }
+}
+```
+
+Integration tests in `tests/integration/expression_context_test.go` validate end-to-end normalization with workflow fixtures.
+
 ## Infrastructure Helper Tests
 
 Agent providers share utility functions in `internal/infrastructure/agents/helpers.go`. Test these helpers directly:

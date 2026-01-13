@@ -41,6 +41,26 @@ command: echo "{{.states.build.Output}}"
 when: "states.test.ExitCode == 0"
 ```
 
+## Expression Context Normalization
+
+**Added in v0.5.20**
+
+Expression evaluator now normalizes context namespaces to PascalCase:
+
+| Namespace | Example Properties |
+|-----------|-------------------|
+| `Context` | `Context.RetryCount`, `Context.WorkflowID` |
+| `Error` | `Error.Message`, `Error.Code` |
+| `Loop` | `Loop.Index`, `Loop.First`, `Loop.Item` |
+
+Lowercase references are automatically converted for backward compatibility:
+
+```yaml
+# These are equivalent (lowercase auto-normalized)
+when: "context.retryCount > 0"    # Normalized to Context.RetryCount
+when: "Context.RetryCount > 0"    # Preferred PascalCase
+```
+
 ---
 
 # Input Validation

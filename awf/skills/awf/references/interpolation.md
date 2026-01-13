@@ -157,6 +157,32 @@ Values resolved at loop initialization. `awf validate` warns about undefined var
 
 **Note:** In `when` expressions, use variable names without `{{}}`.
 
+## Expression Context (PascalCase)
+
+In `when` expressions and `break_when` conditions, namespace properties use PascalCase:
+
+```yaml
+# State properties
+when: "states.step.ExitCode == 0"
+when: "states.build.Output contains 'success'"
+
+# Context namespace (v0.5.20+)
+when: "Context.RetryCount > 0"
+when: "Context.WorkflowID != ''"
+
+# Error namespace (v0.5.20+)
+when: "Error.Message contains 'timeout'"
+when: "Error.Code == 'VALIDATION_FAILED'"
+
+# Loop namespace
+break_when: "Loop.Index >= 10"
+when: "Loop.First"
+```
+
+**Backward Compatibility:** Lowercase properties (e.g., `context.retryCount`, `error.message`) are automatically normalized to PascalCase. New workflows should use PascalCase directly.
+
+> **Change (v0.5.20)**: Expression evaluator now normalizes context to PascalCase for consistent property access. Lowercase references continue to work but emit deprecation warnings.
+
 ## Security
 
 ### Secret Masking

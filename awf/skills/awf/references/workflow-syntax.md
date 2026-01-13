@@ -397,6 +397,10 @@ process:
 
 **Operators:** `==`, `!=`, `<`, `>`, `<=`, `>=`, `and`, `or`, `not`
 
+**Namespaces (PascalCase):** `states.X.Output`, `inputs.X`, `Context.RetryCount`, `Error.Message`, `Loop.Index`
+
+> **v0.5.20**: Expression context uses PascalCase. Lowercase auto-converts for backward compatibility.
+
 ## Input Definitions
 
 ```yaml

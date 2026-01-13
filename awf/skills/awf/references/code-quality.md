@@ -196,6 +196,20 @@ func (s *ExecutionService) shouldTerminateLoop(pattern LoopPattern, iteration in
 
 This pattern reduced conversation and execution loop complexity, improving testability with 26 dedicated unit tests for loop pattern helpers.
 
+**Expression evaluator context normalization** (v0.5.20): The expression evaluator normalizes context namespaces to PascalCase for consistent property access:
+
+```go
+// pkg/expression/evaluator.go
+
+// normalizeContext converts lowercase namespace properties to PascalCase
+func (e *Evaluator) normalizeContext(ctx map[string]interface{}) map[string]interface{} { ... }
+
+// validatePascalCase ensures all context keys follow PascalCase convention
+func validatePascalCase(key string) bool { ... }
+```
+
+This ensures consistent property access patterns across templates (`{{.states.X.Output}}`) and expressions (`states.X.Output`), with backward compatibility for lowercase references.
+
 ### Error Wrapping (errorlint)
 
 ```go
