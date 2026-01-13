@@ -53,7 +53,8 @@ awf/
 │   │   └── ports/               # Repository, StateStore, Executor
 │   ├── application/             # Services
 │   │   ├── workflow_service.go  # Loading/validation
-│   │   ├── execution_service.go # Execution engine
+│   │   ├── execution_service.go # Execution engine with loop pattern helpers
+│   │   ├── conversation_manager.go  # Multi-turn conversation coordination
 │   │   ├── interactive_executor.go  # Step execution with result handlers
 │   │   ├── parallel_executor.go     # Parallel step coordination
 │   │   ├── state_manager.go     # State persistence
@@ -165,7 +166,8 @@ Orchestrates use cases using domain and ports.
 
 **Services:**
 - `WorkflowService` - Loading, validation, listing
-- `ExecutionService` - Execution engine
+- `ExecutionService` - Execution engine with loop pattern detection helpers
+- `ConversationManager` - Multi-turn conversation coordination with state helpers
 - `InteractiveExecutor` - Step-by-step execution with extracted result handlers
 - `ParallelExecutor` - Concurrent step coordination with branch helpers
 - `StateManager` - State persistence

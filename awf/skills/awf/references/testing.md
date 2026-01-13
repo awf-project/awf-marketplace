@@ -33,7 +33,8 @@ tests/
 │   ├── workflow_test.go
 │   ├── validation_providers_test.go  # Agent provider behavior validation
 │   ├── graph_algorithm_refactoring_test.go  # Cycle detection and execution order
-│   └── cognitive_complexity_refactoring_test.go  # Executor helper refactoring
+│   ├── cognitive_complexity_refactoring_test.go  # Executor helper refactoring
+│   └── execution_helpers_test.go  # Execution helper workflow validation
 └── fixtures/workflows/
     ├── simple.yaml
     └── parallel.yaml
@@ -303,6 +304,108 @@ func TestExpandParameters(t *testing.T) {
                 require.NoError(t, err)
                 assert.Equal(t, tt.expected, result)
             }
+        })
+    }
+}
+```
+
+## Conversation Manager Helper Tests
+
+Conversation manager helpers in `internal/application/` are tested with comprehensive table-driven tests:
+
+```go
+// internal/application/conversation_manager_helpers_test.go
+func TestShouldContinueConversation(t *testing.T) {
+    tests := []struct {
+        name     string
+        state    ConversationState
+        expected bool
+    }{
+        {
+            name:     "continue when under max turns",
+            state:    ConversationState{Turn: 3, MaxTurns: 10},
+            expected: true,
+        },
+        {
+            name:     "stop when stop condition met",
+            state:    ConversationState{Turn: 2, StopConditionMet: true},
+            expected: false,
+        },
+        {
+            name:     "stop when max turns reached",
+            state:    ConversationState{Turn: 10, MaxTurns: 10},
+            expected: false,
+        },
+    }
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            manager := NewConversationManager()
+            assert.Equal(t, tt.expected, manager.shouldContinueConversation(tt.state))
+        })
+    }
+}
+```
+
+## Loop Pattern Helper Tests
+
+Loop pattern detection helpers in `internal/application/` use table-driven tests:
+
+```go
+// internal/application/loop_pattern_helpers_test.go
+func TestDetectLoopPattern(t *testing.T) {
+    tests := []struct {
+        name     string
+        state    State
+        expected LoopPattern
+    }{
+        {
+            name:     "for_each loop",
+            state:    State{Type: "for_each", Items: []string{"a", "b"}},
+            expected: LoopPattern{Type: ForEach, Items: []string{"a", "b"}},
+        },
+        {
+            name:     "while loop",
+            state:    State{Type: "while", Condition: "inputs.count > 0"},
+            expected: LoopPattern{Type: While, Condition: "inputs.count > 0"},
+        },
+        {
+            name:     "non-loop state",
+            state:    State{Type: "step"},
+            expected: LoopPattern{Type: NoLoop},
+        },
+    }
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            svc := NewExecutionService(mockRepo, mockStore, mockExecutor)
+            assert.Equal(t, tt.expected, svc.detectLoopPattern(tt.state))
+        })
+    }
+}
+
+func TestShouldTerminateLoop(t *testing.T) {
+    tests := []struct {
+        name      string
+        pattern   LoopPattern
+        iteration int
+        expected  bool
+    }{
+        {
+            name:      "for_each completes all items",
+            pattern:   LoopPattern{Type: ForEach, Items: []string{"a", "b"}},
+            iteration: 2,
+            expected:  true,
+        },
+        {
+            name:      "while condition becomes false",
+            pattern:   LoopPattern{Type: While, ConditionResult: false},
+            iteration: 1,
+            expected:  true,
+        },
+    }
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            svc := NewExecutionService(mockRepo, mockStore, mockExecutor)
+            assert.Equal(t, tt.expected, svc.shouldTerminateLoop(tt.pattern, tt.iteration))
         })
     }
 }

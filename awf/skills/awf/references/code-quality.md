@@ -162,7 +162,39 @@ func (s *TemplateService) resolveTemplateValue(value interface{}, ctx Context) (
 func (s *TemplateService) validateExpandedParams(params map[string]interface{}) error { ... }
 ```
 
-This pattern reduced executeStep complexity significantly and improved testability with 2,873 lines of dedicated helper tests.
+This pattern reduced executeStep complexity significantly and improved testability with dedicated helper tests.
+
+**Conversation manager helper extraction**: For complex multi-turn conversation logic, extract state management helpers:
+
+```go
+// internal/application/conversation_manager.go
+
+// shouldContinueConversation extracts continuation logic from conversation loop
+func (m *ConversationManager) shouldContinueConversation(state ConversationState) bool { ... }
+
+// buildNextPrompt extracts prompt construction from conversation step
+func (m *ConversationManager) buildNextPrompt(state ConversationState, history []Message) string { ... }
+
+// updateConversationState extracts state mutation logic
+func (m *ConversationManager) updateConversationState(state *ConversationState, response Response) error { ... }
+```
+
+**Execution service loop pattern helpers**: For complex loop detection and handling logic, extract focused helpers:
+
+```go
+// internal/application/execution_service.go
+
+// detectLoopPattern identifies for_each and while loop patterns
+func (s *ExecutionService) detectLoopPattern(state State) LoopPattern { ... }
+
+// handleLoopIteration extracts single iteration execution
+func (s *ExecutionService) handleLoopIteration(ctx context.Context, pattern LoopPattern, index int) error { ... }
+
+// shouldTerminateLoop extracts loop termination condition evaluation
+func (s *ExecutionService) shouldTerminateLoop(pattern LoopPattern, iteration int) bool { ... }
+```
+
+This pattern reduced conversation and execution loop complexity, improving testability with 26 dedicated unit tests for loop pattern helpers.
 
 ### Error Wrapping (errorlint)
 
