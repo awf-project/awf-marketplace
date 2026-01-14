@@ -54,6 +54,7 @@ awf/
 │   ├── application/             # Services
 │   │   ├── workflow_service.go  # Loading/validation
 │   │   ├── execution_service.go # Execution engine with loop pattern helpers
+│   │   ├── execution_service_*_test.go  # Thematic test files (v0.5.21)
 │   │   ├── conversation_manager.go  # Multi-turn conversation coordination
 │   │   ├── interactive_executor.go  # Step execution with result handlers
 │   │   ├── parallel_executor.go     # Parallel step coordination

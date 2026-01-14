@@ -34,11 +34,35 @@ tests/
 │   ├── validation_providers_test.go  # Agent provider behavior validation
 │   ├── graph_algorithm_refactoring_test.go  # Cycle detection and execution order
 │   ├── cognitive_complexity_refactoring_test.go  # Executor helper refactoring
-│   └── execution_helpers_test.go  # Execution helper workflow validation
+│   ├── execution_helpers_test.go  # Execution helper workflow validation
+│   └── test_restructuring_functional_test.go  # Validates thematic test split (v0.5.21)
 └── fixtures/workflows/
     ├── simple.yaml
     └── parallel.yaml
 ```
+
+### Execution Service Tests (v0.5.21)
+
+As of v0.5.21, execution service tests are split by theme for better discoverability:
+
+```
+internal/application/
+├── execution_service.go
+├── execution_service_core_test.go       # Core execution, context, errors (1,938 lines)
+├── execution_service_hooks_test.go      # Pre/post hooks, error hooks (272 lines)
+├── execution_service_loop_test.go       # Iteration, break, nested loops (660 lines)
+├── execution_service_parallel_test.go   # Concurrent execution (70 lines)
+├── execution_service_retry_test.go      # Retry policies, backoff (534 lines)
+└── execution_service_specialized_mocks_test.go  # Shared mocks (108 lines)
+```
+
+**Theme descriptions**:
+- `core` - Basic workflow execution, context handling, state transitions, error scenarios
+- `hooks` - Pre-execution hooks, post-execution hooks, error hook behavior
+- `loop` - for_each iteration, while loops, break conditions, nested loop handling
+- `parallel` - Concurrent step execution, strategy validation
+- `retry` - Retry policies, exponential backoff, max attempts, failure recovery
+- `specialized_mocks` - Reusable mock implementations (`retryCountingExecutor`, `errorMockExecutor`)
 
 ## Table-Driven Tests
 
@@ -207,107 +231,11 @@ func TestBuildValidationRow(t *testing.T) {
 
 ## Application Helper Tests
 
-Executor helpers in `internal/application/` are tested with comprehensive table-driven tests:
+Executor helpers in `internal/application/` use table-driven tests. Key test files:
 
-```go
-// internal/application/interactive_executor_handlers_test.go
-func TestHandleStepSuccess(t *testing.T) {
-    tests := []struct {
-        name     string
-        result   StepResult
-        expected error
-    }{
-        {
-            name:     "successful step transitions",
-            result:   StepResult{ExitCode: 0, Output: "done"},
-            expected: nil,
-        },
-        {
-            name:     "step with warnings",
-            result:   StepResult{ExitCode: 0, Warnings: []string{"deprecated"}},
-            expected: nil,
-        },
-    }
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            executor := NewInteractiveExecutor(mockRepo, mockStore)
-            err := executor.handleStepSuccess(context.Background(), tt.result)
-            assert.Equal(t, tt.expected, err)
-        })
-    }
-}
-```
-
-```go
-// internal/application/parallel_executor_coordination_test.go
-func TestCoordinateBranches(t *testing.T) {
-    tests := []struct {
-        name     string
-        branches []Branch
-        wantErr  bool
-    }{
-        {
-            name:     "all branches succeed",
-            branches: []Branch{{Name: "a"}, {Name: "b"}},
-            wantErr:  false,
-        },
-        {
-            name:     "one branch fails with any_succeed",
-            branches: []Branch{{Name: "a", Fail: true}, {Name: "b"}},
-            wantErr:  false, // any_succeed tolerates failures
-        },
-    }
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            executor := NewParallelExecutor(mockCtx)
-            err := executor.coordinateBranches(context.Background(), tt.branches)
-            if tt.wantErr {
-                require.Error(t, err)
-            } else {
-                require.NoError(t, err)
-            }
-        })
-    }
-}
-```
-
-```go
-// internal/application/template_service_helpers_test.go
-func TestExpandParameters(t *testing.T) {
-    tests := []struct {
-        name     string
-        params   map[string]interface{}
-        ctx      Context
-        expected map[string]interface{}
-        wantErr  bool
-    }{
-        {
-            name:     "simple substitution",
-            params:   map[string]interface{}{"file": "{{.inputs.path}}"},
-            ctx:      Context{Inputs: map[string]interface{}{"path": "/tmp/test"}},
-            expected: map[string]interface{}{"file": "/tmp/test"},
-        },
-        {
-            name:     "nested template",
-            params:   map[string]interface{}{"cmd": "echo {{.states.prev.Output}}"},
-            ctx:      Context{States: map[string]StateResult{"prev": {Output: "hello"}}},
-            expected: map[string]interface{}{"cmd": "echo hello"},
-        },
-    }
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            svc := NewTemplateService()
-            result, err := svc.expandParameters(tt.params, tt.ctx)
-            if tt.wantErr {
-                require.Error(t, err)
-            } else {
-                require.NoError(t, err)
-                assert.Equal(t, tt.expected, result)
-            }
-        })
-    }
-}
-```
+- `interactive_executor_handlers_test.go` - Step success/failure handling
+- `parallel_executor_coordination_test.go` - Branch coordination, strategy validation
+- `template_service_helpers_test.go` - Template expansion, parameter substitution
 
 ## Conversation Manager Helper Tests
 
@@ -451,39 +379,6 @@ func TestContextNormalization(t *testing.T) {
 
 Integration tests in `tests/integration/expression_context_test.go` validate end-to-end normalization with workflow fixtures.
 
-## Infrastructure Helper Tests
-
-Agent providers share utility functions in `internal/infrastructure/agents/helpers.go`. Test these helpers directly:
-
-```go
-func TestCloneState(t *testing.T) {
-    original := map[string]interface{}{
-        "key": "value",
-        "nested": map[string]interface{}{"a": 1},
-    }
-    cloned := CloneState(original)
-
-    // Verify deep copy (modifications don't affect original)
-    cloned["key"] = "modified"
-    assert.Equal(t, "value", original["key"])
-}
-
-func TestEstimateTokens(t *testing.T) {
-    tests := []struct {
-        text     string
-        expected int
-    }{
-        {"hello world", 2},
-        {"", 0},
-    }
-    for _, tt := range tests {
-        t.Run(tt.text, func(t *testing.T) {
-            assert.Equal(t, tt.expected, EstimateTokens(tt.text))
-        })
-    }
-}
-```
-
 ## Coverage Goals
 
 | Layer | Target |
@@ -495,42 +390,9 @@ func TestEstimateTokens(t *testing.T) {
 
 ## Assertions (testify)
 
-AWF uses the [testify](https://github.com/stretchr/testify) library for all test assertions. As of v0.5.13, manual `if` checks have been migrated to testify assertions.
-
-```go
-import (
-    "github.com/stretchr/testify/assert"
-    "github.com/stretchr/testify/require"
-)
-
-func TestExample(t *testing.T) {
-    // require.* stops test on failure (use for preconditions)
-    require.NoError(t, err)
-    require.NotNil(t, result)
-
-    // assert.* continues test on failure (use for verifications)
-    assert.Equal(t, expected, actual)
-    assert.Contains(t, haystack, needle)
-    assert.True(t, condition)
-    assert.Len(t, slice, 3)
-}
-```
-
-**Migration from manual checks**:
-
-```go
-// Before (manual check)
-if result != expected {
-    t.Errorf("got %v, want %v", result, expected)
-}
-
-// After (testify)
-assert.Equal(t, expected, result)
-```
-
-**When to use require vs assert**:
-- `require.*` - Preconditions that must pass for test to continue
-- `assert.*` - Verifications where multiple failures are informative
+AWF uses [testify](https://github.com/stretchr/testify) for assertions:
+- `require.*` - Stops test on failure (use for preconditions)
+- `assert.*` - Continues on failure (use for verifications)
 
 ## Test Naming
 
