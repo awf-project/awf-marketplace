@@ -60,6 +60,12 @@ awf/
 │   │   ├── parallel_executor.go     # Parallel step coordination
 │   │   ├── state_manager.go     # State persistence
 │   │   └── template_service.go  # Template resolution with param helpers
+│   ├── testutil/                # Test infrastructure (v0.5.22)
+│   │   ├── assertions.go        # Custom assertions with detailed failure messages
+│   │   ├── builders.go          # Fluent builders for Workflow, Step, State
+│   │   ├── fixtures.go          # Reusable test fixtures and factories
+│   │   ├── mocks.go             # Thread-safe mocks with sync.RWMutex
+│   │   └── doc.go               # Package documentation and examples
 │   ├── infrastructure/          # Adapters
 │   │   ├── repository/yaml.go   # YAML file loader
 │   │   ├── state/json.go        # JSON state store

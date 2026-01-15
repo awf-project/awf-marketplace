@@ -35,7 +35,9 @@ tests/
 │   ├── graph_algorithm_refactoring_test.go  # Cycle detection and execution order
 │   ├── cognitive_complexity_refactoring_test.go  # Executor helper refactoring
 │   ├── execution_helpers_test.go  # Execution helper workflow validation
-│   └── test_restructuring_functional_test.go  # Validates thematic test split (v0.5.21)
+│   ├── test_restructuring_functional_test.go  # Validates thematic test split (v0.5.21)
+│   ├── testutil_integration_test.go  # testutil package integration (v0.5.22)
+│   └── testutil_loc_reduction_test.go  # Validates LOC reduction metrics (v0.5.22)
 └── fixtures/workflows/
     ├── simple.yaml
     └── parallel.yaml
@@ -63,6 +65,54 @@ internal/application/
 - `parallel` - Concurrent step execution, strategy validation
 - `retry` - Retry policies, exponential backoff, max attempts, failure recovery
 - `specialized_mocks` - Reusable mock implementations (`retryCountingExecutor`, `errorMockExecutor`)
+
+## Test Infrastructure (v0.5.22)
+
+AWF provides a centralized `internal/testutil` package for test infrastructure:
+
+```
+internal/testutil/
+├── assertions.go    # Custom assertions with detailed failure messages
+├── builders.go      # Fluent builders for Workflow, Step, State entities
+├── fixtures.go      # Reusable test fixtures and factory functions
+├── mocks.go         # Thread-safe mock implementations (sync.RWMutex)
+└── doc.go           # Package documentation
+```
+
+### Test Builders (Fluent API)
+
+```go
+import "github.com/vanoix/awf/internal/testutil"
+
+// Build workflow with fluent API (2-3 lines instead of 30+)
+wf := testutil.NewWorkflowBuilder("test").
+    WithInput("name", "string", "default").
+    WithStep("greet", "echo hello").
+    Build()
+```
+
+### Thread-Safe Mocks
+
+```go
+// Thread-safe mock with sync.RWMutex for concurrent tests
+mock := testutil.NewThreadSafeMock()
+mock.SetResult("cmd", ports.Result{Output: "ok", ExitCode: 0})
+```
+
+### Environment Variables with t.Setenv
+
+As of v0.5.22, all tests use `t.Setenv` for automatic cleanup:
+
+```go
+// Before (manual cleanup required)
+os.Setenv("AWF_CONFIG", "/tmp/test")
+defer os.Unsetenv("AWF_CONFIG")
+
+// After (automatic cleanup via t.Setenv)
+t.Setenv("AWF_CONFIG", "/tmp/test")
+```
+
+**Benefits**: 359 os.Setenv calls migrated, 196 defer cleanup calls eliminated, thread-safe test isolation.
 
 ## Table-Driven Tests
 
@@ -103,23 +153,14 @@ func TestWorkflowValidation(t *testing.T) {
 
 ## Mocking
 
-Use interfaces for easy mocking:
+Use interfaces for easy mocking. As of v0.5.22, prefer the testutil package for thread-safe mocks:
 
 ```go
-type mockExecutor struct {
-    results map[string]ports.Result
-}
-
-func (m *mockExecutor) Execute(ctx context.Context, cmd ports.Command) (ports.Result, error) {
-    return m.results[cmd.Command], nil
-}
+import "github.com/vanoix/awf/internal/testutil"
 
 func TestExecution(t *testing.T) {
-    mock := &mockExecutor{
-        results: map[string]ports.Result{
-            "echo hello": {Output: "hello\n", ExitCode: 0},
-        },
-    }
+    mock := testutil.NewMockExecutor()
+    mock.SetResult("echo hello", ports.Result{Output: "hello\n", ExitCode: 0})
     service := application.NewExecutionService(repo, store, mock)
     // ... test
 }
