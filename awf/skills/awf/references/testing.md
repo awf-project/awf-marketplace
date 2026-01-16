@@ -37,7 +37,8 @@ tests/
 │   ├── execution_helpers_test.go  # Execution helper workflow validation
 │   ├── test_restructuring_functional_test.go  # Validates thematic test split (v0.5.21)
 │   ├── testutil_integration_test.go  # testutil package integration (v0.5.22)
-│   └── testutil_loc_reduction_test.go  # Validates LOC reduction metrics (v0.5.22)
+│   ├── testutil_loc_reduction_test.go  # Validates LOC reduction metrics (v0.5.22)
+│   └── parallel_test.go  # Parallel execution strategies (v0.5.23, 948 lines)
 └── fixtures/workflows/
     ├── simple.yaml
     └── parallel.yaml
@@ -113,6 +114,52 @@ t.Setenv("AWF_CONFIG", "/tmp/test")
 ```
 
 **Benefits**: 359 os.Setenv calls migrated, 196 defer cleanup calls eliminated, thread-safe test isolation.
+
+## Parallel Execution Tests (v0.5.23)
+
+Integration tests for parallel execution cover all strategies at CLI level (`tests/integration/parallel_test.go`):
+
+| Strategy | Behavior | Test Scenarios |
+|----------|----------|----------------|
+| `all_succeed` | Fails if ANY branch fails | All pass, one fail, all fail |
+| `any_succeed` | Succeeds if ANY branch succeeds | One pass, all pass, all fail |
+| `best_effort` | All branches complete regardless | Mixed results, failure isolation |
+
+### max_concurrent Testing
+
+Tests validate concurrency limits with timing assertions:
+
+```go
+// Validates max_concurrent=2 with 3 branches serializes execution
+// Uses 3x timing margin for CI variability (per ADR-004)
+t.Run("max_concurrent limit enforced", func(t *testing.T) {
+    // 3 branches with 100ms each, max_concurrent=2
+    // Expected: ~200ms (2 rounds), not ~100ms (full parallel)
+    // Assertion: duration > 150ms (1.5x single branch)
+})
+```
+
+### Thread-Safe ExecutionContext
+
+PR #111 added RWMutex protection for concurrent map access:
+
+```go
+// internal/domain/workflow/context.go
+type ExecutionContext struct {
+    mu           sync.RWMutex // protects concurrent map access
+    States       map[string]StepState
+    // ...
+}
+
+// Thread-safe state access
+func (c *ExecutionContext) GetAllStepStates() map[string]StepState {
+    c.mu.RLock()
+    defer c.mu.RUnlock()
+    // Returns defensive copy
+}
+```
+
+Tests use inline YAML fixtures for visibility and testutil builders for 93% setup reduction.
 
 ## Table-Driven Tests
 
@@ -200,120 +247,20 @@ func TestEnqueueIfNotVisited(t *testing.T) {
 
 ## CLI Helper Tests
 
-UI helpers in `internal/interfaces/cli/` and `internal/interfaces/cli/ui/` are tested with table-driven unit tests:
+UI helpers in `internal/interfaces/cli/` and `internal/interfaces/cli/ui/` use table-driven tests:
 
-```go
-// internal/interfaces/cli/list_helpers_test.go
-func TestBuildPromptInfo(t *testing.T) {
-    tests := []struct {
-        name     string
-        entry    WorkflowEntry
-        expected PromptInfo
-    }{
-        {
-            name:  "workflow with inputs",
-            entry: WorkflowEntry{Name: "test", Inputs: []Input{{Name: "foo"}}},
-            expected: PromptInfo{HasInputs: true, InputCount: 1},
-        },
-    }
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            result := buildPromptInfo(tt.entry)
-            assert.Equal(t, tt.expected, result)
-        })
-    }
-}
-
-func TestShouldProcessEntry(t *testing.T) {
-    tests := []struct {
-        name     string
-        entry    WorkflowEntry
-        filter   Filter
-        expected bool
-    }{
-        {"matches filter", WorkflowEntry{Name: "test"}, Filter{Name: "test"}, true},
-        {"no match", WorkflowEntry{Name: "other"}, Filter{Name: "test"}, false},
-    }
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            assert.Equal(t, tt.expected, shouldProcessEntry(tt.entry, tt.filter))
-        })
-    }
-}
-```
-
-```go
-// internal/interfaces/cli/ui/field_formatters_test.go
-func TestFormatIntFieldIfPositive(t *testing.T) {
-    tests := []struct {
-        value    int
-        expected string
-    }{
-        {5, "5"},
-        {0, ""},
-        {-1, ""},
-    }
-    for _, tt := range tests {
-        t.Run(fmt.Sprintf("value_%d", tt.value), func(t *testing.T) {
-            assert.Equal(t, tt.expected, FormatIntFieldIfPositive(tt.value))
-        })
-    }
-}
-```
-
-```go
-// internal/interfaces/cli/ui/row_builders_test.go
-func TestBuildValidationRow(t *testing.T) {
-    result := ValidationResult{Field: "name", Status: "ok", Count: 3}
-    row := BuildValidationRow(result)
-    assert.Equal(t, []string{"name", "ok", "3"}, row)
-}
-```
+- `list_helpers_test.go` - `buildPromptInfo`, `shouldProcessEntry`
+- `ui/field_formatters_test.go` - `FormatIntFieldIfPositive`
+- `ui/row_builders_test.go` - `BuildValidationRow`
 
 ## Application Helper Tests
 
-Executor helpers in `internal/application/` use table-driven tests. Key test files:
+Executor helpers in `internal/application/` use table-driven tests:
 
 - `interactive_executor_handlers_test.go` - Step success/failure handling
 - `parallel_executor_coordination_test.go` - Branch coordination, strategy validation
 - `template_service_helpers_test.go` - Template expansion, parameter substitution
-
-## Conversation Manager Helper Tests
-
-Conversation manager helpers in `internal/application/` are tested with comprehensive table-driven tests:
-
-```go
-// internal/application/conversation_manager_helpers_test.go
-func TestShouldContinueConversation(t *testing.T) {
-    tests := []struct {
-        name     string
-        state    ConversationState
-        expected bool
-    }{
-        {
-            name:     "continue when under max turns",
-            state:    ConversationState{Turn: 3, MaxTurns: 10},
-            expected: true,
-        },
-        {
-            name:     "stop when stop condition met",
-            state:    ConversationState{Turn: 2, StopConditionMet: true},
-            expected: false,
-        },
-        {
-            name:     "stop when max turns reached",
-            state:    ConversationState{Turn: 10, MaxTurns: 10},
-            expected: false,
-        },
-    }
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            manager := NewConversationManager()
-            assert.Equal(t, tt.expected, manager.shouldContinueConversation(tt.state))
-        })
-    }
-}
-```
+- `conversation_manager_helpers_test.go` - Turn management, stop conditions
 
 ## Loop Pattern Helper Tests
 

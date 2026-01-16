@@ -140,11 +140,18 @@ type State interface {
     GetType() StateType
 }
 
+// Thread-safe for concurrent access during parallel execution (v0.5.23)
 type ExecutionContext struct {
-    WorkflowID string
-    Inputs     map[string]interface{}
-    States     map[string]StateResult
+    mu           sync.RWMutex // protects concurrent map access
+    WorkflowID   string
+    Inputs       map[string]interface{}
+    States       map[string]StepState
 }
+
+// Thread-safe accessors
+func (c *ExecutionContext) GetStepState(name string) (StepState, bool)
+func (c *ExecutionContext) SetStepState(name string, state StepState)
+func (c *ExecutionContext) GetAllStepStates() map[string]StepState // returns defensive copy
 ```
 
 **Ports (Interfaces):**
