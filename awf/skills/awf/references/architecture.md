@@ -71,6 +71,8 @@ awf/
 │   │   ├── state/json.go        # JSON state store
 │   │   ├── executor/shell.go    # Shell executor
 │   │   ├── store/sqlite.go      # History storage
+│   │   ├── logger/              # Logging utilities (v0.5.24)
+│   │   │   └── masker.go        # Secret masking in logs/errors
 │   │   └── agents/              # AI provider adapters
 │   │       ├── helpers.go       # Shared utilities (cloneState, estimateTokens)
 │   │       ├── claude_provider.go

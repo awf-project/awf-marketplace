@@ -38,10 +38,25 @@ tests/
 │   ├── test_restructuring_functional_test.go  # Validates thematic test split (v0.5.21)
 │   ├── testutil_integration_test.go  # testutil package integration (v0.5.22)
 │   ├── testutil_loc_reduction_test.go  # Validates LOC reduction metrics (v0.5.22)
-│   └── parallel_test.go  # Parallel execution strategies (v0.5.23, 948 lines)
+│   ├── parallel_test.go  # Parallel execution strategies (v0.5.23, 948 lines)
+│   ├── hooks_test.go  # Hook lifecycle and variable injection (v0.5.24, 514 lines)
+│   ├── secret_masking_test.go  # Secret masking in logs/errors (v0.5.24, 693 lines)
+│   ├── input_validation_test.go  # Input validation patterns (v0.5.24, 513 lines)
+│   └── cli_exitcodes_test.go  # CLI exit code behavior (v0.5.24, 648 lines)
 └── fixtures/workflows/
     ├── simple.yaml
-    └── parallel.yaml
+    ├── parallel.yaml
+    ├── hooks-lifecycle.yaml  # Hook execution order (v0.5.24)
+    ├── hooks-failure.yaml  # Hook failure handling (v0.5.24)
+    ├── hooks-variables.yaml  # Hook variable injection (v0.5.24)
+    ├── secrets-masked.yaml  # Secret masking scenarios (v0.5.24)
+    ├── secrets-in-errors.yaml  # Secrets in error messages (v0.5.24)
+    ├── validation-enums.yaml  # Enum validation (v0.5.24)
+    ├── validation-numeric.yaml  # Numeric validation (v0.5.24)
+    ├── validation-patterns.yaml  # Pattern validation (v0.5.24)
+    ├── exit-execution-error.yaml  # Execution error exit codes (v0.5.24)
+    ├── exit-user-error.yaml  # User error exit codes (v0.5.24)
+    └── exit-workflow-error.yaml  # Workflow error exit codes (v0.5.24)
 ```
 
 ### Execution Service Tests (v0.5.21)
@@ -160,6 +175,56 @@ func (c *ExecutionContext) GetAllStepStates() map[string]StepState {
 ```
 
 Tests use inline YAML fixtures for visibility and testutil builders for 93% setup reduction.
+
+## Hooks and Secret Masking Tests (v0.5.24)
+
+Integration tests for workflow hooks and secret masking (`tests/integration/`):
+
+### Hook Tests
+
+| Test File | Coverage | Lines |
+|-----------|----------|-------|
+| `hooks_test.go` | Hook lifecycle, failure handling, variable injection | 514 |
+
+**Hook lifecycle tests**:
+- Pre-execution hooks run before step execution
+- Post-execution hooks run after step completion
+- Error hooks run on step failure
+- Hooks receive context variables (workflow name, step name, inputs)
+
+### Secret Masking Tests
+
+| Test File | Coverage | Lines |
+|-----------|----------|-------|
+| `secret_masking_test.go` | Log masking, error masking, nested secrets | 693 |
+
+**Secret masking implementation** (`internal/infrastructure/logger/masker.go`):
+- Masks secrets in log output
+- Masks secrets in error messages
+- Handles nested secret values
+- Preserves masked placeholder format (`***`)
+
+### Input Validation Tests
+
+| Test File | Coverage | Lines |
+|-----------|----------|-------|
+| `input_validation_test.go` | Enum, numeric, pattern validation | 513 |
+
+**Validation fixtures**:
+- `validation-enums.yaml` - Enum type validation
+- `validation-numeric.yaml` - Numeric range validation
+- `validation-patterns.yaml` - Regex pattern validation
+
+### CLI Exit Code Tests
+
+| Test File | Coverage | Lines |
+|-----------|----------|-------|
+| `cli_exitcodes_test.go` | Exit code semantics for error types | 648 |
+
+**Exit code fixtures**:
+- `exit-execution-error.yaml` - Exit code 1 for execution errors
+- `exit-user-error.yaml` - Exit code 2 for user input errors
+- `exit-workflow-error.yaml` - Exit code 3 for workflow definition errors
 
 ## Table-Driven Tests
 
