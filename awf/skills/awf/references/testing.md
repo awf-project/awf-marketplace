@@ -95,6 +95,61 @@ internal/testutil/
 └── doc.go           # Package documentation
 ```
 
+## ServiceTestHarness (v0.5.25)
+
+Application-layer tests use `ServiceTestHarness` for fluent test setup:
+
+```
+internal/application/
+├── testutil_harness.go       # ServiceTestHarness fluent builder (249 lines)
+├── testutil_harness_test.go  # Harness unit tests (490 lines)
+├── testutil_harness_functional_test.go  # Core functional tests (649 lines)
+└── testutil_harness_advanced_functional_test.go  # Advanced tests (388 lines)
+```
+
+### Fluent Builder API
+
+```go
+import "github.com/vanoix/awf/internal/application"
+
+// Before (10-15 lines per test)
+mockRepo := testutil.NewMockRepository()
+mockStore := testutil.NewMockStateStore()
+mockExecutor := testutil.NewMockExecutor()
+mockExecutor.SetResult("echo hello", ports.Result{Output: "hello", ExitCode: 0})
+service := application.NewExecutionService(mockRepo, mockStore, mockExecutor)
+
+// After (3-line fluent chain)
+service, mocks := application.NewServiceTestHarness().
+    WithMockResult("echo hello", "hello", 0).
+    Build()
+```
+
+### Harness Methods
+
+| Method | Purpose |
+|--------|---------|
+| `WithWorkflow(wf)` | Configure workflow for test |
+| `WithMockResult(cmd, output, exitCode)` | Set mock executor response |
+| `WithState(name, state)` | Pre-populate execution state |
+| `WithInput(key, value)` | Set input parameter |
+| `Build()` | Returns `(service, mocks)` tuple |
+
+### Impact Metrics (v0.5.25)
+
+| Metric | Value |
+|--------|-------|
+| Setup boilerplate reduction | 71% |
+| Overall test code reduction | 29% (13,676 → 9,753 lines) |
+| Files refactored | 8 application test files |
+| Functional tests added | 18 (12 core + 6 advanced) |
+
+### ADR Compliance
+
+- **ADR-001**: Harness lives in `application` package (package-local pattern)
+- **ADR-002**: Wraps `testutil` infrastructure (wrapper pattern, not duplication)
+- **ADR-003**: `Build()` returns `(service, mocks)` tuple for assertion access
+
 ### Test Builders (Fluent API)
 
 ```go

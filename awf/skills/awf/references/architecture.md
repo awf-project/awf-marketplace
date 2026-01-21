@@ -55,6 +55,8 @@ awf/
 │   │   ├── workflow_service.go  # Loading/validation
 │   │   ├── execution_service.go # Execution engine with loop pattern helpers
 │   │   ├── execution_service_*_test.go  # Thematic test files (v0.5.21)
+│   │   ├── testutil_harness.go  # ServiceTestHarness fluent builder (v0.5.25)
+│   │   ├── testutil_harness_*_test.go  # Harness unit and functional tests
 │   │   ├── conversation_manager.go  # Multi-turn conversation coordination
 │   │   ├── interactive_executor.go  # Step execution with result handlers
 │   │   ├── parallel_executor.go     # Parallel step coordination
