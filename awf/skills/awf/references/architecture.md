@@ -48,7 +48,11 @@ awf/
 │   │   │   ├── context.go       # Execution context
 │   │   │   ├── validation.go    # Input validation
 │   │   │   ├── graph.go         # Graph algorithms (cycle detection, execution order)
-│   │   │   └── template_validation.go  # Template validation with BFS helpers
+│   │   │   ├── template_validation.go  # Template validation with BFS helpers
+│   │   │   ├── domain_test_helpers_test.go  # Shared test utilities (v0.5.26)
+│   │   │   ├── agent_config_*_test.go       # Agent config tests (split, v0.5.26)
+│   │   │   ├── step_*_test.go               # Step tests by type (v0.5.26)
+│   │   │   └── template_validation_*_test.go  # Template tests by namespace (v0.5.26)
 │   │   ├── operation/           # Operation interface
 │   │   └── ports/               # Repository, StateStore, Executor
 │   ├── application/             # Services

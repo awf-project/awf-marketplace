@@ -59,6 +59,34 @@ tests/
     └── exit-workflow-error.yaml  # Workflow error exit codes (v0.5.24)
 ```
 
+### Domain Workflow Tests (v0.5.26)
+
+As of v0.5.26, domain workflow tests are split by concern for improved maintainability:
+
+```
+internal/domain/workflow/
+├── workflow.go
+├── agent_config_config_test.go       # Agent configuration parsing (from agent_config_test.go)
+├── agent_config_conversation_test.go # Multi-turn conversation config (from agent_config_test.go)
+├── agent_config_result_test.go       # Agent result parsing (from agent_config_test.go)
+├── domain_test_helpers_test.go       # Shared test utilities (212 lines)
+├── step_command_test.go              # Shell command execution tests (405 lines)
+├── step_loop_test.go                 # Loop validation and execution (320 lines)
+├── step_agent_test.go                # Agent step functionality and hooks (730 lines)
+├── step_parallel_test.go             # Parallel execution strategies (renamed)
+├── template_validation_inputs_test.go   # Input template validation (165 lines)
+├── template_validation_states_test.go   # State reference validation (555 lines)
+├── template_validation_workflow_test.go # Workflow context templates (192 lines)
+└── template_validation_error_test.go    # Error and hook constraints (1,039 lines)
+```
+
+**Split summary** (3 monolithic files → 11 focused modules):
+- `agent_config_test.go` (1,615 lines) → 4 files by operation type
+- `step_*_test.go` (1,819 lines) → 3 files by concern
+- `template_validation_test.go` → 4 files by template namespace
+
+**Integration test validation**: `tests/integration/domain_test_splitting_test.go` verifies file organization and test preservation.
+
 ### Execution Service Tests (v0.5.21)
 
 As of v0.5.21, execution service tests are split by theme for better discoverability:
