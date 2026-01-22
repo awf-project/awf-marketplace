@@ -59,6 +59,13 @@ awf/
 │   │   ├── workflow_service.go  # Loading/validation
 │   │   ├── execution_service.go # Execution engine with loop pattern helpers
 │   │   ├── execution_service_*_test.go  # Thematic test files (v0.5.21)
+│   │   ├── loop_executor.go     # Loop execution engine
+│   │   ├── loop_executor_core_test.go   # Core logic tests (v0.5.27)
+│   │   ├── loop_executor_mocks_test.go  # Shared test doubles (v0.5.27)
+│   │   ├── loop_foreach_test.go         # Foreach behavior (v0.5.27)
+│   │   ├── loop_iterations_test.go      # Iteration limits (v0.5.27)
+│   │   ├── loop_while_test.go           # While conditions (v0.5.27)
+│   │   ├── loop_transitions_*_test.go   # Transition scenarios (v0.5.27)
 │   │   ├── testutil_harness.go  # ServiceTestHarness fluent builder (v0.5.25)
 │   │   ├── testutil_harness_*_test.go  # Harness unit and functional tests
 │   │   ├── conversation_manager.go  # Multi-turn conversation coordination

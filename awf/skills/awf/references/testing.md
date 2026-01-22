@@ -87,6 +87,37 @@ internal/domain/workflow/
 
 **Integration test validation**: `tests/integration/domain_test_splitting_test.go` verifies file organization and test preservation.
 
+### Loop Executor Tests (v0.5.27)
+
+As of v0.5.27, loop executor tests are split by functional concern for improved maintainability:
+
+```
+internal/application/
+├── loop_executor.go
+├── loop_executor_core_test.go       # Core execution logic (246 lines)
+├── loop_executor_mocks_test.go      # Shared test doubles (119 lines)
+├── loop_foreach_test.go             # Foreach loop behavior (988 lines)
+├── loop_iterations_test.go          # Iteration count and limit (609 lines)
+├── loop_while_test.go               # While loop conditions (1,383 lines)
+├── loop_transitions_earlyexit_test.go    # Early exit/break/continue (955 lines)
+├── loop_transitions_foreach_test.go      # Foreach transition scenarios (1,477 lines)
+├── loop_transitions_intrabody_test.go    # Intra-body loop transitions (2,639 lines)
+└── loop_executor_transitions_test.go     # General transition scenarios
+```
+
+**Split summary** (1 monolithic file → 9 focused modules):
+- `loop_executor_test.go` (4,155 lines) → 9 files by loop type and transition category
+- Loop types: `foreach`, `while`, `iterations`
+- Transition categories: `earlyexit`, `foreach`, `intrabody`
+- Shared infrastructure: `core`, `mocks`
+
+**Test preservation**: All 179 tests maintained with 100% coverage (78.6% ±0.5% of baseline 79.2%)
+
+**Integration test validation**: `tests/integration/application_test_split_functional_test.go` verifies:
+- Zero test duplication
+- Proper package organization
+- Race condition absence
+
 ### Execution Service Tests (v0.5.21)
 
 As of v0.5.21, execution service tests are split by theme for better discoverability:
