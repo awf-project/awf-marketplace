@@ -10,6 +10,7 @@ Loop control flow in AWF workflows: while loops, for-each loops, and transitions
 - [Transitions Within Loop Bodies](#transitions-within-loop-bodies)
 - [Loop Context Variables](#loop-context-variables)
 - [Nested Loops](#nested-loops)
+- [Memory Management](#memory-management)
 - [Error Handling](#error-handling)
 - [Examples](#examples)
 
@@ -330,6 +331,94 @@ test_failed:
 ```
 
 Inner loop transitions only affect inner loop - cannot jump to parent body steps.
+
+## Memory Management
+
+### Rolling Window (v0.5.29)
+
+Long-running loops can accumulate significant memory from iteration results. Configure a rolling window to keep only recent results:
+
+```yaml
+process_large_dataset:
+  type: for_each
+  items: "{{.inputs.records}}"  # Could be 10,000+ items
+  memory:
+    max_results: 100  # Keep only last 100 iteration results
+  body:
+    - process_record
+  on_complete: summarize
+```
+
+### Memory Options
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `memory.max_results` | int | unlimited | Rolling window size for iteration results |
+
+### How It Works
+
+1. **Normal operation**: Each iteration's result is stored in memory for later reference
+2. **With `max_results`**: Only the most recent N results are retained
+3. **Pruning**: When iteration N+1 completes, iteration 1's result is automatically pruned
+4. **Access pattern**: Accessing pruned results returns empty values
+
+### When to Use
+
+| Scenario | Recommendation |
+|----------|----------------|
+| < 100 iterations | No configuration needed |
+| 100-1,000 iterations | Consider `max_results: 50-100` if not accessing old results |
+| 1,000+ iterations | Strongly recommend `max_results` to prevent memory growth |
+| Infinite loops | Always set `max_results` |
+
+### Example: High-Volume Processing
+
+```yaml
+name: process-events
+version: "1.0.0"
+
+inputs:
+  - name: event_count
+    type: integer
+    default: 10000
+
+states:
+  initial: generate_events
+
+  generate_events:
+    type: step
+    command: seq 1 {{.inputs.event_count}}
+    on_success: process_loop
+
+  process_loop:
+    type: for_each
+    items: "{{.states.generate_events.Output | splitLines}}"
+    memory:
+      max_results: 10  # Only need recent results for progress tracking
+    body:
+      - process_event
+      - log_progress
+    on_complete: done
+
+  process_event:
+    type: step
+    command: ./process.sh --event={{.loop.item}}
+    on_success: process_loop
+
+  log_progress:
+    type: step
+    command: |
+      echo "Processed {{.loop.index1}}/{{.loop.length}}"
+    on_success: process_loop
+
+  done:
+    type: terminal
+    status: success
+```
+
+### Memory Monitoring
+
+AWF automatically monitors heap allocation during loop execution. In verbose mode (`--verbose`), warnings appear when memory thresholds are exceeded. No configuration required.
 
 ## Error Handling
 

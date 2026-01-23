@@ -59,13 +59,22 @@ awf/
 │   │   ├── workflow_service.go  # Loading/validation
 │   │   ├── execution_service.go # Execution engine with loop pattern helpers
 │   │   ├── execution_service_*_test.go  # Thematic test files (v0.5.21)
-│   │   ├── loop_executor.go     # Loop execution engine
+│   │   ├── execution_service_helpers_test.go  # Step output handling tests (v0.5.29)
+│   │   ├── loop_executor.go     # Loop execution engine with memory pruning
 │   │   ├── loop_executor_core_test.go   # Core logic tests (v0.5.27)
 │   │   ├── loop_executor_mocks_test.go  # Shared test doubles (v0.5.27)
+│   │   ├── loop_executor_memory_test.go # Memory pruning and rolling window (v0.5.29)
 │   │   ├── loop_foreach_test.go         # Foreach behavior (v0.5.27)
 │   │   ├── loop_iterations_test.go      # Iteration limits (v0.5.27)
 │   │   ├── loop_while_test.go           # While conditions (v0.5.27)
 │   │   ├── loop_transitions_*_test.go   # Transition scenarios (v0.5.27)
+│   │   ├── loop_pattern_helpers_test.go # Loop pattern detection tests (v0.5.29)
+│   │   ├── memory_monitor.go    # Heap allocation monitoring (v0.5.29)
+│   │   ├── memory_monitor_test.go  # Memory monitoring tests (v0.5.29)
+│   │   ├── output_limiter.go    # Output size limits and truncation (v0.5.29)
+│   │   ├── output_limiter_test.go  # Output limiter tests (v0.5.29)
+│   │   ├── output_streamer.go   # Temp file streaming for large outputs (v0.5.29)
+│   │   ├── output_streamer_test.go  # Output streamer tests (v0.5.29)
 │   │   ├── testutil_harness.go  # ServiceTestHarness fluent builder (v0.5.25)
 │   │   ├── testutil_harness_*_test.go  # Harness unit and functional tests
 │   │   ├── conversation_manager.go  # Multi-turn conversation coordination
@@ -109,10 +118,14 @@ awf/
 │       ├── list.go              # List command with prompt helpers
 │       ├── list_helpers_test.go # List helper unit tests
 │       ├── cli_test_helpers_test.go  # Shared CLI test utilities (v0.5.28)
+│       ├── run.go               # Main run command implementation
 │       ├── run_agent_test.go         # Agent execution tests (14 tests, v0.5.28)
 │       ├── run_execution_test.go     # Execution flow tests (9 tests, v0.5.28)
 │       ├── run_flags_test.go         # Flag parsing tests (27 tests, v0.5.28)
-│       └── run_interactive_test.go   # Interactive mode tests (2 tests, v0.5.28)
+│       ├── run_interactive_test.go   # Interactive mode tests (2 tests, v0.5.28)
+│       ├── resume.go            # Resume command with signal handler (v0.5.29)
+│       ├── signal_handler.go    # Shared signal handler preventing goroutine leaks (v0.5.29)
+│       └── signal_handler_test.go  # Signal handler cleanup tests (v0.5.29)
 ├── pkg/                         # Public packages
 │   ├── interpolation/           # Variable substitution
 │   ├── validation/              # Input validation

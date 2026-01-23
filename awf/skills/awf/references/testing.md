@@ -43,7 +43,10 @@ tests/
 │   ├── secret_masking_test.go  # Secret masking in logs/errors (v0.5.24, 693 lines)
 │   ├── input_validation_test.go  # Input validation patterns (v0.5.24, 513 lines)
 │   ├── cli_exitcodes_test.go  # CLI exit code behavior (v0.5.24, 648 lines)
-│   └── infrastructure_test_split_functional_test.go  # CLI & diagram test split validation (v0.5.28)
+│   ├── infrastructure_test_split_functional_test.go  # CLI & diagram test split validation (v0.5.28)
+│   ├── memory_leak_test.go  # Goroutine cleanup and signal handler lifecycle (v0.5.29, 598 lines)
+│   ├── memory_management_functional_test.go  # Memory bounds under 10,000+ iterations (v0.5.29, 679 lines)
+│   └── test_helpers.go  # Shared test utilities including goroutine tracking (v0.5.29, 154 lines)
 └── fixtures/workflows/
     ├── simple.yaml
     ├── parallel.yaml
@@ -167,6 +170,43 @@ internal/infrastructure/diagram/
 - Shared infrastructure: `diagram_test_helpers`
 
 **Test preservation**: All 130 tests maintained (181 total across both splits + 1 integration = 182)
+
+### Memory and Resource Management Tests (v0.5.29)
+
+As of v0.5.29, comprehensive tests validate memory bounds and goroutine lifecycle:
+
+```
+internal/application/
+├── memory_monitor.go              # Heap allocation monitoring
+├── memory_monitor_test.go         # Threshold alerting tests (466 lines)
+├── output_limiter.go              # Output size limits
+├── output_limiter_test.go         # Truncation and streaming tests (506 lines)
+├── output_streamer.go             # Temp file streaming
+├── output_streamer_test.go        # File streaming lifecycle tests (574 lines)
+├── loop_executor_memory_test.go   # Rolling window and pruning tests (522 lines)
+└── execution_service_helpers_test.go  # Step output handling tests (430 lines)
+
+internal/interfaces/cli/
+├── signal_handler.go              # Shared signal handler
+└── signal_handler_test.go         # Goroutine cleanup tests (410 lines)
+
+tests/integration/
+├── memory_leak_test.go            # Goroutine cleanup validation (598 lines)
+├── memory_management_functional_test.go  # Memory bounds under load (679 lines)
+└── test_helpers.go                # Goroutine count tracking utilities (154 lines)
+```
+
+**Test coverage** (1,799 new lines):
+- Memory monitoring: threshold alerting, periodic checking
+- Output limiting: truncation strategies, streaming to temp files
+- Loop memory: rolling window pruning, bounded iteration results
+- Signal handler: goroutine cleanup, race detection, behavioral consistency
+
+**Key assertions**:
+- Zero goroutine leaks after signal handler cleanup
+- Bounded memory growth under 10,000+ loop iterations
+- Output streaming lifecycle (create, write, cleanup)
+- Race-free signal handling (`go test -race`)
 
 ### Execution Service Tests (v0.5.21)
 
