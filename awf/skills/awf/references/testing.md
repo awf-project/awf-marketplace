@@ -42,7 +42,8 @@ tests/
 │   ├── hooks_test.go  # Hook lifecycle and variable injection (v0.5.24, 514 lines)
 │   ├── secret_masking_test.go  # Secret masking in logs/errors (v0.5.24, 693 lines)
 │   ├── input_validation_test.go  # Input validation patterns (v0.5.24, 513 lines)
-│   └── cli_exitcodes_test.go  # CLI exit code behavior (v0.5.24, 648 lines)
+│   ├── cli_exitcodes_test.go  # CLI exit code behavior (v0.5.24, 648 lines)
+│   └── infrastructure_test_split_functional_test.go  # CLI & diagram test split validation (v0.5.28)
 └── fixtures/workflows/
     ├── simple.yaml
     ├── parallel.yaml
@@ -117,6 +118,55 @@ internal/application/
 - Zero test duplication
 - Proper package organization
 - Race condition absence
+
+### CLI Tests (v0.5.28)
+
+As of v0.5.28, CLI tests are split by concern for improved maintainability:
+
+```
+internal/interfaces/cli/
+├── run.go                       # Main run command implementation
+├── cli_test_helpers_test.go     # Shared test helpers and utilities
+├── run_agent_test.go            # Agent execution logic (14 tests)
+├── run_execution_test.go        # Execution flow control (9 tests)
+├── run_flags_test.go            # CLI flag parsing and validation (27 tests)
+└── run_interactive_test.go      # Interactive mode (2 tests)
+```
+
+**Split summary** (1 monolithic file -> 4 focused modules):
+- `run_test.go` (2,439 lines, 51 tests) -> 4 files by functional concern
+- Test categories: `agent`, `execution`, `flags`, `interactive`
+- Shared infrastructure: `cli_test_helpers`
+
+**Test preservation**: All 51 tests maintained with strict concurrency safety (`go test -race ./...`)
+
+**Integration test validation**: `tests/integration/infrastructure_test_split_functional_test.go` verifies:
+- Zero test duplication
+- Proper package organization
+- Race condition absence
+
+### Diagram Tests (v0.5.28)
+
+As of v0.5.28, diagram generator tests are split by concern:
+
+```
+internal/infrastructure/diagram/
+├── dot_generator.go                  # Main DOT generation
+├── diagram_test_helpers_test.go      # Shared test helpers
+├── dot_generator_core_test.go        # Core DOT generation (33 tests)
+├── generator_edges_test.go           # Edge generation (24 tests)
+├── generator_header_test.go          # Header formatting (16 tests)
+├── generator_highlight_test.go       # Syntax highlighting (15 tests)
+├── generator_nodes_test.go           # Node creation (18 tests)
+└── generator_parallel_test.go        # Parallel diagram generation (24 tests)
+```
+
+**Split summary** (1 monolithic file -> 6 focused modules):
+- `dot_generator_test.go` (4,499 lines, 130 tests) -> 6 files by concern
+- Test categories: `core`, `edges`, `header`, `highlight`, `nodes`, `parallel`
+- Shared infrastructure: `diagram_test_helpers`
+
+**Test preservation**: All 130 tests maintained (181 total across both splits + 1 integration = 182)
 
 ### Execution Service Tests (v0.5.21)
 

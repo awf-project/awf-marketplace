@@ -53,6 +53,28 @@ awf config show       # Display config
 awf config show -f json  # JSON output
 ```
 
+## Environment Variables (v0.5.28)
+
+AWF supports environment variables for configuration:
+
+| Variable | Description |
+|----------|-------------|
+| `AWF_PROMPT_PATH` | Custom path for prompt file resolution |
+
+### Prompt Path Resolution
+
+When resolving prompt files (e.g., `prompt_file: "@prompts/review.md"`), AWF searches in this order:
+
+1. **Environment variable** - `$AWF_PROMPT_PATH` (if set)
+2. **Local directory** - `.awf/prompts/` in current project
+3. **Global directory** - `$XDG_CONFIG_HOME/awf/prompts/` (typically `~/.config/awf/prompts/`)
+
+```bash
+# Set custom prompt path
+export AWF_PROMPT_PATH="/path/to/shared/prompts"
+awf run review  # Uses prompts from $AWF_PROMPT_PATH first
+```
+
 ## Best Practices
 
 1. **No secrets** - Use environment variables instead

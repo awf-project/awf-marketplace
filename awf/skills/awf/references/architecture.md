@@ -86,6 +86,15 @@ awf/
 │   │   ├── store/sqlite.go      # History storage
 │   │   ├── logger/              # Logging utilities (v0.5.24)
 │   │   │   └── masker.go        # Secret masking in logs/errors
+│   │   ├── diagram/             # Workflow visualization (v0.5.28)
+│   │   │   ├── dot_generator.go              # DOT format generation
+│   │   │   ├── diagram_test_helpers_test.go  # Shared test utilities
+│   │   │   ├── dot_generator_core_test.go    # Core DOT generation (33 tests)
+│   │   │   ├── generator_edges_test.go       # Edge generation (24 tests)
+│   │   │   ├── generator_header_test.go      # Header formatting (16 tests)
+│   │   │   ├── generator_highlight_test.go   # Syntax highlighting (15 tests)
+│   │   │   ├── generator_nodes_test.go       # Node creation (18 tests)
+│   │   │   └── generator_parallel_test.go    # Parallel diagram gen (24 tests)
 │   │   └── agents/              # AI provider adapters
 │   │       ├── helpers.go       # Shared utilities (cloneState, estimateTokens)
 │   │       ├── claude_provider.go
@@ -96,8 +105,14 @@ awf/
 │       │   ├── output.go        # Table output, row builders
 │       │   ├── dry_run_formatter.go  # Dry-run display formatting
 │       │   └── field_formatters_test.go  # Field formatter tests
+│       ├── config.go            # Config loading with AWF_PROMPT_PATH support (v0.5.28)
 │       ├── list.go              # List command with prompt helpers
-│       └── list_helpers_test.go # List helper unit tests
+│       ├── list_helpers_test.go # List helper unit tests
+│       ├── cli_test_helpers_test.go  # Shared CLI test utilities (v0.5.28)
+│       ├── run_agent_test.go         # Agent execution tests (14 tests, v0.5.28)
+│       ├── run_execution_test.go     # Execution flow tests (9 tests, v0.5.28)
+│       ├── run_flags_test.go         # Flag parsing tests (27 tests, v0.5.28)
+│       └── run_interactive_test.go   # Interactive mode tests (2 tests, v0.5.28)
 ├── pkg/                         # Public packages
 │   ├── interpolation/           # Variable substitution
 │   ├── validation/              # Input validation
