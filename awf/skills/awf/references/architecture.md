@@ -92,7 +92,11 @@ awf/
 │   │   ├── repository/yaml.go   # YAML file loader
 │   │   ├── state/json.go        # JSON state store
 │   │   ├── executor/shell.go    # Shell executor
-│   │   ├── store/sqlite.go      # History storage
+│   │   ├── store/                # Persistence stores (v0.5.30)
+│   │   │   ├── sqlite_history_store.go       # SQLite history (WAL mode)
+│   │   │   ├── sqlite_history_store_test.go  # SQLite tests (2,082 lines, 43 tests)
+│   │   │   ├── json_store.go                 # JSON state store
+│   │   │   └── json_store_test.go            # JSON tests (+384 lines, 13 tests)
 │   │   ├── logger/              # Logging utilities (v0.5.24)
 │   │   │   └── masker.go        # Secret masking in logs/errors
 │   │   ├── diagram/             # Workflow visualization (v0.5.28)
@@ -133,6 +137,8 @@ awf/
 │   └── plugin/sdk/              # Plugin SDK for third-party plugins
 ├── tests/                       # Integration tests
 │   ├── integration/             # E2E tests
+│   │   ├── input_validation_functional_test.go    # Validation pipeline (v0.5.30)
+│   │   └── state_persistence_functional_test.go   # Persistence tests (v0.5.30)
 │   └── fixtures/workflows/      # Test fixtures
 └── docs/                        # Documentation
 ```
@@ -240,7 +246,7 @@ Implements domain ports with concrete tech.
 - `repository/` - YAML file loader
 - `state/` - JSON state store
 - `executor/` - Shell executor
-- `store/` - SQLite history (WAL mode for concurrent execution)
+- `store/` - SQLite history (WAL mode for concurrent execution) with nil record validation (v0.5.30)
 - `agents/` - AI provider adapters (Claude, Codex, Gemini) with shared helper utilities
 
 ## Key Patterns

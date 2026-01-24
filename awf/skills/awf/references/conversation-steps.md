@@ -114,6 +114,14 @@ Expression evaluated after each turn. When true, conversation exits early.
 stop_condition: "inputs.response contains 'APPROVED'"
 ```
 
+**Compile-time validation (v0.5.30)**: Stop condition expressions are validated during workflow loading using expr-lang. Syntax errors are reported immediately rather than at runtime:
+
+```bash
+$ awf validate my-workflow
+validation error: invalid stop_condition expression
+  - syntax error: unexpected token '&&' (use 'and' instead)
+```
+
 ## Stop Condition Expressions
 
 Stop conditions use the expression evaluator with these variables:

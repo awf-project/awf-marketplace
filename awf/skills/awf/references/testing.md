@@ -171,6 +171,52 @@ internal/infrastructure/diagram/
 
 **Test preservation**: All 130 tests maintained (181 total across both splits + 1 integration = 182)
 
+### Store Layer Tests (v0.5.30)
+
+As of v0.5.30, comprehensive tests validate store validation and persistence:
+
+```
+internal/infrastructure/store/
+├── sqlite_history_store.go           # SQLite history storage (WAL mode)
+├── sqlite_history_store_test.go      # Comprehensive SQLite tests (2,082 lines, 43 tests)
+├── json_store.go                     # JSON state store
+└── json_store_test.go                # Enhanced JSON tests (+384 lines, 13 tests)
+```
+
+**SQLite History Store Tests** (2,082 lines):
+- CRUD operations: create, read, update, delete workflow records
+- Error paths: invalid IDs, missing records, database corruption
+- Nil handling: nil record validation preventing segmentation faults
+- Concurrent stress tests: 20 goroutines racing on read/write operations
+- Edge cases: empty strings, unicode content, very large outputs
+
+**JSON Store Tests** (+384 lines):
+- Concurrent access: multiple goroutines reading/writing same state file
+- Corruption recovery: handling malformed JSON, partial writes
+- Atomic operations: temp file + rename pattern verification
+
+**Coverage**: 80.7% for store package (exceeds 70% infrastructure target)
+
+### Functional Integration Tests (v0.5.30)
+
+New functional tests validate end-to-end behavior for validation and persistence:
+
+```
+tests/integration/
+├── input_validation_functional_test.go    # Pattern, enum, min/max validation (438 lines)
+└── state_persistence_functional_test.go   # JSON and SQLite persistence (206 lines)
+```
+
+**Input Validation Functional Tests** (438 lines):
+- Pattern validation through full execution pipeline
+- Enum validation with valid/invalid values
+- Numeric min/max validation boundaries
+
+**State Persistence Functional Tests** (206 lines):
+- JSON store behavior under concurrent workflow execution
+- SQLite store behavior under concurrent and corruption conditions
+- Resume capability after partial execution
+
 ### Memory and Resource Management Tests (v0.5.29)
 
 As of v0.5.29, comprehensive tests validate memory bounds and goroutine lifecycle:
