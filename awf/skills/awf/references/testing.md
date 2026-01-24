@@ -207,6 +207,38 @@ tests/integration/
 └── state_persistence_functional_test.go   # JSON and SQLite persistence (206 lines)
 ```
 
+### Package Test Coverage (v0.5.31)
+
+As of v0.5.31, comprehensive tests validate pkg/ interpolation and retry functionality:
+
+```
+pkg/interpolation/
+├── resolver.go
+├── resolver_test.go                # Expanded tests (+1,020 lines, 188+ test cases)
+└── template_resolver.go            # Expression namespace accessors
+
+pkg/retry/
+├── retry.go
+├── retry_test.go                   # Completed logging assertions
+
+tests/integration/
+└── pkg_test_coverage_functional_test.go  # End-to-end pkg validation (633 lines, 5 tests)
+```
+
+**Interpolation Tests** (+1,020 lines):
+- `StepStateData.Response` - Nested objects, multiple fields, JSON access patterns
+- `StepStateData.Tokens` - Formatter behavior, edge cases, nil handling
+- `LoopData.Parent` - Nested loop access, serialization, parent context propagation
+- Expression namespace syntax - Lowercase property access via accessors (`{{loop.*}}`, `{{context.*}}`, `{{error.*}}`)
+
+**Retry Tests** (completed):
+- `TestRetryer_LogsAttempts` - Comprehensive logging assertions verifying debug calls with attempt number and delay fields
+
+**Functional Integration Tests** (633 lines, 5 functions):
+- Validates `LoopData.Parent` works in nested loop workflows
+- Validates `StepStateData.Response` and `Tokens` fields in agent execution
+- Validates expression namespace accessors work end-to-end
+
 **Input Validation Functional Tests** (438 lines):
 - Pattern validation through full execution pipeline
 - Enum validation with valid/invalid values

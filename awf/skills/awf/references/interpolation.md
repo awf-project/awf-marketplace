@@ -183,6 +183,31 @@ when: "Loop.First"
 
 > **Change (v0.5.20)**: Expression evaluator now normalizes context to PascalCase for consistent property access. Lowercase references continue to work but emit deprecation warnings.
 
+### Expression Namespace Accessors (v0.5.31)
+
+For more intuitive template syntax, namespace accessors provide lowercase aliases:
+
+```yaml
+# Loop namespace accessor
+command: echo "Index: {{loop.index}}, Item: {{loop.item}}"
+break_when: "loop.index >= 10"
+
+# Context namespace accessor
+when: "context.retry_count > 0"
+when: "context.working_dir != ''"
+
+# Error namespace accessor
+when: "error.message contains 'timeout'"
+when: "error.code == 'VALIDATION_FAILED'"
+```
+
+These accessors are syntactic sugar over the PascalCase properties, automatically mapping:
+- `{{loop.*}}` → `{{.loop.*}}`
+- `{{context.*}}` → `{{Context.*}}`
+- `{{error.*}}` → `{{Error.*}}`
+
+Both syntaxes are valid. Use whichever style is more readable for your workflow.
+
 ## Security
 
 ### Secret Masking
