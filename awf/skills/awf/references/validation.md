@@ -41,6 +41,36 @@ command: echo "{{.states.build.Output}}"
 when: "states.test.ExitCode == 0"
 ```
 
+## Expression Syntax Validation
+
+**Added in v0.5.33**
+
+AWF validates expression syntax at workflow load time. This catches malformed expressions before execution, providing immediate feedback during `awf validate` or workflow loading.
+
+### Validated Expressions
+
+| Location | Example |
+|----------|---------|
+| Transition `when` | `when: "states.build.ExitCode == 0"` |
+| Conversation `stop_condition` | `stop_condition: "inputs.response contains 'DONE'"` |
+| While loop `condition` | `condition: "loop.index < 10"` |
+
+### Validation Example
+
+```bash
+$ awf validate my-workflow
+```
+
+```
+validation error: invalid expression syntax
+  - states.check.transitions[0].when: unexpected token "=="
+  - states.review.conversation.stop_condition: undefined function "conatins"
+```
+
+### Architecture Note
+
+Expression validation uses the `ExpressionValidator` port (v0.5.33), which isolates the expr-lang dependency to the infrastructure layer. This maintains domain purity - the domain layer defines only a function type for validation injection. See [Architecture](architecture.md) for details.
+
 ## Expression Context Normalization
 
 **Added in v0.5.20**

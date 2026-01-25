@@ -24,14 +24,14 @@ description: |
 5. See [CLI Commands](references/cli-commands.md)
 
 **Debugging issues?**
-1. `awf validate <name>` to check syntax
+1. `awf validate <name>` to check syntax (validates expressions since v0.5.33)
 2. Run with `--verbose` for details
 3. Check `$XDG_STATE_HOME/awf/` for logs (~/.local/state/awf/)
 
 **Developing AWF?**
 1. See [Architecture](references/architecture.md)
-2. Follow hexagonal architecture
-3. Domain layer has no dependencies
+2. Follow hexagonal architecture (ports pattern for external deps, v0.5.33)
+3. Domain layer has no dependencies - use function types for validator injection
 
 ## Quick Start
 

@@ -54,7 +54,7 @@ awf/
 │   │   │   ├── step_*_test.go               # Step tests by type (v0.5.26)
 │   │   │   └── template_validation_*_test.go  # Template tests by namespace (v0.5.26)
 │   │   ├── operation/           # Operation interface
-│   │   └── ports/               # Repository, StateStore, Executor
+│   │   └── ports/               # Repository, StateStore, Executor, ExpressionValidator (v0.5.33)
 │   ├── application/             # Services
 │   │   ├── workflow_service.go  # Loading/validation
 │   │   ├── execution_service.go # Execution engine with loop pattern helpers
@@ -89,7 +89,9 @@ awf/
 │   │   ├── cli_fixtures.go      # CLI-specific test fixtures
 │   │   └── doc.go               # Package documentation and examples
 │   ├── infrastructure/          # Adapters
-│   │   ├── repository/yaml.go   # YAML file loader
+│   │   ├── repository/yaml.go   # YAML file loader with validator injection (v0.5.33)
+│   │   ├── expression/          # Expression validation adapter (v0.5.33)
+│   │   │   └── expr_validator.go  # expr-lang implementation of ExpressionValidator port
 │   │   ├── state/json.go        # JSON state store
 │   │   ├── executor/shell.go    # Shell executor
 │   │   ├── store/                # Persistence stores (v0.5.30)
@@ -219,6 +221,14 @@ type StateStore interface {
 type Executor interface {
     Execute(ctx context.Context, cmd Command) (Result, error)
 }
+
+// ExpressionValidator validates expression syntax at workflow load time (v0.5.33)
+// Extracted from domain to maintain layer purity - expr-lang dependency isolated to infrastructure
+type ExpressionValidator interface {
+    // ValidateExpression compiles an expression without executing it
+    // Returns error if expression has syntax errors
+    ValidateExpression(expression string) error
+}
 ```
 
 ## Application Layer
@@ -243,7 +253,8 @@ Implements domain ports with concrete tech.
 **Location:** `internal/infrastructure/`
 
 **Adapters:**
-- `repository/` - YAML file loader
+- `repository/` - YAML file loader with validator injection (v0.5.33)
+- `expression/` - Expression validation using expr-lang (v0.5.33)
 - `state/` - JSON state store
 - `executor/` - Shell executor
 - `store/` - SQLite history (WAL mode for concurrent execution) with nil record validation (v0.5.30)
@@ -260,6 +271,24 @@ func NewExecutionService(
     executor ports.Executor,
 ) *ExecutionService
 ```
+
+### Validator Injection via Function Type (v0.5.33)
+
+Domain entities accept validators through function types to avoid import cycles:
+
+```go
+// Domain defines function type (no import of ports package)
+type ValidatorFunc func(expression string) error
+
+// Workflow accepts validator at validation time
+func (w *Workflow) Validate(validator ValidatorFunc) error
+
+// Infrastructure creates adapter and injects it
+validator := expression.NewExprValidator()
+workflow.Validate(validator.ValidateExpression)
+```
+
+This pattern maintains domain purity while enabling compile-time expression validation.
 
 ### State Machine Execution
 
