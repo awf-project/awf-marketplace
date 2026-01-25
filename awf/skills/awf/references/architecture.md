@@ -55,9 +55,9 @@ awf/
 │   │   │   └── template_validation_*_test.go  # Template tests by namespace (v0.5.26)
 │   │   ├── operation/           # Operation interface
 │   │   └── ports/               # Repository, StateStore, Executor, ExpressionValidator (v0.5.33)
-│   ├── application/             # Services
+│   ├── application/             # Services (depends on ports only, v0.5.34)
 │   │   ├── workflow_service.go  # Loading/validation
-│   │   ├── execution_service.go # Execution engine with loop pattern helpers
+│   │   ├── execution_service.go # Execution engine (AgentRegistry interface, v0.5.34)
 │   │   ├── execution_service_*_test.go  # Thematic test files (v0.5.21)
 │   │   ├── execution_service_helpers_test.go  # Step output handling tests (v0.5.29)
 │   │   ├── loop_executor.go     # Loop execution engine with memory pruning
@@ -111,6 +111,7 @@ awf/
 │   │   │   ├── generator_nodes_test.go       # Node creation (18 tests)
 │   │   │   └── generator_parallel_test.go    # Parallel diagram gen (24 tests)
 │   │   └── agents/              # AI provider adapters
+│   │       ├── registry.go      # AgentRegistry implementation (GetAgents method, v0.5.34)
 │   │       ├── helpers.go       # Shared utilities (cloneState, estimateTokens)
 │   │       ├── claude_provider.go
 │   │       ├── codex_provider.go
@@ -229,6 +230,17 @@ type ExpressionValidator interface {
     // Returns error if expression has syntax errors
     ValidateExpression(expression string) error
 }
+
+// AgentRegistry provides agent providers to execution service (v0.5.34)
+// DIP-compliant: application layer depends on interface, not concrete infrastructure type
+type AgentRegistry interface {
+    // Get returns agent provider by name
+    Get(name string) (AgentProvider, bool)
+    // Register adds an agent provider
+    Register(name string, provider AgentProvider)
+    // GetAgents returns all registered agent names (v0.5.34)
+    GetAgents() []string
+}
 ```
 
 ## Application Layer
@@ -258,18 +270,22 @@ Implements domain ports with concrete tech.
 - `state/` - JSON state store
 - `executor/` - Shell executor
 - `store/` - SQLite history (WAL mode for concurrent execution) with nil record validation (v0.5.30)
-- `agents/` - AI provider adapters (Claude, Codex, Gemini) with shared helper utilities
+- `agents/` - AgentRegistry implementation with AI providers (v0.5.34 - implements ports.AgentRegistry interface)
 
 ## Key Patterns
 
 ### Dependency Injection
 
 ```go
+// ExecutionService depends on ports interfaces only (DIP-compliant, v0.5.34)
 func NewExecutionService(
     repo ports.Repository,
     store ports.StateStore,
     executor ports.Executor,
 ) *ExecutionService
+
+// AgentRegistry injected via setter (optional dependency)
+func (s *ExecutionService) SetAgentRegistry(registry ports.AgentRegistry)
 ```
 
 ### Validator Injection via Function Type (v0.5.33)

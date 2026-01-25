@@ -286,7 +286,7 @@ tests/integration/
 - Output streaming lifecycle (create, write, cleanup)
 - Race-free signal handling (`go test -race`)
 
-### Execution Service Tests (v0.5.21)
+### Execution Service Tests (v0.5.21, updated v0.5.34)
 
 As of v0.5.21, execution service tests are split by theme for better discoverability:
 
@@ -298,7 +298,10 @@ internal/application/
 ├── execution_service_loop_test.go       # Iteration, break, nested loops (660 lines)
 ├── execution_service_parallel_test.go   # Concurrent execution (70 lines)
 ├── execution_service_retry_test.go      # Retry policies, backoff (534 lines)
-└── execution_service_specialized_mocks_test.go  # Shared mocks (108 lines)
+├── execution_service_specialized_mocks_test.go  # Shared mocks (108 lines)
+├── execution_service_agentregistry_field_test.go  # AgentRegistry interface compliance (v0.5.34)
+├── execution_service_setagentregistry_test.go     # SetAgentRegistry method tests (v0.5.34)
+└── execution_service_architecture_test.go         # Architecture compliance tests (v0.5.34)
 ```
 
 **Theme descriptions**:
@@ -308,21 +311,27 @@ internal/application/
 - `parallel` - Concurrent step execution, strategy validation
 - `retry` - Retry policies, exponential backoff, max attempts, failure recovery
 - `specialized_mocks` - Reusable mock implementations (`retryCountingExecutor`, `errorMockExecutor`)
+- `agentregistry_field` - Validates AgentRegistry field is interface type (v0.5.34)
+- `setagentregistry` - SetAgentRegistry method behavior with various implementations (v0.5.34)
+- `architecture` - Hexagonal layer boundary enforcement, import validation (v0.5.34)
 
-## Test Infrastructure (v0.5.22, updated v0.5.32)
+## Test Infrastructure (v0.5.22, updated v0.5.34)
 
 AWF provides a centralized `internal/testutil` package for test infrastructure:
 
 ```
 internal/testutil/
-├── builders.go      # Fluent builders for Workflow, Step, State entities
-├── fixtures.go      # Reusable test fixtures and factory functions
-├── mocks.go         # Thread-safe mock implementations (sync.RWMutex)
-├── cli_fixtures.go  # CLI-specific test fixtures
-└── doc.go           # Package documentation
+├── builders.go         # Fluent builders for Workflow, Step, State entities
+├── builders_registry_test.go  # Builder tests with interface-based registry (v0.5.34)
+├── fixtures.go         # Reusable test fixtures and factory functions
+├── mocks.go            # Thread-safe mock implementations (sync.RWMutex)
+├── cli_fixtures.go     # CLI-specific test fixtures
+└── doc.go              # Package documentation
 ```
 
 **Note (v0.5.32)**: Tests use standard `require.*` and `assert.*` from testify. Custom assertion helpers were removed as they were never adopted.
+
+**Note (v0.5.34)**: `builders.go` updated to accept `ports.AgentRegistry` interface instead of concrete type, enabling polymorphic test configurations.
 
 ## ServiceTestHarness (v0.5.25)
 
@@ -509,6 +518,34 @@ Integration tests for workflow hooks and secret masking (`tests/integration/`):
 - `exit-execution-error.yaml` - Exit code 1 for execution errors
 - `exit-user-error.yaml` - Exit code 2 for user input errors
 - `exit-workflow-error.yaml` - Exit code 3 for workflow definition errors
+
+## Architecture Compliance Tests (v0.5.34)
+
+As of v0.5.34, architecture tests validate hexagonal layer boundaries:
+
+```
+internal/application/
+├── execution_service_architecture_test.go  # Layer boundary enforcement (761 lines)
+└── execution_service_agentregistry_field_test.go  # Interface type validation
+```
+
+**Architecture test coverage**:
+- **Import validation**: Verifies application layer has no infrastructure imports
+- **Interface compliance**: Validates AgentRegistry field is interface type, not concrete
+- **Setter behavior**: Tests SetAgentRegistry accepts any AgentRegistry implementation
+- **Polymorphism**: Builder pattern tests with multiple mock registry implementations
+
+**Key assertions**:
+```go
+// Validates interface type (not concrete)
+field := reflect.TypeOf(service).Elem().Field(agentRegistryFieldIndex)
+assert.True(t, field.Type.Kind() == reflect.Interface)
+
+// Validates setter accepts interface
+service.SetAgentRegistry(mockRegistry)  // any ports.AgentRegistry implementation
+```
+
+**DIP enforcement**: Tests prevent regression to concrete type dependency, ensuring application layer remains decoupled from infrastructure.
 
 ## Table-Driven Tests
 

@@ -30,8 +30,9 @@ description: |
 
 **Developing AWF?**
 1. See [Architecture](references/architecture.md)
-2. Follow hexagonal architecture (ports pattern for external deps, v0.5.33)
+2. Follow hexagonal architecture (ports pattern for external deps)
 3. Domain layer has no dependencies - use function types for validator injection
+4. Application layer depends on ports interfaces only (DIP-compliant, v0.5.34)
 
 ## Quick Start
 
@@ -112,6 +113,8 @@ command: echo "{{.loop.index1}}/{{.loop.length}}"
 ```
 
 > **Breaking Change (v0.5.12)**: State property names must be uppercase: `.Output`, `.ExitCode`, `.Status`, `.Stderr`. Lowercase was never functional with Go templates. Use `awf validate` to detect casing issues.
+
+> **Architecture (v0.5.34)**: ExecutionService now uses `ports.AgentRegistry` interface instead of concrete type. Custom agent registries can implement the interface for test isolation or alternative providers.
 
 ## Common Patterns
 
