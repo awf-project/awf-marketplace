@@ -309,18 +309,20 @@ internal/application/
 - `retry` - Retry policies, exponential backoff, max attempts, failure recovery
 - `specialized_mocks` - Reusable mock implementations (`retryCountingExecutor`, `errorMockExecutor`)
 
-## Test Infrastructure (v0.5.22)
+## Test Infrastructure (v0.5.22, updated v0.5.32)
 
 AWF provides a centralized `internal/testutil` package for test infrastructure:
 
 ```
 internal/testutil/
-├── assertions.go    # Custom assertions with detailed failure messages
 ├── builders.go      # Fluent builders for Workflow, Step, State entities
 ├── fixtures.go      # Reusable test fixtures and factory functions
 ├── mocks.go         # Thread-safe mock implementations (sync.RWMutex)
+├── cli_fixtures.go  # CLI-specific test fixtures
 └── doc.go           # Package documentation
 ```
+
+**Note (v0.5.32)**: Tests use standard `require.*` and `assert.*` from testify. Custom assertion helpers were removed as they were never adopted.
 
 ## ServiceTestHarness (v0.5.25)
 
