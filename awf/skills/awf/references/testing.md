@@ -182,7 +182,7 @@ internal/interfaces/cli/
 - Proper package organization
 - Race condition absence
 
-### CLI Integration Tests (v0.5.35)
+### CLI Integration Tests (v0.5.35, updated v0.5.36)
 
 As of v0.5.35, CLI integration tests consolidate shared helpers to eliminate duplication:
 
@@ -199,6 +199,10 @@ tests/integration/cli/
 - `TempWorkflow` helper for workflow fixture management
 - `skipInCI` helper with comprehensive CI detection (checks CI, GITHUB_ACTIONS variables)
 - Renamed `doc_test.go` -> `doc_internal_test.go` for proper package declaration
+
+**Issue tracking updates** (PR #151, v0.5.36):
+- `migration_test.go`: FIXME comments linked to #130 for blocked resume + pruning feature
+- `doc_test.go`: TODO comments linked to #130 for invalid test fixtures
 
 **Test infrastructure** (`tests/integration/cli/cli_test_helpers_test.go`):
 - `skipInCI(t)` - Skips tests in CI environments, validates with 7 test cases

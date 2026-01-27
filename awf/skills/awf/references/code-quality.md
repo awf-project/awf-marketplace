@@ -279,6 +279,37 @@ cmd := exec.Command("sh", "-c", userCmd)
 - `linter is annoying`
 - (no comment)
 
+## TODO/FIXME Issue Tracking (v0.5.36)
+
+All TODO and FIXME comments must reference a GitHub tracking issue for accountability:
+
+```go
+// Good - linked to tracking issue
+// TODO(#148): Implement full validation for plugin operations
+func Validate(op *Operation) error { return nil }
+
+// FIXME(#130): Invalid test fixture blocked by schema validation
+func TestInvalidWorkflow(t *testing.T) { t.Skip("blocked by #130") }
+
+// Bad - orphaned technical debt
+// TODO: Add validation later
+// FIXME: This is a workaround
+```
+
+**Issue Categories (v0.5.36)**:
+| Issue | Purpose | Files Affected |
+|-------|---------|----------------|
+| #130 | Blocked features, intentional test skips | `conversation_test.go`, `migration_test.go`, `doc_test.go` |
+| #148 | Plugin validation stub implementations | `operation.go` (4 comments) |
+| #149 | Output limiter test verification | `output_limiter_test.go` (2 comments) |
+| #150 | Mock utility enhancements, deprecations | `mocks.go` (2 comments) |
+
+**Creating tracking issues**:
+1. Create GitHub issue with clear scope
+2. Update TODO/FIXME comment with issue reference
+3. Add issue to appropriate milestone
+4. Close issue when TODO/FIXME is resolved
+
 ## Formatter
 
 AWF uses gofumpt (stricter than gofmt):
