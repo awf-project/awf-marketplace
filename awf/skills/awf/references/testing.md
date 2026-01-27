@@ -29,12 +29,19 @@ Located in `tests/integration/`:
 ```
 tests/
 ├── integration/
+│   ├── cli/                      # CLI integration tests (v0.5.35)
+│   │   ├── cli_test_helpers_test.go  # Shared CLI test helpers
+│   │   ├── doc_internal_test.go      # Documentation generation
+│   │   ├── migration_test.go         # Migration workflows
+│   │   └── signal_handler_test.go    # Signal handling
 │   ├── cli_test.go
 │   ├── workflow_test.go
 │   ├── validation_providers_test.go  # Agent provider behavior validation
 │   ├── graph_algorithm_refactoring_test.go  # Cycle detection and execution order
 │   ├── cognitive_complexity_refactoring_test.go  # Executor helper refactoring
 │   ├── execution_helpers_test.go  # Execution helper workflow validation
+│   ├── execution_test.go         # Execution service integration (v0.5.35: consolidated EventStreamReader)
+│   ├── loop_test.go              # Loop execution tests
 │   ├── test_restructuring_functional_test.go  # Validates thematic test split (v0.5.21)
 │   ├── testutil_integration_test.go  # testutil package integration (v0.5.22)
 │   ├── testutil_loc_reduction_test.go  # Validates LOC reduction metrics (v0.5.22)
@@ -46,7 +53,8 @@ tests/
 │   ├── infrastructure_test_split_functional_test.go  # CLI & diagram test split validation (v0.5.28)
 │   ├── memory_leak_test.go  # Goroutine cleanup and signal handler lifecycle (v0.5.29, 598 lines)
 │   ├── memory_management_functional_test.go  # Memory bounds under 10,000+ iterations (v0.5.29, 679 lines)
-│   └── test_helpers.go  # Shared test utilities including goroutine tracking (v0.5.29, 154 lines)
+│   ├── test_helpers.go           # Shared test utilities including goroutine tracking (v0.5.29, updated v0.5.35)
+│   └── test_helpers_skipinci_test.go  # skipInCI helper tests (v0.5.35, 354 lines, 7 test cases)
 └── fixtures/workflows/
     ├── simple.yaml
     ├── parallel.yaml
@@ -62,6 +70,32 @@ tests/
     ├── exit-user-error.yaml  # User error exit codes (v0.5.24)
     └── exit-workflow-error.yaml  # Workflow error exit codes (v0.5.24)
 ```
+
+### Test Helper Consolidation (v0.5.35)
+
+As of v0.5.35, duplicate test helpers are consolidated to eliminate compilation errors:
+
+**Changes** (PR #147):
+- `EventStreamReader` type removed from `execution_test.go` (55 lines), now imported from shared helpers
+- `skipInCI` helper added with proper CI environment detection
+- CLI integration tests moved to `tests/integration/cli/` subdirectory with shared helper file
+
+**skipInCI Helper** (`tests/integration/test_helpers.go`):
+```go
+// skipInCI skips test if running in CI environment
+// Checks both CI and GITHUB_ACTIONS environment variables
+func skipInCI(t *testing.T) {
+    if os.Getenv("CI") != "" || os.Getenv("GITHUB_ACTIONS") != "" {
+        t.Skip("Skipping in CI environment")
+    }
+}
+```
+
+**Test validation**: `test_helpers_skipinci_test.go` (354 lines) validates:
+- CI detection via `CI` environment variable
+- CI detection via `GITHUB_ACTIONS` environment variable
+- Non-CI environment allows test execution
+- Combined environment variable scenarios (7 test cases total)
 
 ### Domain Workflow Tests (v0.5.26)
 
@@ -122,7 +156,7 @@ internal/application/
 - Proper package organization
 - Race condition absence
 
-### CLI Tests (v0.5.28)
+### CLI Tests (v0.5.28, updated v0.5.35)
 
 As of v0.5.28, CLI tests are split by concern for improved maintainability:
 
@@ -147,6 +181,29 @@ internal/interfaces/cli/
 - Zero test duplication
 - Proper package organization
 - Race condition absence
+
+### CLI Integration Tests (v0.5.35)
+
+As of v0.5.35, CLI integration tests consolidate shared helpers to eliminate duplication:
+
+```
+tests/integration/cli/
+├── cli_test_helpers_test.go     # Shared test helpers (EventStreamReader, TempWorkflow, skipInCI)
+├── doc_internal_test.go         # Documentation generation tests (awf_test package)
+├── migration_test.go            # Migration workflow tests
+└── signal_handler_test.go       # Signal handling tests
+```
+
+**Consolidation summary** (PR #147):
+- `EventStreamReader` consolidated from duplicate definitions
+- `TempWorkflow` helper for workflow fixture management
+- `skipInCI` helper with comprehensive CI detection (checks CI, GITHUB_ACTIONS variables)
+- Renamed `doc_test.go` -> `doc_internal_test.go` for proper package declaration
+
+**Test infrastructure** (`tests/integration/cli/cli_test_helpers_test.go`):
+- `skipInCI(t)` - Skips tests in CI environments, validates with 7 test cases
+- `EventStreamReader` - SSE event stream parsing for CLI output validation
+- `TempWorkflow` - Creates temporary workflow files for integration testing
 
 ### Diagram Tests (v0.5.28)
 
