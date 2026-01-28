@@ -91,6 +91,71 @@ func (p *MyPlugin) Operations() []sdk.Operation {
 func main() { sdk.Serve(&MyPlugin{}) }
 ```
 
+## Schema Validation (v0.5.38)
+
+AWF validates plugin operation schemas at load time. Four validation methods ensure schema correctness:
+
+| Method | Purpose |
+|--------|---------|
+| `ValidateOperationSchema` | Validates operation/plugin names, delegates to input schemas, checks for duplicate outputs |
+| `RequiredInputs` | Returns list of required input parameter names |
+| `ValidateInputSchema` | Validates input type, validation rules, and default value type matching |
+| `IsValidType` | Checks if input type is one of: `string`, `integer`, `boolean` |
+
+### Supported Validation Rules
+
+Plugin inputs can use these validation rules:
+
+| Rule | Type | Example |
+|------|------|---------|
+| `url` | string | Validates URL format |
+| `email` | string | Validates email format |
+| `pattern` | string | Custom regex pattern |
+| `enum` | any | Allowed values list |
+| `min`/`max` | integer | Numeric range |
+
+### Schema Example
+
+```yaml
+operations:
+  - name: send_notification
+    inputs:
+      - name: webhook
+        type: string
+        required: true
+        validation:
+          url: true
+      - name: recipient
+        type: string
+        required: true
+        validation:
+          email: true
+      - name: priority
+        type: integer
+        default: 1
+        validation:
+          min: 1
+          max: 5
+    outputs:
+      - name: message_id
+        type: string
+```
+
+### Validation Errors
+
+Schema validation errors are collected (non-fail-fast):
+
+```bash
+awf plugin validate awf-plugin-example
+```
+
+```
+schema validation failed: 3 errors:
+  - operations.send_notification.inputs.webhook: invalid validation rule "urll"
+  - operations.send_notification.inputs.priority: default value type "string" does not match declared type "integer"
+  - operations.send_notification.outputs: duplicate output name "message_id"
+```
+
 ## Troubleshooting
 
 | Error | Solution |

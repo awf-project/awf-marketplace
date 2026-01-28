@@ -691,6 +691,50 @@ As of v0.5.37, comprehensive coverage tests target previously untested CLI comma
 | New test files | - | 5 |
 | Test count added | - | 48 |
 
+## Plugin Schema Validation Tests (v0.5.38)
+
+As of v0.5.38, comprehensive tests validate plugin operation schema correctness (PR #153):
+
+### Unit Tests
+
+```
+internal/domain/plugin/
+├── operation.go                 # Schema validation methods
+└── operation_test.go            # Expanded test suite (1,553+ lines)
+```
+
+**Operation schema tests** (150+ test functions):
+- `ValidateOperationSchema` - 50+ tests for nested validation, error wrapping, duplicate detection
+- `ValidateInputSchema` - 38+ tests for all types, validation rules, default value edge cases
+- `RequiredInputs` - 18+ table-driven tests including performance tests
+- `IsValidType` - 4+ tests for valid/invalid type coverage
+- `supportedValidationRules` variable tests for url, email rule registry
+
+### Functional Integration Tests
+
+```
+tests/integration/
+└── plugin_validation_functional_test.go  # End-to-end schema validation (793 lines, 27 tests)
+```
+
+**Functional test coverage**:
+- End-to-end validation scenarios for complete operation schemas
+- Nested validation error propagation
+- Integration with CLI validation commands
+- Edge cases: empty fields, whitespace-only names, duplicate outputs, type mismatches
+
+### Removed Tests
+
+- `internal/domain/plugin/` (old test file): Deleted 10 assertion-free tests providing false coverage confidence
+
+### Coverage Impact
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Plugin domain coverage | - | 98.6% |
+| New test lines | - | 793 (functional) |
+| Test functions added | - | 150+ |
+
 ## Table-Driven Tests
 
 ```go

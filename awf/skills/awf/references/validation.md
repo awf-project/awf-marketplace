@@ -116,6 +116,24 @@ inputs:
 
 ## Validation Rules
 
+### URL (v0.5.38)
+
+```yaml
+validation:
+  url: true
+```
+
+Validates that the input is a properly formatted URL.
+
+### Email (v0.5.38)
+
+```yaml
+validation:
+  email: true
+```
+
+Validates that the input is a properly formatted email address.
+
 ### Pattern (regex)
 
 ```yaml
