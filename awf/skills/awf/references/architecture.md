@@ -125,11 +125,13 @@ awf/
 │       ├── list.go              # List command with prompt helpers
 │       ├── list_helpers_test.go # List helper unit tests
 │       ├── cli_test_helpers_test.go  # Shared CLI test utilities (v0.5.28)
+│       ├── migration_coverage_test.go  # Migration notice tests (v0.5.37, 181 lines, 8 tests)
 │       ├── run.go               # Main run command implementation
 │       ├── run_agent_test.go         # Agent execution tests (14 tests, v0.5.28)
 │       ├── run_execution_test.go     # Execution flow tests (9 tests, v0.5.28)
 │       ├── run_flags_test.go         # Flag parsing tests (27 tests, v0.5.28)
 │       ├── run_interactive_test.go   # Interactive mode tests (2 tests, v0.5.28)
+│       ├── validate_coverage_test.go # Validate command unit tests (v0.5.37)
 │       ├── resume.go            # Resume command with signal handler (v0.5.29)
 │       ├── signal_handler.go    # Shared signal handler preventing goroutine leaks (v0.5.29)
 │       └── signal_handler_test.go  # Signal handler cleanup tests (v0.5.29)
@@ -359,4 +361,4 @@ make quality        # lint + fmt + vet + test
 - **Domain:** Pure unit tests
 - **Application:** Mock ports
 - **Infrastructure:** Integration tests
-- **Interfaces:** E2E CLI tests
+- **Interfaces:** E2E CLI tests (>80% coverage since v0.5.37)

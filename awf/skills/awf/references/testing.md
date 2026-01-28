@@ -29,11 +29,15 @@ Located in `tests/integration/`:
 ```
 tests/
 ├── integration/
-│   ├── cli/                      # CLI integration tests (v0.5.35)
+│   ├── cli/                      # CLI integration tests (v0.5.35, expanded v0.5.37)
 │   │   ├── cli_test_helpers_test.go  # Shared CLI test helpers
+│   │   ├── diagram_coverage_test.go  # Diagram command coverage (v0.5.37, 402 lines, 11 tests)
 │   │   ├── doc_internal_test.go      # Documentation generation
 │   │   ├── migration_test.go         # Migration workflows
-│   │   └── signal_handler_test.go    # Signal handling
+│   │   ├── plugin_cmd_coverage_test.go  # Plugin enable/disable coverage (v0.5.37, 395 lines, 11 tests)
+│   │   ├── signal_handler_test.go    # Signal handling
+│   │   ├── status_coverage_test.go   # Status command coverage (v0.5.37, 414 lines, 9 tests)
+│   │   └── validate_coverage_test.go # Validate command coverage (v0.5.37, 379 lines, 9 tests)
 │   ├── cli_test.go
 │   ├── workflow_test.go
 │   ├── validation_providers_test.go  # Agent provider behavior validation
@@ -156,7 +160,7 @@ internal/application/
 - Proper package organization
 - Race condition absence
 
-### CLI Tests (v0.5.28, updated v0.5.35)
+### CLI Tests (v0.5.28, updated v0.5.37)
 
 As of v0.5.28, CLI tests are split by concern for improved maintainability:
 
@@ -164,10 +168,12 @@ As of v0.5.28, CLI tests are split by concern for improved maintainability:
 internal/interfaces/cli/
 ├── run.go                       # Main run command implementation
 ├── cli_test_helpers_test.go     # Shared test helpers and utilities
+├── migration_coverage_test.go   # Migration notice coverage (v0.5.37, 181 lines, 8 tests)
 ├── run_agent_test.go            # Agent execution logic (14 tests)
 ├── run_execution_test.go        # Execution flow control (9 tests)
 ├── run_flags_test.go            # CLI flag parsing and validation (27 tests)
-└── run_interactive_test.go      # Interactive mode (2 tests)
+├── run_interactive_test.go      # Interactive mode (2 tests)
+└── validate_coverage_test.go    # Validate command unit tests (v0.5.37, replaced assertion-free tests)
 ```
 
 **Split summary** (1 monolithic file -> 4 focused modules):
@@ -182,16 +188,20 @@ internal/interfaces/cli/
 - Proper package organization
 - Race condition absence
 
-### CLI Integration Tests (v0.5.35, updated v0.5.36)
+### CLI Integration Tests (v0.5.35, updated v0.5.37)
 
 As of v0.5.35, CLI integration tests consolidate shared helpers to eliminate duplication:
 
 ```
 tests/integration/cli/
 ├── cli_test_helpers_test.go     # Shared test helpers (EventStreamReader, TempWorkflow, skipInCI)
+├── diagram_coverage_test.go     # Diagram command: formats, output modes, graphviz (v0.5.37, 402 lines, 11 tests)
 ├── doc_internal_test.go         # Documentation generation tests (awf_test package)
 ├── migration_test.go            # Migration workflow tests
-└── signal_handler_test.go       # Signal handling tests
+├── plugin_cmd_coverage_test.go  # Plugin enable/disable lifecycle and errors (v0.5.37, 395 lines, 11 tests)
+├── signal_handler_test.go       # Signal handling tests
+├── status_coverage_test.go      # Status command: formats, state loading, errors (v0.5.37, 414 lines, 9 tests)
+└── validate_coverage_test.go    # Validate command: formats, error display, template refs (v0.5.37, 379 lines, 9 tests)
 ```
 
 **Consolidation summary** (PR #147):
@@ -203,6 +213,11 @@ tests/integration/cli/
 **Issue tracking updates** (PR #151, v0.5.36):
 - `migration_test.go`: FIXME comments linked to #130 for blocked resume + pruning feature
 - `doc_test.go`: TODO comments linked to #130 for invalid test fixtures
+
+**Coverage expansion** (PR #152, v0.5.37):
+- Added 1,771 lines of tests across 5 new files, improving CLI coverage from 77.6% to 80%+
+- Removed obsolete `validate_coverage_test.go` (10 assertion-free tests providing false coverage)
+- Fixed bug in `diagram.go`: unconditional error return for stdout DOT output now checks nil
 
 **Test infrastructure** (`tests/integration/cli/cli_test_helpers_test.go`):
 - `skipInCI(t)` - Skips tests in CI environments, validates with 7 test cases
@@ -608,6 +623,74 @@ service.SetAgentRegistry(mockRegistry)  // any ports.AgentRegistry implementatio
 
 **DIP enforcement**: Tests prevent regression to concrete type dependency, ensuring application layer remains decoupled from infrastructure.
 
+## CLI Command Coverage Tests (v0.5.37)
+
+As of v0.5.37, comprehensive coverage tests target previously untested CLI command paths (PR #152):
+
+### Unit Tests
+
+| Test File | Location | Lines | Tests | Coverage Target |
+|-----------|----------|-------|-------|-----------------|
+| `migration_coverage_test.go` | `internal/interfaces/cli/` | 181 | 8 | `checkLegacyDirectory` function |
+
+**Migration notice tests**:
+- Legacy `.awf/` directory detection
+- XDG migration notice generation
+- Singleton suppression pattern (notice shown only once)
+- Concurrency safety under parallel access
+- Edge cases: missing directory, permission errors
+
+### Integration Tests
+
+| Test File | Location | Lines | Tests | Coverage Target |
+|-----------|----------|-------|-------|-----------------|
+| `validate_coverage_test.go` | `tests/integration/cli/` | 379 | 9 | `awf validate` command |
+| `diagram_coverage_test.go` | `tests/integration/cli/` | 402 | 11 | `awf diagram` command |
+| `status_coverage_test.go` | `tests/integration/cli/` | 414 | 9 | `awf status` command |
+| `plugin_cmd_coverage_test.go` | `tests/integration/cli/` | 395 | 11 | `awf plugin enable/disable` |
+
+**Validate command tests** (379 lines):
+- All output formats: text, JSON, table, quiet
+- Workflow not found error handling
+- Validation error formatting and display
+- Template reference validation
+
+**Diagram command tests** (402 lines):
+- Invalid direction handling
+- Workflow not found errors
+- stdout and file output modes
+- Graphviz integration
+- Highlight options
+
+**Status command tests** (414 lines):
+- State loading from store
+- All format variations (text, JSON, table, quiet)
+- Execution not found errors
+- Corrupted state handling
+
+**Plugin command tests** (395 lines):
+- Enable/disable lifecycle management
+- State persistence across operations
+- Plugin not found errors
+- Idempotency (re-enable/re-disable)
+
+### Removed Tests
+
+- `internal/interfaces/cli/validate_coverage_test.go` (old): Deleted 10 assertion-free tests that provided false coverage confidence, replaced by proper integration tests
+
+### Bug Fix
+
+- `internal/interfaces/cli/diagram.go`: Fixed unconditional error return when writing DOT output to stdout; now properly checks for nil error before returning
+
+### Coverage Impact
+
+| Metric | Before | After |
+|--------|--------|-------|
+| CLI coverage | 77.6% | 80%+ |
+| New test lines | - | 1,771 |
+| New test files | - | 5 |
+| Test count added | - | 48 |
+
 ## Table-Driven Tests
 
 ```go
@@ -816,12 +899,12 @@ Integration tests in `tests/integration/expression_context_test.go` validate end
 
 ## Coverage Goals
 
-| Layer | Target |
-|-------|--------|
-| Domain | >90% |
-| Application | >80% |
-| Infrastructure | >70% |
-| CLI | Integration tests |
+| Layer | Target | Notes |
+|-------|--------|-------|
+| Domain | >90% | |
+| Application | >80% | |
+| Infrastructure | >70% | |
+| CLI | >80% | Achieved 80%+ in v0.5.37 (PR #152) |
 
 ## Assertions (testify)
 
