@@ -35,11 +35,79 @@ config:
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `name` | Yes | Plugin identifier |
-| `version` | Yes | Semantic version |
+| `name` | Yes | Plugin identifier (see naming rules below) |
+| `version` | Yes | Non-empty version string |
 | `awf_version` | Yes | AWF version constraint |
 | `capabilities` | Yes | `operations`, `commands`, `validators` |
 | `config` | No | Configuration schema |
+
+## Manifest Validation (v0.5.40)
+
+AWF validates plugin manifests at load time. Invalid manifests are rejected immediately.
+
+### Name Validation
+
+Plugin names must follow the `^[a-z][a-z0-9-]*$` pattern:
+- Start with lowercase letter
+- Contain only lowercase letters, digits, and hyphens
+- No uppercase, underscores, or special characters
+
+```
+my-plugin       # Valid
+awf-plugin-slack # Valid
+MyPlugin        # Invalid: uppercase
+my_plugin       # Invalid: underscore
+123-plugin      # Invalid: starts with digit
+```
+
+### Capabilities Validation
+
+Only these capabilities are allowed:
+- `operations` - Custom workflow operations
+- `commands` - CLI command extensions
+- `validators` - Custom validation rules
+
+Unknown capabilities are rejected.
+
+### Config Field Validation
+
+Config fields are validated for:
+
+| Check | Description |
+|-------|-------------|
+| Type | Must be `string`, `integer`, or `boolean` |
+| Enum | Only allowed for `string` type |
+| Default | Must match declared type |
+
+```yaml
+# Valid config
+config:
+  timeout:
+    type: integer
+    default: 30
+  mode:
+    type: string
+    enum: [fast, slow]
+    default: fast
+
+# Invalid: enum on integer
+config:
+  count:
+    type: integer
+    enum: [1, 2, 3]    # Error: enum only for strings
+
+# Invalid: type mismatch
+config:
+  enabled:
+    type: boolean
+    default: "true"    # Error: string, not boolean
+```
+
+### Validation Behavior
+
+- **Fail-fast**: First error stops validation
+- **Load-time**: Manifests validated when plugins are loaded
+- **Breaking change (v0.5.40)**: `Validate()` returns `nil` for valid manifests instead of `ErrNotImplemented`
 
 ## Managing Plugins
 

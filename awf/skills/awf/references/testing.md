@@ -834,6 +834,64 @@ tests/integration/
 | New test lines | - | 793 (functional) |
 | Test functions added | - | 150+ |
 
+## Plugin Manifest Validation Tests (v0.5.40)
+
+As of v0.5.40, comprehensive manifest validation replaces the `ErrNotImplemented` stub (PR #155):
+
+### Unit Tests
+
+```
+internal/domain/plugin/
+├── manifest.go              # Validate() implementation (+85 lines)
+└── manifest_test.go         # 130+ table-driven tests (+2400 lines)
+```
+
+**Test coverage by category**:
+
+| Category | Tests | Description |
+|----------|-------|-------------|
+| Name validation | 15+ | Valid patterns, invalid characters, edge cases |
+| Version validation | 5+ | Empty, whitespace, valid strings |
+| AWFVersion validation | 5+ | Empty, whitespace, valid constraints |
+| Capability validation | 10+ | Valid capabilities, unknown capabilities |
+| Config type validation | 20+ | string/integer/boolean, invalid types |
+| Config enum validation | 15+ | Enum on string only, enum with non-string types |
+| Config default validation | 25+ | Type matching, JSON float64 quirks |
+
+**JSON numeric handling**: Tests verify that JSON-parsed integers (stored as `float64`) match `integer` type fields correctly.
+
+### Integration Tests
+
+```
+tests/integration/
+├── plugin_validation_manifest_test.go  # Parser-to-validation workflow (+640 lines, 18 tests)
+└── fixtures/plugins/                   # Realistic YAML manifests
+    ├── valid-simple.yaml
+    ├── valid-full.yaml
+    ├── invalid-name-uppercase.yaml
+    ├── invalid-name-underscore.yaml
+    ├── invalid-empty-version.yaml
+    ├── invalid-unknown-capability.yaml
+    ├── invalid-config-type.yaml
+    ├── invalid-config-enum-integer.yaml
+    └── invalid-config-default-mismatch.yaml
+```
+
+**Integration test structure**: Given/When/Then pattern with realistic YAML fixtures.
+
+### Breaking Change
+
+`Manifest.Validate()` now returns `nil` for valid manifests instead of `ErrNotImplemented`. Plugins with invalid manifests are rejected during loading.
+
+### Coverage Impact
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Manifest validation coverage | 0% (stub) | 99% |
+| New unit test lines | - | 2,400 |
+| New integration test lines | - | 640 |
+| Test cases added | - | 130+ unit, 18 integration |
+
 ## Table-Driven Tests
 
 ```go
