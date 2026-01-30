@@ -101,6 +101,105 @@ func skipInCI(t *testing.T) {
 - Non-CI environment allows test execution
 - Combined environment variable scenarios (7 test cases total)
 
+### Test Skip Management (v0.5.39)
+
+As of v0.5.39, test skips are systematically managed through build tags and standardized helpers (PR #154):
+
+**Skip Reduction Metrics**:
+| Metric | Before | After | Reduction |
+|--------|--------|-------|-----------|
+| Skipped tests | 823 | 128 | 84% |
+| Obsolete guards removed | - | 250+ | - |
+| Files modified | - | 73 | - |
+| Net lines deleted | - | 2,843 | - |
+
+**Build Tag Policy**:
+
+Prefer Go build tags over runtime `testing.Short()` checks for cleaner test organization:
+
+```go
+// Before (runtime check - discouraged)
+func TestIntegration_Feature(t *testing.T) {
+    if testing.Short() {
+        t.Skip("skipping integration test")
+    }
+    // ...
+}
+
+// After (build tag - preferred)
+//go:build integration
+
+func TestIntegration_Feature(t *testing.T) {
+    // ...
+}
+```
+
+**Build tags in use**:
+- `//go:build integration` - Integration tests requiring external resources
+- `//go:build !short` - Long-running tests excluded in short mode
+- `//go:build external` - Tests requiring external CLI tools
+
+**Makefile targets**:
+```bash
+make test-integration  # Run all integration tests (tests/integration/)
+make test-external     # Run tests requiring external CLI dependencies
+make test-unit         # Unit tests only (internal/, pkg/)
+```
+
+**Standardized Skip Helpers** (`tests/integration/test_helpers.go`):
+
+| Helper | Purpose | Example Reason |
+|--------|---------|----------------|
+| `skipOnShortMode(t)` | Skip in `go test -short` | Long-running, resource-intensive |
+| `skipInCI(t)` | Skip in CI environments | Requires local resources |
+| `skipIfRootUser(t)` | Skip when running as root | Permission tests invalid as root |
+| `skipOnPlatform(t, "windows")` | Skip on specific platforms | Platform-specific behavior |
+
+```go
+// Usage example
+func TestSlowOperation(t *testing.T) {
+    skipOnShortMode(t)  // Skip in -short mode
+    // Long-running test...
+}
+
+func TestPermissionDenied(t *testing.T) {
+    skipIfRootUser(t)   // Root bypasses permission checks
+    // Permission test...
+}
+```
+
+**Test validation**: `test_helpers_skip_test.go` (431 lines) validates all skip helpers.
+
+**Audit Script** (`scripts/audit-skips.sh`):
+
+Categorizes test skips into 9 patterns for analysis:
+
+```bash
+./scripts/audit-skips.sh
+```
+
+| Category | Pattern | Action |
+|----------|---------|--------|
+| `integration` | "skipping integration test" | Convert to `//go:build integration` |
+| `cli_tool` | "CLI not installed" | Convert to `//go:build external` or use helper |
+| `short_mode` | "short\|slow\|resource" | Keep or convert to `//go:build !short` |
+| `root_user` | "root\|sudo\|permission" | Use `skipIfRootUser` helper |
+| `platform` | "platform\|windows\|linux" | Use `skipOnPlatform` helper |
+| `fixture` | "fixture\|directory not created" | Review individually |
+| `pending` | "pending\|todo\|fixme" | Create tracking issue or complete |
+| `stub` | "stub\|negative test" | Create tracking issue or complete |
+| `not_implemented` | "not yet implemented" | Link to feature spec or delete |
+
+**Test validation**: `c030_t001_audit_script_test.go` (471 lines, 18 test cases) validates all skip pattern categories.
+
+**Plugin Infrastructure Cleanup** (v0.5.39):
+
+Removed 250+ obsolete conditional skip guards from plugin tests that were checking for implementation completed in C029:
+- `internal/infrastructure/plugin/loader_test.go` - 158 guards removed
+- `internal/infrastructure/plugin/registry_test.go` - 131 guards removed
+- `internal/infrastructure/plugin/state_store_test.go` - 78 guards removed
+- `internal/infrastructure/plugin/version_test.go` - 46 guards removed
+
 ### Domain Workflow Tests (v0.5.26)
 
 As of v0.5.26, domain workflow tests are split by concern for improved maintainability:

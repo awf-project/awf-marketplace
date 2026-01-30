@@ -140,10 +140,16 @@ awf/
 │   ├── validation/              # Input validation
 │   ├── retry/                   # Backoff strategies
 │   └── plugin/sdk/              # Plugin SDK for third-party plugins
+├── scripts/                     # Development scripts
+│   └── audit-skips.sh           # Test skip categorization audit (v0.5.39, 9 patterns)
 ├── tests/                       # Integration tests
-│   ├── integration/             # E2E tests
+│   ├── integration/             # E2E tests (use //go:build integration tag)
+│   │   ├── test_helpers.go      # Skip helpers (skipOnShortMode, skipInCI, skipIfRootUser, skipOnPlatform)
+│   │   ├── test_helpers_skip_test.go  # Skip helper validation (v0.5.39, 431 lines)
+│   │   ├── c030_t001_audit_script_test.go  # Audit script tests (v0.5.39, 471 lines)
 │   │   ├── input_validation_functional_test.go    # Validation pipeline (v0.5.30)
 │   │   └── state_persistence_functional_test.go   # Persistence tests (v0.5.30)
+│   ├── fixtures/audit_skips/    # Audit script test fixtures (v0.5.39)
 │   └── fixtures/workflows/      # Test fixtures
 └── docs/                        # Documentation
 ```
@@ -348,6 +354,8 @@ make build          # Build to ./bin/awf
 make install        # Install to /usr/local/bin
 make test           # All tests
 make test-unit      # Unit tests
+make test-integration  # Integration tests (tests/integration/)
+make test-external  # Tests requiring external CLI tools (v0.5.39)
 make lint           # golangci-lint (17 linters)
 make lint-fix       # Auto-fix linter issues
 make fmt            # gofumpt (stricter than gofmt)
@@ -362,3 +370,4 @@ make quality        # lint + fmt + vet + test
 - **Application:** Mock ports
 - **Infrastructure:** Integration tests
 - **Interfaces:** E2E CLI tests (>80% coverage since v0.5.37)
+- **Skip Management:** Build tags and standardized helpers (v0.5.39, 84% skip reduction)
