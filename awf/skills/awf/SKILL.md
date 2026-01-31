@@ -24,14 +24,15 @@ description: |
 5. See [CLI Commands](references/cli-commands.md)
 
 **Debugging issues?**
-1. `awf validate <name>` to check syntax
+1. `awf validate <name>` to check syntax (validates expressions since v0.5.33)
 2. Run with `--verbose` for details
-3. Check `storage/logs/` for logs
+3. Check `$XDG_STATE_HOME/awf/` for logs (~/.local/state/awf/)
 
 **Developing AWF?**
 1. See [Architecture](references/architecture.md)
-2. Follow hexagonal architecture
-3. Domain layer has no dependencies
+2. Follow hexagonal architecture (ports pattern for external deps)
+3. Domain layer has no dependencies - use function types for validator injection
+4. Application layer depends on ports interfaces only (DIP-compliant, v0.5.34)
 
 ## Quick Start
 
@@ -100,8 +101,9 @@ awf run hello --input name=Claude
 # Inputs
 command: echo "{{.inputs.file}}"
 
-# Previous outputs
-command: echo "{{.states.prev.output}}"
+# Previous outputs (uppercase property names required)
+command: echo "{{.states.prev.Output}}"
+command: echo "Exit: {{.states.prev.ExitCode}}"
 
 # Environment
 command: echo "{{.env.HOME}}"
@@ -109,6 +111,10 @@ command: echo "{{.env.HOME}}"
 # Loop context
 command: echo "{{.loop.index1}}/{{.loop.length}}"
 ```
+
+> **Breaking Change (v0.5.12)**: State property names must be uppercase: `.Output`, `.ExitCode`, `.Status`, `.Stderr`. Lowercase was never functional with Go templates. Use `awf validate` to detect casing issues.
+
+> **Architecture (v0.5.34)**: ExecutionService now uses `ports.AgentRegistry` interface instead of concrete type. Custom agent registries can implement the interface for test isolation or alternative providers.
 
 ## Common Patterns
 
@@ -148,9 +154,9 @@ check:
   type: step
   command: ./check.sh
   transitions:
-    - when: "states.check.exit_code == 0 and inputs.env == 'prod'"
+    - when: "states.check.ExitCode == 0 and inputs.env == 'prod'"
       goto: deploy_prod
-    - when: "states.check.exit_code == 0"
+    - when: "states.check.ExitCode == 0"
       goto: deploy_staging
     - goto: error
 ```
@@ -171,7 +177,7 @@ analyze:
 
 process:
   type: step
-  command: echo "Result: {{.states.analyze.output}}"
+  command: echo "Result: {{.states.analyze.Output}}"
   on_success: done
 ```
 
@@ -183,12 +189,14 @@ review:
   provider: claude
   mode: conversation
   system_prompt: "You are a code reviewer. Say APPROVED when done."
-  initial_prompt: "Review: {{.inputs.code}}"
+  prompt: "Review: {{.inputs.code}}"
   conversation:
     max_turns: 10
-    stop_condition: "response contains 'APPROVED'"
+    stop_condition: "inputs.response contains 'APPROVED'"
   on_success: done
 ```
+
+> **Note**: Conversation mode executes the same prompt each turn. Use `inputs.` prefix for stop condition variables.
 
 ## Resources
 
@@ -214,4 +222,5 @@ review:
 
 **Development**
 - [references/architecture.md](references/architecture.md) - Architecture & project structure
+- [references/code-quality.md](references/code-quality.md) - Linting, formatting, CI quality gates
 - [references/testing.md](references/testing.md) - Testing conventions

@@ -29,12 +29,891 @@ Located in `tests/integration/`:
 ```
 tests/
 ├── integration/
+│   ├── cli/                      # CLI integration tests (v0.5.35, expanded v0.5.37)
+│   │   ├── cli_test_helpers_test.go  # Shared CLI test helpers
+│   │   ├── diagram_coverage_test.go  # Diagram command coverage (v0.5.37, 402 lines, 11 tests)
+│   │   ├── doc_internal_test.go      # Documentation generation
+│   │   ├── migration_test.go         # Migration workflows
+│   │   ├── plugin_cmd_coverage_test.go  # Plugin enable/disable coverage (v0.5.37, 395 lines, 11 tests)
+│   │   ├── signal_handler_test.go    # Signal handling
+│   │   ├── status_coverage_test.go   # Status command coverage (v0.5.37, 414 lines, 9 tests)
+│   │   └── validate_coverage_test.go # Validate command coverage (v0.5.37, 379 lines, 9 tests)
 │   ├── cli_test.go
-│   └── workflow_test.go
+│   ├── workflow_test.go
+│   ├── validation_providers_test.go  # Agent provider behavior validation
+│   ├── graph_algorithm_refactoring_test.go  # Cycle detection and execution order
+│   ├── cognitive_complexity_refactoring_test.go  # Executor helper refactoring
+│   ├── execution_helpers_test.go  # Execution helper workflow validation
+│   ├── execution_test.go         # Execution service integration (v0.5.35: consolidated EventStreamReader)
+│   ├── loop_test.go              # Loop execution tests
+│   ├── test_restructuring_functional_test.go  # Validates thematic test split (v0.5.21)
+│   ├── testutil_integration_test.go  # testutil package integration (v0.5.22)
+│   ├── testutil_loc_reduction_test.go  # Validates LOC reduction metrics (v0.5.22)
+│   ├── parallel_test.go  # Parallel execution strategies (v0.5.23, 948 lines)
+│   ├── hooks_test.go  # Hook lifecycle and variable injection (v0.5.24, 514 lines)
+│   ├── secret_masking_test.go  # Secret masking in logs/errors (v0.5.24, 693 lines)
+│   ├── input_validation_test.go  # Input validation patterns (v0.5.24, 513 lines)
+│   ├── cli_exitcodes_test.go  # CLI exit code behavior (v0.5.24, 648 lines)
+│   ├── infrastructure_test_split_functional_test.go  # CLI & diagram test split validation (v0.5.28)
+│   ├── memory_leak_test.go  # Goroutine cleanup and signal handler lifecycle (v0.5.29, 598 lines)
+│   ├── memory_management_functional_test.go  # Memory bounds under 10,000+ iterations (v0.5.29, 679 lines)
+│   ├── test_helpers.go           # Shared test utilities including goroutine tracking (v0.5.29, updated v0.5.35)
+│   └── test_helpers_skipinci_test.go  # skipInCI helper tests (v0.5.35, 354 lines, 7 test cases)
 └── fixtures/workflows/
     ├── simple.yaml
-    └── parallel.yaml
+    ├── parallel.yaml
+    ├── hooks-lifecycle.yaml  # Hook execution order (v0.5.24)
+    ├── hooks-failure.yaml  # Hook failure handling (v0.5.24)
+    ├── hooks-variables.yaml  # Hook variable injection (v0.5.24)
+    ├── secrets-masked.yaml  # Secret masking scenarios (v0.5.24)
+    ├── secrets-in-errors.yaml  # Secrets in error messages (v0.5.24)
+    ├── validation-enums.yaml  # Enum validation (v0.5.24)
+    ├── validation-numeric.yaml  # Numeric validation (v0.5.24)
+    ├── validation-patterns.yaml  # Pattern validation (v0.5.24)
+    ├── exit-execution-error.yaml  # Execution error exit codes (v0.5.24)
+    ├── exit-user-error.yaml  # User error exit codes (v0.5.24)
+    ├── exit-workflow-error.yaml  # Workflow error exit codes (v0.5.24)
+    ├── conversation-error.yaml  # Conversation error handling (v0.5.41)
+    └── conversation-parallel.yaml  # Conversation parallel execution (v0.5.41)
 ```
+
+### Conversation Workflow Fixture Corrections (v0.5.41)
+
+As of v0.5.41, conversation workflow fixtures are corrected to match domain model requirements (PR #156):
+
+**conversation-error.yaml**:
+- Removed unsupported `on_error_goto` field (not part of YAML schema)
+- Removed unsupported `name` field from error state
+- Changed error state `type` from `branch` to `terminal` (correct type for error handling)
+
+**conversation-parallel.yaml**:
+- Refactored from nested branch object structure to flat parallel array pattern
+- Steps array now contains step name references (strings), not inline step definitions
+- State definitions moved to separate top-level state entries
+- Fixed output interpolation to use `{{.states.step.Output}}` pattern
+
+**conversation_test.go**:
+- Updated `skipInCI` from `false` to `true` for `TestConversationError` and `TestConversationParallel` fixtures (lines 88, 93)
+- Removed FIXME(#130) comments as fixtures now validate correctly
+
+**Impact**: Fixtures now pass validation in test suite. Tests remain skipped in CI pending full conversation mode integration.
+
+### Test Helper Consolidation (v0.5.35)
+
+As of v0.5.35, duplicate test helpers are consolidated to eliminate compilation errors:
+
+**Changes** (PR #147):
+- `EventStreamReader` type removed from `execution_test.go` (55 lines), now imported from shared helpers
+- `skipInCI` helper added with proper CI environment detection
+- CLI integration tests moved to `tests/integration/cli/` subdirectory with shared helper file
+
+**skipInCI Helper** (`tests/integration/test_helpers.go`):
+```go
+// skipInCI skips test if running in CI environment
+// Checks both CI and GITHUB_ACTIONS environment variables
+func skipInCI(t *testing.T) {
+    if os.Getenv("CI") != "" || os.Getenv("GITHUB_ACTIONS") != "" {
+        t.Skip("Skipping in CI environment")
+    }
+}
+```
+
+**Test validation**: `test_helpers_skipinci_test.go` (354 lines) validates:
+- CI detection via `CI` environment variable
+- CI detection via `GITHUB_ACTIONS` environment variable
+- Non-CI environment allows test execution
+- Combined environment variable scenarios (7 test cases total)
+
+### Test Skip Management (v0.5.39)
+
+As of v0.5.39, test skips are systematically managed through build tags and standardized helpers (PR #154):
+
+**Skip Reduction Metrics**:
+| Metric | Before | After | Reduction |
+|--------|--------|-------|-----------|
+| Skipped tests | 823 | 128 | 84% |
+| Obsolete guards removed | - | 250+ | - |
+| Files modified | - | 73 | - |
+| Net lines deleted | - | 2,843 | - |
+
+**Build Tag Policy**:
+
+Prefer Go build tags over runtime `testing.Short()` checks for cleaner test organization:
+
+```go
+// Before (runtime check - discouraged)
+func TestIntegration_Feature(t *testing.T) {
+    if testing.Short() {
+        t.Skip("skipping integration test")
+    }
+    // ...
+}
+
+// After (build tag - preferred)
+//go:build integration
+
+func TestIntegration_Feature(t *testing.T) {
+    // ...
+}
+```
+
+**Build tags in use**:
+- `//go:build integration` - Integration tests requiring external resources
+- `//go:build !short` - Long-running tests excluded in short mode
+- `//go:build external` - Tests requiring external CLI tools
+
+**Makefile targets**:
+```bash
+make test-integration  # Run all integration tests (tests/integration/)
+make test-external     # Run tests requiring external CLI dependencies
+make test-unit         # Unit tests only (internal/, pkg/)
+```
+
+**Standardized Skip Helpers** (`tests/integration/test_helpers.go`):
+
+| Helper | Purpose | Example Reason |
+|--------|---------|----------------|
+| `skipOnShortMode(t)` | Skip in `go test -short` | Long-running, resource-intensive |
+| `skipInCI(t)` | Skip in CI environments | Requires local resources |
+| `skipIfRootUser(t)` | Skip when running as root | Permission tests invalid as root |
+| `skipOnPlatform(t, "windows")` | Skip on specific platforms | Platform-specific behavior |
+
+```go
+// Usage example
+func TestSlowOperation(t *testing.T) {
+    skipOnShortMode(t)  // Skip in -short mode
+    // Long-running test...
+}
+
+func TestPermissionDenied(t *testing.T) {
+    skipIfRootUser(t)   // Root bypasses permission checks
+    // Permission test...
+}
+```
+
+**Test validation**: `test_helpers_skip_test.go` (431 lines) validates all skip helpers.
+
+**Audit Script** (`scripts/audit-skips.sh`):
+
+Categorizes test skips into 9 patterns for analysis:
+
+```bash
+./scripts/audit-skips.sh
+```
+
+| Category | Pattern | Action |
+|----------|---------|--------|
+| `integration` | "skipping integration test" | Convert to `//go:build integration` |
+| `cli_tool` | "CLI not installed" | Convert to `//go:build external` or use helper |
+| `short_mode` | "short\|slow\|resource" | Keep or convert to `//go:build !short` |
+| `root_user` | "root\|sudo\|permission" | Use `skipIfRootUser` helper |
+| `platform` | "platform\|windows\|linux" | Use `skipOnPlatform` helper |
+| `fixture` | "fixture\|directory not created" | Review individually |
+| `pending` | "pending\|todo\|fixme" | Create tracking issue or complete |
+| `stub` | "stub\|negative test" | Create tracking issue or complete |
+| `not_implemented` | "not yet implemented" | Link to feature spec or delete |
+
+**Test validation**: `c030_t001_audit_script_test.go` (471 lines, 18 test cases) validates all skip pattern categories.
+
+**Plugin Infrastructure Cleanup** (v0.5.39):
+
+Removed 250+ obsolete conditional skip guards from plugin tests that were checking for implementation completed in C029:
+- `internal/infrastructure/plugin/loader_test.go` - 158 guards removed
+- `internal/infrastructure/plugin/registry_test.go` - 131 guards removed
+- `internal/infrastructure/plugin/state_store_test.go` - 78 guards removed
+- `internal/infrastructure/plugin/version_test.go` - 46 guards removed
+
+### Domain Workflow Tests (v0.5.26)
+
+As of v0.5.26, domain workflow tests are split by concern for improved maintainability:
+
+```
+internal/domain/workflow/
+├── workflow.go
+├── agent_config_config_test.go       # Agent configuration parsing (from agent_config_test.go)
+├── agent_config_conversation_test.go # Multi-turn conversation config (from agent_config_test.go)
+├── agent_config_result_test.go       # Agent result parsing (from agent_config_test.go)
+├── domain_test_helpers_test.go       # Shared test utilities (212 lines)
+├── step_command_test.go              # Shell command execution tests (405 lines)
+├── step_loop_test.go                 # Loop validation and execution (320 lines)
+├── step_agent_test.go                # Agent step functionality and hooks (730 lines)
+├── step_parallel_test.go             # Parallel execution strategies (renamed)
+├── template_validation_inputs_test.go   # Input template validation (165 lines)
+├── template_validation_states_test.go   # State reference validation (555 lines)
+├── template_validation_workflow_test.go # Workflow context templates (192 lines)
+└── template_validation_error_test.go    # Error and hook constraints (1,039 lines)
+```
+
+**Split summary** (3 monolithic files → 11 focused modules):
+- `agent_config_test.go` (1,615 lines) → 4 files by operation type
+- `step_*_test.go` (1,819 lines) → 3 files by concern
+- `template_validation_test.go` → 4 files by template namespace
+
+**Integration test validation**: `tests/integration/domain_test_splitting_test.go` verifies file organization and test preservation.
+
+### Loop Executor Tests (v0.5.27)
+
+As of v0.5.27, loop executor tests are split by functional concern for improved maintainability:
+
+```
+internal/application/
+├── loop_executor.go
+├── loop_executor_core_test.go       # Core execution logic (246 lines)
+├── loop_executor_mocks_test.go      # Shared test doubles (119 lines)
+├── loop_foreach_test.go             # Foreach loop behavior (988 lines)
+├── loop_iterations_test.go          # Iteration count and limit (609 lines)
+├── loop_while_test.go               # While loop conditions (1,383 lines)
+├── loop_transitions_earlyexit_test.go    # Early exit/break/continue (955 lines)
+├── loop_transitions_foreach_test.go      # Foreach transition scenarios (1,477 lines)
+├── loop_transitions_intrabody_test.go    # Intra-body loop transitions (2,639 lines)
+└── loop_executor_transitions_test.go     # General transition scenarios
+```
+
+**Split summary** (1 monolithic file → 9 focused modules):
+- `loop_executor_test.go` (4,155 lines) → 9 files by loop type and transition category
+- Loop types: `foreach`, `while`, `iterations`
+- Transition categories: `earlyexit`, `foreach`, `intrabody`
+- Shared infrastructure: `core`, `mocks`
+
+**Test preservation**: All 179 tests maintained with 100% coverage (78.6% ±0.5% of baseline 79.2%)
+
+**Integration test validation**: `tests/integration/application_test_split_functional_test.go` verifies:
+- Zero test duplication
+- Proper package organization
+- Race condition absence
+
+### CLI Tests (v0.5.28, updated v0.5.37)
+
+As of v0.5.28, CLI tests are split by concern for improved maintainability:
+
+```
+internal/interfaces/cli/
+├── run.go                       # Main run command implementation
+├── cli_test_helpers_test.go     # Shared test helpers and utilities
+├── migration_coverage_test.go   # Migration notice coverage (v0.5.37, 181 lines, 8 tests)
+├── run_agent_test.go            # Agent execution logic (14 tests)
+├── run_execution_test.go        # Execution flow control (9 tests)
+├── run_flags_test.go            # CLI flag parsing and validation (27 tests)
+├── run_interactive_test.go      # Interactive mode (2 tests)
+└── validate_coverage_test.go    # Validate command unit tests (v0.5.37, replaced assertion-free tests)
+```
+
+**Split summary** (1 monolithic file -> 4 focused modules):
+- `run_test.go` (2,439 lines, 51 tests) -> 4 files by functional concern
+- Test categories: `agent`, `execution`, `flags`, `interactive`
+- Shared infrastructure: `cli_test_helpers`
+
+**Test preservation**: All 51 tests maintained with strict concurrency safety (`go test -race ./...`)
+
+**Integration test validation**: `tests/integration/infrastructure_test_split_functional_test.go` verifies:
+- Zero test duplication
+- Proper package organization
+- Race condition absence
+
+### CLI Integration Tests (v0.5.35, updated v0.5.37)
+
+As of v0.5.35, CLI integration tests consolidate shared helpers to eliminate duplication:
+
+```
+tests/integration/cli/
+├── cli_test_helpers_test.go     # Shared test helpers (EventStreamReader, TempWorkflow, skipInCI)
+├── diagram_coverage_test.go     # Diagram command: formats, output modes, graphviz (v0.5.37, 402 lines, 11 tests)
+├── doc_internal_test.go         # Documentation generation tests (awf_test package)
+├── migration_test.go            # Migration workflow tests
+├── plugin_cmd_coverage_test.go  # Plugin enable/disable lifecycle and errors (v0.5.37, 395 lines, 11 tests)
+├── signal_handler_test.go       # Signal handling tests
+├── status_coverage_test.go      # Status command: formats, state loading, errors (v0.5.37, 414 lines, 9 tests)
+└── validate_coverage_test.go    # Validate command: formats, error display, template refs (v0.5.37, 379 lines, 9 tests)
+```
+
+**Consolidation summary** (PR #147):
+- `EventStreamReader` consolidated from duplicate definitions
+- `TempWorkflow` helper for workflow fixture management
+- `skipInCI` helper with comprehensive CI detection (checks CI, GITHUB_ACTIONS variables)
+- Renamed `doc_test.go` -> `doc_internal_test.go` for proper package declaration
+
+**Issue tracking updates** (PR #151, v0.5.36):
+- `migration_test.go`: FIXME comments linked to #130 for blocked resume + pruning feature
+- `doc_test.go`: TODO comments linked to #130 for invalid test fixtures
+
+**Coverage expansion** (PR #152, v0.5.37):
+- Added 1,771 lines of tests across 5 new files, improving CLI coverage from 77.6% to 80%+
+- Removed obsolete `validate_coverage_test.go` (10 assertion-free tests providing false coverage)
+- Fixed bug in `diagram.go`: unconditional error return for stdout DOT output now checks nil
+
+**Test infrastructure** (`tests/integration/cli/cli_test_helpers_test.go`):
+- `skipInCI(t)` - Skips tests in CI environments, validates with 7 test cases
+- `EventStreamReader` - SSE event stream parsing for CLI output validation
+- `TempWorkflow` - Creates temporary workflow files for integration testing
+
+### Diagram Tests (v0.5.28)
+
+As of v0.5.28, diagram generator tests are split by concern:
+
+```
+internal/infrastructure/diagram/
+├── dot_generator.go                  # Main DOT generation
+├── diagram_test_helpers_test.go      # Shared test helpers
+├── dot_generator_core_test.go        # Core DOT generation (33 tests)
+├── generator_edges_test.go           # Edge generation (24 tests)
+├── generator_header_test.go          # Header formatting (16 tests)
+├── generator_highlight_test.go       # Syntax highlighting (15 tests)
+├── generator_nodes_test.go           # Node creation (18 tests)
+└── generator_parallel_test.go        # Parallel diagram generation (24 tests)
+```
+
+**Split summary** (1 monolithic file -> 6 focused modules):
+- `dot_generator_test.go` (4,499 lines, 130 tests) -> 6 files by concern
+- Test categories: `core`, `edges`, `header`, `highlight`, `nodes`, `parallel`
+- Shared infrastructure: `diagram_test_helpers`
+
+**Test preservation**: All 130 tests maintained (181 total across both splits + 1 integration = 182)
+
+### Store Layer Tests (v0.5.30)
+
+As of v0.5.30, comprehensive tests validate store validation and persistence:
+
+```
+internal/infrastructure/store/
+├── sqlite_history_store.go           # SQLite history storage (WAL mode)
+├── sqlite_history_store_test.go      # Comprehensive SQLite tests (2,082 lines, 43 tests)
+├── json_store.go                     # JSON state store
+└── json_store_test.go                # Enhanced JSON tests (+384 lines, 13 tests)
+```
+
+**SQLite History Store Tests** (2,082 lines):
+- CRUD operations: create, read, update, delete workflow records
+- Error paths: invalid IDs, missing records, database corruption
+- Nil handling: nil record validation preventing segmentation faults
+- Concurrent stress tests: 20 goroutines racing on read/write operations
+- Edge cases: empty strings, unicode content, very large outputs
+
+**JSON Store Tests** (+384 lines):
+- Concurrent access: multiple goroutines reading/writing same state file
+- Corruption recovery: handling malformed JSON, partial writes
+- Atomic operations: temp file + rename pattern verification
+
+**Coverage**: 80.7% for store package (exceeds 70% infrastructure target)
+
+### Functional Integration Tests (v0.5.30)
+
+New functional tests validate end-to-end behavior for validation and persistence:
+
+```
+tests/integration/
+├── input_validation_functional_test.go    # Pattern, enum, min/max validation (438 lines)
+└── state_persistence_functional_test.go   # JSON and SQLite persistence (206 lines)
+```
+
+### Package Test Coverage (v0.5.31)
+
+As of v0.5.31, comprehensive tests validate pkg/ interpolation and retry functionality:
+
+```
+pkg/interpolation/
+├── resolver.go
+├── resolver_test.go                # Expanded tests (+1,020 lines, 188+ test cases)
+└── template_resolver.go            # Expression namespace accessors
+
+pkg/retry/
+├── retry.go
+├── retry_test.go                   # Completed logging assertions
+
+tests/integration/
+└── pkg_test_coverage_functional_test.go  # End-to-end pkg validation (633 lines, 5 tests)
+```
+
+**Interpolation Tests** (+1,020 lines):
+- `StepStateData.Response` - Nested objects, multiple fields, JSON access patterns
+- `StepStateData.Tokens` - Formatter behavior, edge cases, nil handling
+- `LoopData.Parent` - Nested loop access, serialization, parent context propagation
+- Expression namespace syntax - Lowercase property access via accessors (`{{loop.*}}`, `{{context.*}}`, `{{error.*}}`)
+
+**Retry Tests** (completed):
+- `TestRetryer_LogsAttempts` - Comprehensive logging assertions verifying debug calls with attempt number and delay fields
+
+**Functional Integration Tests** (633 lines, 5 functions):
+- Validates `LoopData.Parent` works in nested loop workflows
+- Validates `StepStateData.Response` and `Tokens` fields in agent execution
+- Validates expression namespace accessors work end-to-end
+
+**Input Validation Functional Tests** (438 lines):
+- Pattern validation through full execution pipeline
+- Enum validation with valid/invalid values
+- Numeric min/max validation boundaries
+
+**State Persistence Functional Tests** (206 lines):
+- JSON store behavior under concurrent workflow execution
+- SQLite store behavior under concurrent and corruption conditions
+- Resume capability after partial execution
+
+### Memory and Resource Management Tests (v0.5.29)
+
+As of v0.5.29, comprehensive tests validate memory bounds and goroutine lifecycle:
+
+```
+internal/application/
+├── memory_monitor.go              # Heap allocation monitoring
+├── memory_monitor_test.go         # Threshold alerting tests (466 lines)
+├── output_limiter.go              # Output size limits
+├── output_limiter_test.go         # Truncation and streaming tests (506 lines)
+├── output_streamer.go             # Temp file streaming
+├── output_streamer_test.go        # File streaming lifecycle tests (574 lines)
+├── loop_executor_memory_test.go   # Rolling window and pruning tests (522 lines)
+└── execution_service_helpers_test.go  # Step output handling tests (430 lines)
+
+internal/interfaces/cli/
+├── signal_handler.go              # Shared signal handler
+└── signal_handler_test.go         # Goroutine cleanup tests (410 lines)
+
+tests/integration/
+├── memory_leak_test.go            # Goroutine cleanup validation (598 lines)
+├── memory_management_functional_test.go  # Memory bounds under load (679 lines)
+└── test_helpers.go                # Goroutine count tracking utilities (154 lines)
+```
+
+**Test coverage** (1,799 new lines):
+- Memory monitoring: threshold alerting, periodic checking
+- Output limiting: truncation strategies, streaming to temp files
+- Loop memory: rolling window pruning, bounded iteration results
+- Signal handler: goroutine cleanup, race detection, behavioral consistency
+
+**Key assertions**:
+- Zero goroutine leaks after signal handler cleanup
+- Bounded memory growth under 10,000+ loop iterations
+- Output streaming lifecycle (create, write, cleanup)
+- Race-free signal handling (`go test -race`)
+
+### Execution Service Tests (v0.5.21, updated v0.5.34)
+
+As of v0.5.21, execution service tests are split by theme for better discoverability:
+
+```
+internal/application/
+├── execution_service.go
+├── execution_service_core_test.go       # Core execution, context, errors (1,938 lines)
+├── execution_service_hooks_test.go      # Pre/post hooks, error hooks (272 lines)
+├── execution_service_loop_test.go       # Iteration, break, nested loops (660 lines)
+├── execution_service_parallel_test.go   # Concurrent execution (70 lines)
+├── execution_service_retry_test.go      # Retry policies, backoff (534 lines)
+├── execution_service_specialized_mocks_test.go  # Shared mocks (108 lines)
+├── execution_service_agentregistry_field_test.go  # AgentRegistry interface compliance (v0.5.34)
+├── execution_service_setagentregistry_test.go     # SetAgentRegistry method tests (v0.5.34)
+└── execution_service_architecture_test.go         # Architecture compliance tests (v0.5.34)
+```
+
+**Theme descriptions**:
+- `core` - Basic workflow execution, context handling, state transitions, error scenarios
+- `hooks` - Pre-execution hooks, post-execution hooks, error hook behavior
+- `loop` - for_each iteration, while loops, break conditions, nested loop handling
+- `parallel` - Concurrent step execution, strategy validation
+- `retry` - Retry policies, exponential backoff, max attempts, failure recovery
+- `specialized_mocks` - Reusable mock implementations (`retryCountingExecutor`, `errorMockExecutor`)
+- `agentregistry_field` - Validates AgentRegistry field is interface type (v0.5.34)
+- `setagentregistry` - SetAgentRegistry method behavior with various implementations (v0.5.34)
+- `architecture` - Hexagonal layer boundary enforcement, import validation (v0.5.34)
+
+## Test Infrastructure (v0.5.22, updated v0.5.34)
+
+AWF provides a centralized `internal/testutil` package for test infrastructure:
+
+```
+internal/testutil/
+├── builders.go         # Fluent builders for Workflow, Step, State entities
+├── builders_registry_test.go  # Builder tests with interface-based registry (v0.5.34)
+├── fixtures.go         # Reusable test fixtures and factory functions
+├── mocks.go            # Thread-safe mock implementations (sync.RWMutex)
+├── cli_fixtures.go     # CLI-specific test fixtures
+└── doc.go              # Package documentation
+```
+
+**Note (v0.5.32)**: Tests use standard `require.*` and `assert.*` from testify. Custom assertion helpers were removed as they were never adopted.
+
+**Note (v0.5.34)**: `builders.go` updated to accept `ports.AgentRegistry` interface instead of concrete type, enabling polymorphic test configurations.
+
+## ServiceTestHarness (v0.5.25)
+
+Application-layer tests use `ServiceTestHarness` for fluent test setup:
+
+```
+internal/application/
+├── testutil_harness.go       # ServiceTestHarness fluent builder (249 lines)
+├── testutil_harness_test.go  # Harness unit tests (490 lines)
+├── testutil_harness_functional_test.go  # Core functional tests (649 lines)
+└── testutil_harness_advanced_functional_test.go  # Advanced tests (388 lines)
+```
+
+### Fluent Builder API
+
+```go
+import "github.com/vanoix/awf/internal/application"
+
+// Before (10-15 lines per test)
+mockRepo := testutil.NewMockRepository()
+mockStore := testutil.NewMockStateStore()
+mockExecutor := testutil.NewMockExecutor()
+mockExecutor.SetResult("echo hello", ports.Result{Output: "hello", ExitCode: 0})
+service := application.NewExecutionService(mockRepo, mockStore, mockExecutor)
+
+// After (3-line fluent chain)
+service, mocks := application.NewServiceTestHarness().
+    WithMockResult("echo hello", "hello", 0).
+    Build()
+```
+
+### Harness Methods
+
+| Method | Purpose |
+|--------|---------|
+| `WithWorkflow(wf)` | Configure workflow for test |
+| `WithMockResult(cmd, output, exitCode)` | Set mock executor response |
+| `WithState(name, state)` | Pre-populate execution state |
+| `WithInput(key, value)` | Set input parameter |
+| `Build()` | Returns `(service, mocks)` tuple |
+
+### Impact Metrics (v0.5.25)
+
+| Metric | Value |
+|--------|-------|
+| Setup boilerplate reduction | 71% |
+| Overall test code reduction | 29% (13,676 → 9,753 lines) |
+| Files refactored | 8 application test files |
+| Functional tests added | 18 (12 core + 6 advanced) |
+
+### ADR Compliance
+
+- **ADR-001**: Harness lives in `application` package (package-local pattern)
+- **ADR-002**: Wraps `testutil` infrastructure (wrapper pattern, not duplication)
+- **ADR-003**: `Build()` returns `(service, mocks)` tuple for assertion access
+
+### Test Builders (Fluent API)
+
+```go
+import "github.com/vanoix/awf/internal/testutil"
+
+// Build workflow with fluent API (2-3 lines instead of 30+)
+wf := testutil.NewWorkflowBuilder("test").
+    WithInput("name", "string", "default").
+    WithStep("greet", "echo hello").
+    Build()
+```
+
+### Thread-Safe Mocks
+
+```go
+// Thread-safe mock with sync.RWMutex for concurrent tests
+mock := testutil.NewThreadSafeMock()
+mock.SetResult("cmd", ports.Result{Output: "ok", ExitCode: 0})
+```
+
+### Environment Variables with t.Setenv
+
+As of v0.5.22, all tests use `t.Setenv` for automatic cleanup:
+
+```go
+// Before (manual cleanup required)
+os.Setenv("AWF_CONFIG", "/tmp/test")
+defer os.Unsetenv("AWF_CONFIG")
+
+// After (automatic cleanup via t.Setenv)
+t.Setenv("AWF_CONFIG", "/tmp/test")
+```
+
+**Benefits**: 359 os.Setenv calls migrated, 196 defer cleanup calls eliminated, thread-safe test isolation.
+
+## Parallel Execution Tests (v0.5.23)
+
+Integration tests for parallel execution cover all strategies at CLI level (`tests/integration/parallel_test.go`):
+
+| Strategy | Behavior | Test Scenarios |
+|----------|----------|----------------|
+| `all_succeed` | Fails if ANY branch fails | All pass, one fail, all fail |
+| `any_succeed` | Succeeds if ANY branch succeeds | One pass, all pass, all fail |
+| `best_effort` | All branches complete regardless | Mixed results, failure isolation |
+
+### max_concurrent Testing
+
+Tests validate concurrency limits with timing assertions:
+
+```go
+// Validates max_concurrent=2 with 3 branches serializes execution
+// Uses 3x timing margin for CI variability (per ADR-004)
+t.Run("max_concurrent limit enforced", func(t *testing.T) {
+    // 3 branches with 100ms each, max_concurrent=2
+    // Expected: ~200ms (2 rounds), not ~100ms (full parallel)
+    // Assertion: duration > 150ms (1.5x single branch)
+})
+```
+
+### Thread-Safe ExecutionContext
+
+PR #111 added RWMutex protection for concurrent map access:
+
+```go
+// internal/domain/workflow/context.go
+type ExecutionContext struct {
+    mu           sync.RWMutex // protects concurrent map access
+    States       map[string]StepState
+    // ...
+}
+
+// Thread-safe state access
+func (c *ExecutionContext) GetAllStepStates() map[string]StepState {
+    c.mu.RLock()
+    defer c.mu.RUnlock()
+    // Returns defensive copy
+}
+```
+
+Tests use inline YAML fixtures for visibility and testutil builders for 93% setup reduction.
+
+## Hooks and Secret Masking Tests (v0.5.24)
+
+Integration tests for workflow hooks and secret masking (`tests/integration/`):
+
+### Hook Tests
+
+| Test File | Coverage | Lines |
+|-----------|----------|-------|
+| `hooks_test.go` | Hook lifecycle, failure handling, variable injection | 514 |
+
+**Hook lifecycle tests**:
+- Pre-execution hooks run before step execution
+- Post-execution hooks run after step completion
+- Error hooks run on step failure
+- Hooks receive context variables (workflow name, step name, inputs)
+
+### Secret Masking Tests
+
+| Test File | Coverage | Lines |
+|-----------|----------|-------|
+| `secret_masking_test.go` | Log masking, error masking, nested secrets | 693 |
+
+**Secret masking implementation** (`internal/infrastructure/logger/masker.go`):
+- Masks secrets in log output
+- Masks secrets in error messages
+- Handles nested secret values
+- Preserves masked placeholder format (`***`)
+
+### Input Validation Tests
+
+| Test File | Coverage | Lines |
+|-----------|----------|-------|
+| `input_validation_test.go` | Enum, numeric, pattern validation | 513 |
+
+**Validation fixtures**:
+- `validation-enums.yaml` - Enum type validation
+- `validation-numeric.yaml` - Numeric range validation
+- `validation-patterns.yaml` - Regex pattern validation
+
+### CLI Exit Code Tests
+
+| Test File | Coverage | Lines |
+|-----------|----------|-------|
+| `cli_exitcodes_test.go` | Exit code semantics for error types | 648 |
+
+**Exit code fixtures**:
+- `exit-execution-error.yaml` - Exit code 1 for execution errors
+- `exit-user-error.yaml` - Exit code 2 for user input errors
+- `exit-workflow-error.yaml` - Exit code 3 for workflow definition errors
+
+## Architecture Compliance Tests (v0.5.34)
+
+As of v0.5.34, architecture tests validate hexagonal layer boundaries:
+
+```
+internal/application/
+├── execution_service_architecture_test.go  # Layer boundary enforcement (761 lines)
+└── execution_service_agentregistry_field_test.go  # Interface type validation
+```
+
+**Architecture test coverage**:
+- **Import validation**: Verifies application layer has no infrastructure imports
+- **Interface compliance**: Validates AgentRegistry field is interface type, not concrete
+- **Setter behavior**: Tests SetAgentRegistry accepts any AgentRegistry implementation
+- **Polymorphism**: Builder pattern tests with multiple mock registry implementations
+
+**Key assertions**:
+```go
+// Validates interface type (not concrete)
+field := reflect.TypeOf(service).Elem().Field(agentRegistryFieldIndex)
+assert.True(t, field.Type.Kind() == reflect.Interface)
+
+// Validates setter accepts interface
+service.SetAgentRegistry(mockRegistry)  // any ports.AgentRegistry implementation
+```
+
+**DIP enforcement**: Tests prevent regression to concrete type dependency, ensuring application layer remains decoupled from infrastructure.
+
+## CLI Command Coverage Tests (v0.5.37)
+
+As of v0.5.37, comprehensive coverage tests target previously untested CLI command paths (PR #152):
+
+### Unit Tests
+
+| Test File | Location | Lines | Tests | Coverage Target |
+|-----------|----------|-------|-------|-----------------|
+| `migration_coverage_test.go` | `internal/interfaces/cli/` | 181 | 8 | `checkLegacyDirectory` function |
+
+**Migration notice tests**:
+- Legacy `.awf/` directory detection
+- XDG migration notice generation
+- Singleton suppression pattern (notice shown only once)
+- Concurrency safety under parallel access
+- Edge cases: missing directory, permission errors
+
+### Integration Tests
+
+| Test File | Location | Lines | Tests | Coverage Target |
+|-----------|----------|-------|-------|-----------------|
+| `validate_coverage_test.go` | `tests/integration/cli/` | 379 | 9 | `awf validate` command |
+| `diagram_coverage_test.go` | `tests/integration/cli/` | 402 | 11 | `awf diagram` command |
+| `status_coverage_test.go` | `tests/integration/cli/` | 414 | 9 | `awf status` command |
+| `plugin_cmd_coverage_test.go` | `tests/integration/cli/` | 395 | 11 | `awf plugin enable/disable` |
+
+**Validate command tests** (379 lines):
+- All output formats: text, JSON, table, quiet
+- Workflow not found error handling
+- Validation error formatting and display
+- Template reference validation
+
+**Diagram command tests** (402 lines):
+- Invalid direction handling
+- Workflow not found errors
+- stdout and file output modes
+- Graphviz integration
+- Highlight options
+
+**Status command tests** (414 lines):
+- State loading from store
+- All format variations (text, JSON, table, quiet)
+- Execution not found errors
+- Corrupted state handling
+
+**Plugin command tests** (395 lines):
+- Enable/disable lifecycle management
+- State persistence across operations
+- Plugin not found errors
+- Idempotency (re-enable/re-disable)
+
+### Removed Tests
+
+- `internal/interfaces/cli/validate_coverage_test.go` (old): Deleted 10 assertion-free tests that provided false coverage confidence, replaced by proper integration tests
+
+### Bug Fix
+
+- `internal/interfaces/cli/diagram.go`: Fixed unconditional error return when writing DOT output to stdout; now properly checks for nil error before returning
+
+### Coverage Impact
+
+| Metric | Before | After |
+|--------|--------|-------|
+| CLI coverage | 77.6% | 80%+ |
+| New test lines | - | 1,771 |
+| New test files | - | 5 |
+| Test count added | - | 48 |
+
+## Plugin Schema Validation Tests (v0.5.38)
+
+As of v0.5.38, comprehensive tests validate plugin operation schema correctness (PR #153):
+
+### Unit Tests
+
+```
+internal/domain/plugin/
+├── operation.go                 # Schema validation methods
+└── operation_test.go            # Expanded test suite (1,553+ lines)
+```
+
+**Operation schema tests** (150+ test functions):
+- `ValidateOperationSchema` - 50+ tests for nested validation, error wrapping, duplicate detection
+- `ValidateInputSchema` - 38+ tests for all types, validation rules, default value edge cases
+- `RequiredInputs` - 18+ table-driven tests including performance tests
+- `IsValidType` - 4+ tests for valid/invalid type coverage
+- `supportedValidationRules` variable tests for url, email rule registry
+
+### Functional Integration Tests
+
+```
+tests/integration/
+└── plugin_validation_functional_test.go  # End-to-end schema validation (793 lines, 27 tests)
+```
+
+**Functional test coverage**:
+- End-to-end validation scenarios for complete operation schemas
+- Nested validation error propagation
+- Integration with CLI validation commands
+- Edge cases: empty fields, whitespace-only names, duplicate outputs, type mismatches
+
+### Removed Tests
+
+- `internal/domain/plugin/` (old test file): Deleted 10 assertion-free tests providing false coverage confidence
+
+### Coverage Impact
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Plugin domain coverage | - | 98.6% |
+| New test lines | - | 793 (functional) |
+| Test functions added | - | 150+ |
+
+## Plugin Manifest Validation Tests (v0.5.40)
+
+As of v0.5.40, comprehensive manifest validation replaces the `ErrNotImplemented` stub (PR #155):
+
+### Unit Tests
+
+```
+internal/domain/plugin/
+├── manifest.go              # Validate() implementation (+85 lines)
+└── manifest_test.go         # 130+ table-driven tests (+2400 lines)
+```
+
+**Test coverage by category**:
+
+| Category | Tests | Description |
+|----------|-------|-------------|
+| Name validation | 15+ | Valid patterns, invalid characters, edge cases |
+| Version validation | 5+ | Empty, whitespace, valid strings |
+| AWFVersion validation | 5+ | Empty, whitespace, valid constraints |
+| Capability validation | 10+ | Valid capabilities, unknown capabilities |
+| Config type validation | 20+ | string/integer/boolean, invalid types |
+| Config enum validation | 15+ | Enum on string only, enum with non-string types |
+| Config default validation | 25+ | Type matching, JSON float64 quirks |
+
+**JSON numeric handling**: Tests verify that JSON-parsed integers (stored as `float64`) match `integer` type fields correctly.
+
+### Integration Tests
+
+```
+tests/integration/
+├── plugin_validation_manifest_test.go  # Parser-to-validation workflow (+640 lines, 18 tests)
+└── fixtures/plugins/                   # Realistic YAML manifests
+    ├── valid-simple.yaml
+    ├── valid-full.yaml
+    ├── invalid-name-uppercase.yaml
+    ├── invalid-name-underscore.yaml
+    ├── invalid-empty-version.yaml
+    ├── invalid-unknown-capability.yaml
+    ├── invalid-config-type.yaml
+    ├── invalid-config-enum-integer.yaml
+    └── invalid-config-default-mismatch.yaml
+```
+
+**Integration test structure**: Given/When/Then pattern with realistic YAML fixtures.
+
+### Breaking Change
+
+`Manifest.Validate()` now returns `nil` for valid manifests instead of `ErrNotImplemented`. Plugins with invalid manifests are rejected during loading.
+
+### Coverage Impact
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Manifest validation coverage | 0% (stub) | 99% |
+| New unit test lines | - | 2,400 |
+| New integration test lines | - | 640 |
+| Test cases added | - | 130+ unit, 18 integration |
 
 ## Table-Driven Tests
 
@@ -75,53 +954,187 @@ func TestWorkflowValidation(t *testing.T) {
 
 ## Mocking
 
-Use interfaces for easy mocking:
+Use interfaces for easy mocking. As of v0.5.22, prefer the testutil package for thread-safe mocks:
 
 ```go
-type mockExecutor struct {
-    results map[string]ports.Result
-}
-
-func (m *mockExecutor) Execute(ctx context.Context, cmd ports.Command) (ports.Result, error) {
-    return m.results[cmd.Command], nil
-}
+import "github.com/vanoix/awf/internal/testutil"
 
 func TestExecution(t *testing.T) {
-    mock := &mockExecutor{
-        results: map[string]ports.Result{
-            "echo hello": {Output: "hello\n", ExitCode: 0},
-        },
-    }
+    mock := testutil.NewMockExecutor()
+    mock.SetResult("echo hello", ports.Result{Output: "hello\n", ExitCode: 0})
     service := application.NewExecutionService(repo, store, mock)
     // ... test
 }
 ```
 
+## Domain Algorithm Tests
+
+Graph algorithms in `internal/domain/workflow/graph.go` use extracted helpers for testability:
+
+```go
+func TestVisitState_Enum(t *testing.T) {
+    assert.Equal(t, VisitState(0), Unvisited)
+    assert.Equal(t, VisitState(1), Visiting)
+    assert.Equal(t, VisitState(2), Visited)
+}
+
+func TestProcessTransition_CycleDetection(t *testing.T) {
+    visited := map[string]VisitState{"a": Visiting}
+    err := ProcessTransition("a", visited, ...)
+    require.Error(t, err)
+    assert.Contains(t, err.Error(), "cycle detected")
+}
+
+func TestEnqueueIfNotVisited(t *testing.T) {
+    queue := []string{}
+    visited := map[string]bool{}
+
+    EnqueueIfNotVisited("a", &queue, visited)
+    assert.Equal(t, []string{"a"}, queue)
+    assert.True(t, visited["a"])
+
+    // Already visited - no duplicate
+    EnqueueIfNotVisited("a", &queue, visited)
+    assert.Len(t, queue, 1)
+}
+```
+
+## CLI Helper Tests
+
+UI helpers in `internal/interfaces/cli/` and `internal/interfaces/cli/ui/` use table-driven tests:
+
+- `list_helpers_test.go` - `buildPromptInfo`, `shouldProcessEntry`
+- `ui/field_formatters_test.go` - `FormatIntFieldIfPositive`
+- `ui/row_builders_test.go` - `BuildValidationRow`
+
+## Application Helper Tests
+
+Executor helpers in `internal/application/` use table-driven tests:
+
+- `interactive_executor_handlers_test.go` - Step success/failure handling
+- `parallel_executor_coordination_test.go` - Branch coordination, strategy validation
+- `template_service_helpers_test.go` - Template expansion, parameter substitution
+- `conversation_manager_helpers_test.go` - Turn management, stop conditions
+
+## Loop Pattern Helper Tests
+
+Loop pattern detection helpers in `internal/application/` use table-driven tests:
+
+```go
+// internal/application/loop_pattern_helpers_test.go
+func TestDetectLoopPattern(t *testing.T) {
+    tests := []struct {
+        name     string
+        state    State
+        expected LoopPattern
+    }{
+        {
+            name:     "for_each loop",
+            state:    State{Type: "for_each", Items: []string{"a", "b"}},
+            expected: LoopPattern{Type: ForEach, Items: []string{"a", "b"}},
+        },
+        {
+            name:     "while loop",
+            state:    State{Type: "while", Condition: "inputs.count > 0"},
+            expected: LoopPattern{Type: While, Condition: "inputs.count > 0"},
+        },
+        {
+            name:     "non-loop state",
+            state:    State{Type: "step"},
+            expected: LoopPattern{Type: NoLoop},
+        },
+    }
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            svc := NewExecutionService(mockRepo, mockStore, mockExecutor)
+            assert.Equal(t, tt.expected, svc.detectLoopPattern(tt.state))
+        })
+    }
+}
+
+func TestShouldTerminateLoop(t *testing.T) {
+    tests := []struct {
+        name      string
+        pattern   LoopPattern
+        iteration int
+        expected  bool
+    }{
+        {
+            name:      "for_each completes all items",
+            pattern:   LoopPattern{Type: ForEach, Items: []string{"a", "b"}},
+            iteration: 2,
+            expected:  true,
+        },
+        {
+            name:      "while condition becomes false",
+            pattern:   LoopPattern{Type: While, ConditionResult: false},
+            iteration: 1,
+            expected:  true,
+        },
+    }
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            svc := NewExecutionService(mockRepo, mockStore, mockExecutor)
+            assert.Equal(t, tt.expected, svc.shouldTerminateLoop(tt.pattern, tt.iteration))
+        })
+    }
+}
+```
+
+## Expression Context Normalization Tests
+
+Expression evaluator tests in `pkg/expression/` validate PascalCase normalization (v0.5.20):
+
+```go
+// pkg/expression/evaluator_test.go
+func TestContextNormalization(t *testing.T) {
+    tests := []struct {
+        name     string
+        ctx      map[string]interface{}
+        expected map[string]interface{}
+    }{
+        {
+            name: "lowercase context normalized",
+            ctx:  map[string]interface{}{"context": map[string]interface{}{"retryCount": 3}},
+            expected: map[string]interface{}{"Context": map[string]interface{}{"RetryCount": 3}},
+        },
+        {
+            name: "mixed case error normalized",
+            ctx:  map[string]interface{}{"error": map[string]interface{}{"message": "timeout"}},
+            expected: map[string]interface{}{"Error": map[string]interface{}{"Message": "timeout"}},
+        },
+        {
+            name:     "PascalCase preserved",
+            ctx:      map[string]interface{}{"Context": map[string]interface{}{"WorkflowID": "abc"}},
+            expected: map[string]interface{}{"Context": map[string]interface{}{"WorkflowID": "abc"}},
+        },
+    }
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            eval := NewEvaluator()
+            normalized := eval.normalizeContext(tt.ctx)
+            assert.Equal(t, tt.expected, normalized)
+        })
+    }
+}
+```
+
+Integration tests in `tests/integration/expression_context_test.go` validate end-to-end normalization with workflow fixtures.
+
 ## Coverage Goals
 
-| Layer | Target |
-|-------|--------|
-| Domain | >90% |
-| Application | >80% |
-| Infrastructure | >70% |
-| CLI | Integration tests |
+| Layer | Target | Notes |
+|-------|--------|-------|
+| Domain | >90% | |
+| Application | >80% | |
+| Infrastructure | >70% | |
+| CLI | >80% | Achieved 80%+ in v0.5.37 (PR #152) |
 
 ## Assertions (testify)
 
-```go
-import (
-    "github.com/stretchr/testify/assert"
-    "github.com/stretchr/testify/require"
-)
-
-func TestExample(t *testing.T) {
-    require.NoError(t, err)      // Stops on failure
-    require.NotNil(t, result)
-
-    assert.Equal(t, expected, actual)  // Continues
-    assert.Contains(t, haystack, needle)
-}
-```
+AWF uses [testify](https://github.com/stretchr/testify) for assertions:
+- `require.*` - Stops test on failure (use for preconditions)
+- `assert.*` - Continues on failure (use for verifications)
 
 ## Test Naming
 

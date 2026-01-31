@@ -1,3 +1,98 @@
+# Validation
+
+## Template Casing Validation
+
+**Added in v0.5.12**
+
+AWF validates that state property references use uppercase names. This catches a common mistake where lowercase properties (`.output`, `.exit_code`) would silently fail with Go templates.
+
+### Valid Properties
+
+| Property | Description |
+|----------|-------------|
+| `.Output` | Command stdout |
+| `.Stderr` | Command stderr |
+| `.ExitCode` | Exit code |
+| `.Status` | State status |
+
+### Validation Example
+
+```bash
+$ awf validate my-workflow
+```
+
+```
+validation error: invalid state property casing
+  - line 15: "states.build.output" should be "states.build.Output"
+  - line 22: "states.test.exit_code" should be "states.test.ExitCode"
+```
+
+### Migration
+
+Update all workflow files to use uppercase:
+
+```yaml
+# Before (invalid)
+command: echo "{{.states.build.output}}"
+when: "states.test.exit_code == 0"
+
+# After (valid)
+command: echo "{{.states.build.Output}}"
+when: "states.test.ExitCode == 0"
+```
+
+## Expression Syntax Validation
+
+**Added in v0.5.33**
+
+AWF validates expression syntax at workflow load time. This catches malformed expressions before execution, providing immediate feedback during `awf validate` or workflow loading.
+
+### Validated Expressions
+
+| Location | Example |
+|----------|---------|
+| Transition `when` | `when: "states.build.ExitCode == 0"` |
+| Conversation `stop_condition` | `stop_condition: "inputs.response contains 'DONE'"` |
+| While loop `condition` | `condition: "loop.index < 10"` |
+
+### Validation Example
+
+```bash
+$ awf validate my-workflow
+```
+
+```
+validation error: invalid expression syntax
+  - states.check.transitions[0].when: unexpected token "=="
+  - states.review.conversation.stop_condition: undefined function "conatins"
+```
+
+### Architecture Note
+
+Expression validation uses the `ExpressionValidator` port (v0.5.33), which isolates the expr-lang dependency to the infrastructure layer. This maintains domain purity - the domain layer defines only a function type for validation injection. See [Architecture](architecture.md) for details.
+
+## Expression Context Normalization
+
+**Added in v0.5.20**
+
+Expression evaluator now normalizes context namespaces to PascalCase:
+
+| Namespace | Example Properties |
+|-----------|-------------------|
+| `Context` | `Context.RetryCount`, `Context.WorkflowID` |
+| `Error` | `Error.Message`, `Error.Code` |
+| `Loop` | `Loop.Index`, `Loop.First`, `Loop.Item` |
+
+Lowercase references are automatically converted for backward compatibility:
+
+```yaml
+# These are equivalent (lowercase auto-normalized)
+when: "context.retryCount > 0"    # Normalized to Context.RetryCount
+when: "Context.RetryCount > 0"    # Preferred PascalCase
+```
+
+---
+
 # Input Validation
 
 ## Input Definition
@@ -20,6 +115,24 @@ inputs:
 | `boolean` | `true` |
 
 ## Validation Rules
+
+### URL (v0.5.38)
+
+```yaml
+validation:
+  url: true
+```
+
+Validates that the input is a properly formatted URL.
+
+### Email (v0.5.38)
+
+```yaml
+validation:
+  email: true
+```
+
+Validates that the input is a properly formatted email address.
 
 ### Pattern (regex)
 

@@ -35,11 +35,79 @@ config:
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `name` | Yes | Plugin identifier |
-| `version` | Yes | Semantic version |
+| `name` | Yes | Plugin identifier (see naming rules below) |
+| `version` | Yes | Non-empty version string |
 | `awf_version` | Yes | AWF version constraint |
 | `capabilities` | Yes | `operations`, `commands`, `validators` |
 | `config` | No | Configuration schema |
+
+## Manifest Validation (v0.5.40)
+
+AWF validates plugin manifests at load time. Invalid manifests are rejected immediately.
+
+### Name Validation
+
+Plugin names must follow the `^[a-z][a-z0-9-]*$` pattern:
+- Start with lowercase letter
+- Contain only lowercase letters, digits, and hyphens
+- No uppercase, underscores, or special characters
+
+```
+my-plugin       # Valid
+awf-plugin-slack # Valid
+MyPlugin        # Invalid: uppercase
+my_plugin       # Invalid: underscore
+123-plugin      # Invalid: starts with digit
+```
+
+### Capabilities Validation
+
+Only these capabilities are allowed:
+- `operations` - Custom workflow operations
+- `commands` - CLI command extensions
+- `validators` - Custom validation rules
+
+Unknown capabilities are rejected.
+
+### Config Field Validation
+
+Config fields are validated for:
+
+| Check | Description |
+|-------|-------------|
+| Type | Must be `string`, `integer`, or `boolean` |
+| Enum | Only allowed for `string` type |
+| Default | Must match declared type |
+
+```yaml
+# Valid config
+config:
+  timeout:
+    type: integer
+    default: 30
+  mode:
+    type: string
+    enum: [fast, slow]
+    default: fast
+
+# Invalid: enum on integer
+config:
+  count:
+    type: integer
+    enum: [1, 2, 3]    # Error: enum only for strings
+
+# Invalid: type mismatch
+config:
+  enabled:
+    type: boolean
+    default: "true"    # Error: string, not boolean
+```
+
+### Validation Behavior
+
+- **Fail-fast**: First error stops validation
+- **Load-time**: Manifests validated when plugins are loaded
+- **Breaking change (v0.5.40)**: `Validate()` returns `nil` for valid manifests instead of `ErrNotImplemented`
 
 ## Managing Plugins
 
@@ -57,7 +125,7 @@ notify:
   operation: slack.send_message    # plugin.operation
   inputs:
     channel: "#deployments"
-    message: "Deploy completed: {{.states.deploy.output}}"
+    message: "Deploy completed: {{.states.deploy.Output}}"
   on_success: done
 ```
 
@@ -89,6 +157,71 @@ func (p *MyPlugin) Operations() []sdk.Operation {
 }
 
 func main() { sdk.Serve(&MyPlugin{}) }
+```
+
+## Schema Validation (v0.5.38)
+
+AWF validates plugin operation schemas at load time. Four validation methods ensure schema correctness:
+
+| Method | Purpose |
+|--------|---------|
+| `ValidateOperationSchema` | Validates operation/plugin names, delegates to input schemas, checks for duplicate outputs |
+| `RequiredInputs` | Returns list of required input parameter names |
+| `ValidateInputSchema` | Validates input type, validation rules, and default value type matching |
+| `IsValidType` | Checks if input type is one of: `string`, `integer`, `boolean` |
+
+### Supported Validation Rules
+
+Plugin inputs can use these validation rules:
+
+| Rule | Type | Example |
+|------|------|---------|
+| `url` | string | Validates URL format |
+| `email` | string | Validates email format |
+| `pattern` | string | Custom regex pattern |
+| `enum` | any | Allowed values list |
+| `min`/`max` | integer | Numeric range |
+
+### Schema Example
+
+```yaml
+operations:
+  - name: send_notification
+    inputs:
+      - name: webhook
+        type: string
+        required: true
+        validation:
+          url: true
+      - name: recipient
+        type: string
+        required: true
+        validation:
+          email: true
+      - name: priority
+        type: integer
+        default: 1
+        validation:
+          min: 1
+          max: 5
+    outputs:
+      - name: message_id
+        type: string
+```
+
+### Validation Errors
+
+Schema validation errors are collected (non-fail-fast):
+
+```bash
+awf plugin validate awf-plugin-example
+```
+
+```
+schema validation failed: 3 errors:
+  - operations.send_notification.inputs.webhook: invalid validation rule "urll"
+  - operations.send_notification.inputs.priority: default value type "string" does not match declared type "integer"
+  - operations.send_notification.outputs: duplicate output name "message_id"
 ```
 
 ## Troubleshooting

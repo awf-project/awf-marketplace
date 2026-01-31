@@ -177,28 +177,27 @@ process:
 
 ## Multi-Turn Conversations
 
-### Conversation Mode (Recommended)
+### Conversation Mode
 
-Use conversation mode for iterative workflows with automatic context management:
+Use conversation mode for autonomous multi-turn execution:
 
 ```yaml
 review:
   type: agent
   provider: claude
   mode: conversation
-  system_prompt: "You are a code reviewer."
-  initial_prompt: "Review: {{.inputs.code}}"
+  system_prompt: "You are a code reviewer. Say APPROVED when done."
+  prompt: "Review: {{.inputs.code}}"
   conversation:
     max_turns: 10
-    stop_condition: "response contains 'APPROVED'"
+    stop_condition: "inputs.response contains 'APPROVED'"
   on_success: done
 ```
 
-**Benefits:**
-- Automatic turn management
-- Context window handling (token limits)
-- Stop conditions for early exit
-- Token tracking per turn
+**Key points:**
+- Same prompt executed each turn (not interactive back-and-forth)
+- Use `inputs.` prefix in stop conditions (`inputs.response`, `inputs.turn_count`)
+- Only `sliding_window` strategy implemented
 
 **Details:** [Conversation Mode Reference](conversation-steps.md)
 
@@ -432,25 +431,25 @@ process_items:
   on_complete: verify
 ```
 
-### 4. Template Syntax: Use Capital Letters
+### 4. Template Syntax: Use Uppercase for State Properties
 
-All state/loop field names use **PascalCase** in templates:
+State property names must use **uppercase** (Go template convention):
 
 ```yaml
-# ❌ WRONG: Lowercase field names
+# ❌ WRONG: Lowercase state properties
 prompt: "{{.states.step.output}}"
-command: echo "{{.loop.item}}"
+when: "states.step.exit_code == 0"
 
-# ✅ CORRECT: PascalCase field names
+# ✅ CORRECT: Uppercase state properties
 prompt: "{{.states.step.Output}}"
-command: echo "{{.loop.Item}}"
+when: "states.step.ExitCode == 0"
 ```
 
-**Correct field names:**
-| Context | Fields |
-|---------|--------|
-| States | `.Output`, `.Response`, `.Tokens`, `.ExitCode` |
-| Loop | `.Item`, `.Index`, `.Index1`, `.First`, `.Last`, `.Length` |
+**State properties (uppercase):** `.Output`, `.Stderr`, `.ExitCode`, `.Status`, `.Response`, `.Tokens`
+
+**Loop context (lowercase):** `.item`, `.index`, `.index1`, `.first`, `.last`, `.length`
+
+> Use `awf validate` to detect casing issues.
 
 ### 5. JSON in Shell Commands: Use Heredocs
 

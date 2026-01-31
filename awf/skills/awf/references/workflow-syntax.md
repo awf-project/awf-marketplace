@@ -97,7 +97,7 @@ process_files:
   type: for_each
   items: '["a.txt", "b.txt", "c.txt"]'
   max_iterations: 100
-  break_when: "states.process.exit_code != 0"
+  break_when: "states.process.ExitCode != 0"
   body:
     - process
   on_complete: aggregate
@@ -166,7 +166,7 @@ notify:
   operation: slack.send_message    # plugin.operation_name
   inputs:
     channel: "#deployments"
-    message: "Deploy: {{.states.deploy.output}}"
+    message: "Deploy: {{.states.deploy.Output}}"
   on_success: done
   on_failure: error
 ```
@@ -225,7 +225,7 @@ prepare_items:
 
 process_files:
   type: for_each
-  items: "{{.states.prepare_items.output}}"
+  items: "{{.states.prepare_items.Output}}"
   body:
     - analyze_file
 
@@ -301,7 +301,7 @@ refine_code:
   system_prompt: |
     You are a code reviewer. Iterate until code is approved.
     Say "APPROVED" when done.
-  initial_prompt: |
+  prompt: |
     Review this code:
     {{.inputs.code}}
   options:
@@ -311,27 +311,26 @@ refine_code:
     max_turns: 10
     max_context_tokens: 100000
     strategy: sliding_window
-    stop_condition: "response contains 'APPROVED'"
+    stop_condition: "inputs.response contains 'APPROVED'"
   on_success: deploy
   on_failure: error
 ```
+
+> **Note**: Conversation mode executes the same `prompt` each turn. Use `inputs.` prefix in stop conditions.
 
 ### Agent Options
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
-| `provider` | string | Yes | `claude`, `codex`, `gemini`, `opencode`, `custom` |
-| `mode` | string | No | Set to `conversation` for multi-turn mode |
-| `prompt` | string | Yes* | Prompt template (supports interpolation) |
-| `system_prompt` | string | No | System message (for conversation mode, preserved across turns) |
-| `initial_prompt` | string | No* | First user message (for conversation mode) |
+| `provider` | string | Yes | `claude`, `codex`, `gemini`, `opencode` |
+| `mode` | string | No | `single` (default) or `conversation` for multi-turn |
+| `prompt` | string | Yes | Prompt template (executed each turn in conversation mode) |
+| `system_prompt` | string | No | System message (preserved across turns) |
 | `conversation` | object | No | Conversation configuration (required if mode=conversation) |
 | `options` | map | No | Provider options (model, temperature, max_tokens) |
 | `timeout` | int | No | Timeout in seconds |
 | `on_success` | string | No | Next state on success |
 | `on_failure` | string | No | Next state on failure |
-
-\* Use `prompt` for single-turn mode, `initial_prompt` for conversation mode.
 
 ### Conversation Configuration
 
@@ -389,14 +388,18 @@ process:
   type: step
   command: analyze.sh
   transitions:
-    - when: "states.process.exit_code == 0 and inputs.mode == 'full'"
+    - when: "states.process.ExitCode == 0 and inputs.mode == 'full'"
       goto: full_report
-    - when: "states.process.exit_code == 0"
+    - when: "states.process.ExitCode == 0"
       goto: summary_report
     - goto: error  # default
 ```
 
 **Operators:** `==`, `!=`, `<`, `>`, `<=`, `>=`, `and`, `or`, `not`
+
+**Namespaces (PascalCase):** `states.X.Output`, `inputs.X`, `Context.RetryCount`, `Error.Message`, `Loop.Index`
+
+> **v0.5.20**: Expression context uses PascalCase. Lowercase auto-converts for backward compatibility.
 
 ## Input Definitions
 
@@ -451,12 +454,16 @@ See [Interactive Inputs](interactive-inputs.md) for details.
 
 ## Variable Interpolation
 
+State property names must be uppercase (Go template convention):
+
 ```yaml
 # Inputs
 command: echo "{{.inputs.variable_name}}"
 
-# Previous outputs
+# Previous outputs (uppercase required)
 command: echo "{{.states.step_name.Output}}"
+command: echo "Exit: {{.states.step_name.ExitCode}}"
+command: echo "Error: {{.states.step_name.Stderr}}"
 
 # Workflow metadata
 command: echo "ID: {{.workflow.id}}"
@@ -465,8 +472,10 @@ command: echo "ID: {{.workflow.id}}"
 command: echo "{{.env.HOME}}"
 
 # Loop context
-command: echo "{{.loop.Item}} ({{.loop.Index1}}/{{.loop.Length}})"
+command: echo "{{.loop.item}} ({{.loop.index1}}/{{.loop.length}})"
 ```
+
+> **Breaking Change (v0.5.12)**: Lowercase state properties (`.output`, `.exit_code`) were never functional. Use `awf validate` to detect casing issues.
 
 ## Hooks
 

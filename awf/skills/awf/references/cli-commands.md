@@ -51,9 +51,10 @@ Creates:
 .awf/
 ├── workflows/example.yaml
 ├── templates/
-├── prompts/           # Local prompts
-└── storage/
+└── prompts/           # Local prompts
 ```
+
+State storage uses XDG paths: `$XDG_STATE_HOME/awf/` (~/.local/state/awf/)
 
 With `--global`:
 ```

@@ -12,10 +12,16 @@ command: echo "{{.inputs.file_path}}"
 
 ### State Outputs
 
+State property names must be uppercase (Go template convention):
+
 ```yaml
-command: echo "{{.states.read_file.output}}"
-command: echo "Exit: {{.states.step1.exit_code}}"
+command: echo "{{.states.read_file.Output}}"
+command: echo "Exit: {{.states.step1.ExitCode}}"
+command: echo "Error: {{.states.step1.Stderr}}"
+command: echo "Status: {{.states.step1.Status}}"
 ```
+
+> **Breaking Change (v0.5.12)**: Lowercase properties (`.output`, `.exit_code`) were never functional. Use `awf validate` to detect casing issues.
 
 ### Agent State Outputs
 
@@ -23,28 +29,31 @@ For `type: agent` steps, additional fields are available:
 
 ```yaml
 # Raw text response
-command: echo "{{.states.analyze.output}}"
+command: echo "{{.states.analyze.Output}}"
 
 # Parsed JSON response (if valid JSON returned)
-command: echo "Issues: {{.states.analyze.response.issues}}"
+command: echo "Issues: {{.states.analyze.Response.issues}}"
 
 # Token usage metadata
-command: echo "Tokens: {{.states.analyze.tokens.total}}"
+command: echo "Tokens: {{.states.analyze.Tokens.total}}"
 ```
 
 ### Conversation State Outputs
 
-For agent steps with `mode: conversation`, additional conversation state is available:
+For agent steps with `mode: conversation`, conversation state uses Go-style field names:
 
 ```yaml
+# Final response output
+command: echo "{{.states.review.Output}}"
+
 # Total turns in conversation
-command: echo "Turns: {{.states.review.conversation.total_turns}}"
+command: echo "Turns: {{.states.review.Conversation.TotalTurns}}"
 
 # Total tokens used across all turns
-command: echo "Tokens: {{.states.review.conversation.total_tokens}}"
+command: echo "Tokens: {{.states.review.TokensUsed}}"
 
 # Exit reason: "condition", "max_turns", or "max_tokens"
-command: echo "Stopped by: {{.states.review.conversation.stopped_by}}"
+command: echo "Stopped by: {{.states.review.Conversation.StoppedBy}}"
 ```
 
 See [Conversation Mode](conversation-steps.md) for details.
@@ -95,7 +104,7 @@ process_reviews:
 
 loop_reviews:
   type: for_each
-  items: "{{.states.process_reviews.output}}"
+  items: "{{.states.process_reviews.Output}}"
   body:
     - call_child_workflow
 
@@ -147,6 +156,57 @@ Values resolved at loop initialization. `awf validate` warns about undefined var
 | Loop items | `items: "{{.inputs.files}}"` |
 
 **Note:** In `when` expressions, use variable names without `{{}}`.
+
+## Expression Context (PascalCase)
+
+In `when` expressions and `break_when` conditions, namespace properties use PascalCase:
+
+```yaml
+# State properties
+when: "states.step.ExitCode == 0"
+when: "states.build.Output contains 'success'"
+
+# Context namespace (v0.5.20+)
+when: "Context.RetryCount > 0"
+when: "Context.WorkflowID != ''"
+
+# Error namespace (v0.5.20+)
+when: "Error.Message contains 'timeout'"
+when: "Error.Code == 'VALIDATION_FAILED'"
+
+# Loop namespace
+break_when: "Loop.Index >= 10"
+when: "Loop.First"
+```
+
+**Backward Compatibility:** Lowercase properties (e.g., `context.retryCount`, `error.message`) are automatically normalized to PascalCase. New workflows should use PascalCase directly.
+
+> **Change (v0.5.20)**: Expression evaluator now normalizes context to PascalCase for consistent property access. Lowercase references continue to work but emit deprecation warnings.
+
+### Expression Namespace Accessors (v0.5.31)
+
+For more intuitive template syntax, namespace accessors provide lowercase aliases:
+
+```yaml
+# Loop namespace accessor
+command: echo "Index: {{loop.index}}, Item: {{loop.item}}"
+break_when: "loop.index >= 10"
+
+# Context namespace accessor
+when: "context.retry_count > 0"
+when: "context.working_dir != ''"
+
+# Error namespace accessor
+when: "error.message contains 'timeout'"
+when: "error.code == 'VALIDATION_FAILED'"
+```
+
+These accessors are syntactic sugar over the PascalCase properties, automatically mapping:
+- `{{loop.*}}` → `{{.loop.*}}`
+- `{{context.*}}` → `{{Context.*}}`
+- `{{error.*}}` → `{{Error.*}}`
+
+Both syntaxes are valid. Use whichever style is more readable for your workflow.
 
 ## Security
 
