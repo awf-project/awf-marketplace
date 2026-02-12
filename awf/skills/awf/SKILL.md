@@ -105,6 +105,9 @@ command: echo "{{.inputs.file}}"
 command: echo "{{.states.prev.Output}}"
 command: echo "Exit: {{.states.prev.ExitCode}}"
 
+# Operation outputs (structured data from plugins)
+command: echo "{{.states.get_issue.Response.title}}"
+
 # Environment
 command: echo "{{.env.HOME}}"
 
@@ -197,6 +200,26 @@ review:
 ```
 
 > **Note**: Conversation mode executes the same prompt each turn. Use `inputs.` prefix for stop condition variables.
+
+### GitHub Operations
+
+```yaml
+get_issue:
+  type: operation
+  operation: github.get_issue
+  inputs:
+    number: "{{.inputs.issue_number}}"
+  on_success: process
+
+process:
+  type: step
+  command: echo "Issue: {{.states.get_issue.Response.title}}"
+  on_success: done
+```
+
+9 built-in operations: `get_issue`, `get_pr`, `create_issue`, `create_pr`, `add_labels`, `add_comment`, `list_comments`, `set_project_status`, `batch`. Auth via `gh` CLI or `GITHUB_TOKEN`. Repo auto-detected from git remote.
+
+**Details**: [Plugins Reference](references/plugins.md) | [Workflow Syntax - Operation State](references/workflow-syntax.md)
 
 ## Resources
 

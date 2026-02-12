@@ -15,10 +15,10 @@ command: echo "{{.inputs.file_path}}"
 State property names must be uppercase (Go template convention):
 
 ```yaml
-command: echo "{{.states.read_file.Output}}"
-command: echo "Exit: {{.states.step1.ExitCode}}"
-command: echo "Error: {{.states.step1.Stderr}}"
-command: echo "Status: {{.states.step1.Status}}"
+{{.states.step_name.Output}}            # Command output (raw text or JSON)
+{{.states.step_name.ExitCode}}          # Exit code (0 for success, non-zero for failure)
+{{.states.step_name.TokensUsed}}        # Tokens consumed by agent steps
+{{.states.step_name.Response.field}}    # Parsed field from operation/agent structured output
 ```
 
 > **Breaking Change (v0.5.12)**: Lowercase properties (`.output`, `.exit_code`) were never functional. Use `awf validate` to detect casing issues.
@@ -35,8 +35,25 @@ command: echo "{{.states.analyze.Output}}"
 command: echo "Issues: {{.states.analyze.Response.issues}}"
 
 # Token usage metadata
-command: echo "Tokens: {{.states.analyze.Tokens.total}}"
+command: echo "Tokens: {{.states.analyze.TokensUsed}}"
 ```
+
+> **Note**: `TokensUsed` replaced deprecated `Tokens` field. Update workflows from `{{.states.step.Tokens}}` to `{{.states.step.TokensUsed}}`.
+
+### Operation State Outputs
+
+For `type: operation` steps (e.g., GitHub operations), outputs are structured:
+
+```yaml
+# Raw JSON response
+command: echo "{{.states.get_issue.Output}}"
+
+# Parsed field from operation result
+command: echo "Title: {{.states.get_issue.Response.title}}"
+command: echo "Labels: {{.states.get_issue.Response.labels}}"
+```
+
+Use `Output` for raw JSON, `Response.field` for individual parsed fields.
 
 ### Conversation State Outputs
 

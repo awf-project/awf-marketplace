@@ -12,17 +12,17 @@ AWF follows Hexagonal (Ports and Adapters) / Clean Architecture.
                             │
 ┌───────────────────────────┴─────────────────────────────────┐
 │                   APPLICATION LAYER                         │
-│   WorkflowService │ ExecutionService │ StateManager         │
+│   WorkflowService │ ExecutionService │ PluginService        │
 └───────────────────────────┬─────────────────────────────────┘
                             │
 ┌───────────────────────────┴─────────────────────────────────┐
 │                      DOMAIN LAYER                           │
-│   Workflow │ Step │ ExecutionContext │ Ports (Interfaces)   │
+│   Workflow │ Step │ Plugin │ Ports (Interfaces)             │
 └───────────────────────────┬─────────────────────────────────┘
                             │
 ┌───────────────────────────┴─────────────────────────────────┐
 │                  INFRASTRUCTURE LAYER                       │
-│   YAMLRepository │ JSONStateStore │ ShellExecutor          │
+│   YAMLRepository │ JSONStateStore │ AgentProviders │ GitHub │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -110,12 +110,19 @@ awf/
 │   │   │   ├── generator_highlight_test.go   # Syntax highlighting (15 tests)
 │   │   │   ├── generator_nodes_test.go       # Node creation (18 tests)
 │   │   │   └── generator_parallel_test.go    # Parallel diagram gen (24 tests)
-│   │   └── agents/              # AI provider adapters
-│   │       ├── registry.go      # AgentRegistry implementation (GetAgents method, v0.5.34)
-│   │       ├── helpers.go       # Shared utilities (cloneState, estimateTokens)
-│   │       ├── claude_provider.go
-│   │       ├── codex_provider.go
-│   │       └── gemini_provider.go
+│   │   ├── agents/              # AI provider adapters
+│   │   │   ├── registry.go      # AgentRegistry implementation (GetAgents method, v0.5.34)
+│   │   │   ├── helpers.go       # Shared utilities (cloneState, estimateTokens)
+│   │   │   ├── claude_provider.go
+│   │   │   ├── codex_provider.go
+│   │   │   └── gemini_provider.go
+│   │   └── github/              # Built-in GitHub plugin (v0.5.41)
+│   │       ├── auth.go          # gh CLI auth detection and token retrieval
+│   │       ├── client.go        # gh CLI wrapper via exec.Command (no shell)
+│   │       ├── operations.go    # 9 operation schemas with typed input/output
+│   │       ├── provider.go      # Operation dispatcher with input sanitization
+│   │       ├── batch.go         # Batch execution with fail_fast/all_succeed strategies
+│   │       └── doc.go           # Package documentation
 │   └── interfaces/cli/          # Cobra commands
 │       ├── ui/                  # UI formatting helpers
 │       │   ├── output.go        # Table output, row builders
@@ -279,6 +286,7 @@ Implements domain ports with concrete tech.
 - `executor/` - Shell executor
 - `store/` - SQLite history (WAL mode for concurrent execution) with nil record validation (v0.5.30)
 - `agents/` - AgentRegistry implementation with AI providers (v0.5.34 - implements ports.AgentRegistry interface)
+- `github/` - Built-in GitHub plugin with 9 declarative operations, auth detection, batch execution (v0.5.41)
 
 ## Key Patterns
 
