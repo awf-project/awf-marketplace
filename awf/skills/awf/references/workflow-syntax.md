@@ -331,6 +331,44 @@ label_multiple:
 | `failed` | int | Failed operation count |
 | `results` | array | Individual operation results |
 
+### Notification Operations
+
+AWF includes a built-in notification plugin with a single `notify.send` operation that dispatches to 4 backends.
+
+```yaml
+notify_complete:
+  type: operation
+  operation: notify.send
+  inputs:
+    backend: desktop
+    title: "awf commit"
+    message: "{{.states.summary.Output}}"
+  timeout: 10s
+  on_success: done
+  on_failure: done
+  continue_on_error: true
+```
+
+#### Notification Inputs
+
+| Input | Type | Required | Description |
+|-------|------|----------|-------------|
+| `backend` | string | Yes | `desktop`, `ntfy`, `slack`, `webhook` |
+| `message` | string | Yes | Notification body |
+| `title` | string | No | Title (defaults to "AWF Workflow") |
+| `priority` | string | No | `low`, `default`, `high` |
+| `topic` | string | No | ntfy topic (required for `ntfy`) |
+| `webhook_url` | string | No | URL (required for `webhook`) |
+| `channel` | string | No | Slack channel override |
+
+#### Notification Outputs
+
+| Output | Type | Description |
+|--------|------|-------------|
+| `backend` | string | Which backend handled the notification |
+| `status` | string | HTTP status or confirmation |
+| `response` | string | Response body |
+
 ## Call Workflow State
 
 Execute sub-workflows with input/output mapping:

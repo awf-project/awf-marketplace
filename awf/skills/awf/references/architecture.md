@@ -22,7 +22,7 @@ AWF follows Hexagonal (Ports and Adapters) / Clean Architecture.
                             │
 ┌───────────────────────────┴─────────────────────────────────┐
 │                  INFRASTRUCTURE LAYER                       │
-│   YAMLRepository │ JSONStateStore │ AgentProviders │ GitHub │
+│  YAMLRepository │ JSONStateStore │ AgentProviders │ GitHub │ Notify │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -116,13 +116,26 @@ awf/
 │   │   │   ├── claude_provider.go
 │   │   │   ├── codex_provider.go
 │   │   │   └── gemini_provider.go
-│   │   └── github/              # Built-in GitHub plugin (v0.5.41)
-│   │       ├── auth.go          # gh CLI auth detection and token retrieval
-│   │       ├── client.go        # gh CLI wrapper via exec.Command (no shell)
-│   │       ├── operations.go    # 9 operation schemas with typed input/output
-│   │       ├── provider.go      # Operation dispatcher with input sanitization
-│   │       ├── batch.go         # Batch execution with fail_fast/all_succeed strategies
-│   │       └── doc.go           # Package documentation
+│   │   ├── github/              # Built-in GitHub plugin (v0.5.41)
+│   │   │   ├── auth.go          # gh CLI auth detection and token retrieval
+│   │   │   ├── client.go        # gh CLI wrapper via exec.Command (no shell)
+│   │   │   ├── operations.go    # 9 operation schemas with typed input/output
+│   │   │   ├── provider.go      # Operation dispatcher with input sanitization
+│   │   │   ├── batch.go         # Batch execution with fail_fast/all_succeed strategies
+│   │   │   └── doc.go           # Package documentation
+│   │   ├── notify/              # Built-in notification plugin (v0.5.43)
+│   │   │   ├── types.go         # Backend interface, NotificationPayload, BackendResult
+│   │   │   ├── provider.go      # NotifyOperationProvider with dynamic backend registration
+│   │   │   ├── operations.go    # notify.send operation schema
+│   │   │   ├── desktop.go       # Desktop backend (notify-send / osascript)
+│   │   │   ├── ntfy.go          # ntfy backend (HTTP POST)
+│   │   │   ├── slack.go         # Slack backend (Block Kit webhook)
+│   │   │   ├── webhook.go       # Generic webhook backend (JSON POST)
+│   │   │   ├── http.go          # Shared HTTP sender (10s timeout)
+│   │   │   └── doc.go           # Package documentation
+│   │   └── plugin/              # Plugin manager, composite provider (v0.5.43)
+│   │       ├── registry.go      # RPC plugin registry
+│   │       └── composite.go     # CompositeOperationProvider (multiplexes GitHub + Notify)
 │   └── interfaces/cli/          # Cobra commands
 │       ├── ui/                  # UI formatting helpers
 │       │   ├── output.go        # Table output, row builders
@@ -287,6 +300,8 @@ Implements domain ports with concrete tech.
 - `store/` - SQLite history (WAL mode for concurrent execution) with nil record validation (v0.5.30)
 - `agents/` - AgentRegistry implementation with AI providers (v0.5.34 - implements ports.AgentRegistry interface)
 - `github/` - Built-in GitHub plugin with 9 declarative operations, auth detection, batch execution (v0.5.41)
+- `notify/` - Built-in notification plugin with 4 backends (desktop, ntfy, slack, webhook), dynamic backend registration (v0.5.43)
+- `plugin/` - RPC plugin registry + CompositeOperationProvider that multiplexes GitHub and Notify providers (v0.5.43)
 
 ## Key Patterns
 

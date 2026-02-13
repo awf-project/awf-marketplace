@@ -23,6 +23,28 @@ inputs:
 | Float | `ratio: 3.14` |
 | Boolean | `enabled: true` |
 
+## Plugin Configuration
+
+Configure built-in and external plugins under the `plugins:` key:
+
+### Notification Plugin
+
+```yaml
+plugins:
+  notify:
+    ntfy_url: "https://ntfy.sh"
+    slack_webhook_url: "https://hooks.slack.com/services/..."
+    default_backend: "desktop"
+```
+
+| Key | Description |
+|-----|-------------|
+| `ntfy_url` | Base URL for ntfy server (required for `ntfy` backend) |
+| `slack_webhook_url` | Slack incoming webhook URL (required for `slack` backend) |
+| `default_backend` | Backend used when `backend` input is omitted from `notify.send` |
+
+When both a config `default_backend` and an explicit `backend` input are set, the explicit input takes precedence.
+
 ## Priority Order
 
 ```

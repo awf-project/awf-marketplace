@@ -219,6 +219,23 @@ process:
 
 9 built-in operations: `get_issue`, `get_pr`, `create_issue`, `create_pr`, `add_labels`, `add_comment`, `list_comments`, `set_project_status`, `batch`. Auth via `gh` CLI or `GITHUB_TOKEN`. Repo auto-detected from git remote.
 
+### Notification Operations
+
+```yaml
+notify_team:
+  type: operation
+  operation: notify.send
+  inputs:
+    backend: desktop
+    title: "Build Complete"
+    message: "{{.states.summary.Output}}"
+  on_success: done
+  on_failure: done
+  continue_on_error: true
+```
+
+4 backends: `desktop` (OS-native), `ntfy` (push notifications), `slack` (webhook), `webhook` (generic HTTP). Configure in `.awf/config.yaml` under `plugins.notify`.
+
 **Details**: [Plugins Reference](references/plugins.md) | [Workflow Syntax - Operation State](references/workflow-syntax.md)
 
 ## Resources

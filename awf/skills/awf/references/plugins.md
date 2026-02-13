@@ -26,6 +26,88 @@ See [Workflow Syntax](workflow-syntax.md) Operation State section for complete r
 
 ---
 
+## Built-in Notification Plugin
+
+AWF includes a built-in notification provider that sends alerts when workflows complete. It exposes a single `notify.send` operation that dispatches to four backends: desktop notifications, [ntfy](https://ntfy.sh), Slack, and generic webhooks.
+
+**Key features:**
+- 1 operation: `notify.send` with backend dispatch
+- 4 backends: `desktop`, `ntfy`, `slack`, `webhook`
+- 10-second HTTP timeout for network backends (prevents workflow stalls)
+- Platform detection for desktop notifications (`notify-send` on Linux, `osascript` on macOS)
+- All inputs support AWF template interpolation
+
+```yaml
+notify_team:
+  type: operation
+  operation: notify.send
+  inputs:
+    backend: slack
+    title: "Build Complete"
+    message: "{{.states.summary.Output}}"
+  on_success: done
+  on_failure: error
+```
+
+### Notification Backends
+
+| Backend | Transport | Required Config | Required Inputs |
+|---------|-----------|-----------------|-----------------|
+| `desktop` | OS-native (`notify-send` / `osascript`) | None | `message` |
+| `ntfy` | HTTP POST to ntfy server | `ntfy_url` in config | `message`, `topic` |
+| `slack` | HTTP POST to Slack webhook | `slack_webhook_url` in config | `message` |
+| `webhook` | HTTP POST to arbitrary URL | None | `message`, `webhook_url` |
+
+### Operation Inputs
+
+| Input | Type | Required | Description |
+|-------|------|----------|-------------|
+| `backend` | string | Yes | Notification backend: `desktop`, `ntfy`, `slack`, `webhook` |
+| `message` | string | Yes | Notification message body |
+| `title` | string | No | Notification title (defaults to "AWF Workflow") |
+| `priority` | string | No | Priority: `low`, `default`, `high` |
+| `topic` | string | No | ntfy topic name (required for `ntfy` backend) |
+| `webhook_url` | string | No | Webhook URL (required for `webhook` backend) |
+| `channel` | string | No | Slack channel override |
+
+### Operation Outputs
+
+| Output | Type | Description |
+|--------|------|-------------|
+| `backend` | string | Which backend handled the notification |
+| `status` | string | HTTP status code (network backends) or confirmation |
+| `response` | string | Response body or confirmation message |
+
+### Configuration
+
+Configure notification backends in `.awf/config.yaml`:
+
+```yaml
+plugins:
+  notify:
+    ntfy_url: "https://ntfy.sh"
+    slack_webhook_url: "https://hooks.slack.com/services/..."
+    default_backend: "desktop"
+```
+
+| Config Key | Description |
+|------------|-------------|
+| `ntfy_url` | Base URL for ntfy server (required for `ntfy` backend) |
+| `slack_webhook_url` | Slack incoming webhook URL (required for `slack` backend) |
+| `default_backend` | Backend to use when `backend` input is omitted |
+
+### Backend Details
+
+**Desktop** - Uses `notify-send` on Linux and `osascript` on macOS. Fails gracefully on unsupported platforms.
+
+**ntfy** - Posts to `<ntfy_url>/<topic>` with the notification payload. Supports priority mapping.
+
+**Slack** - Posts a formatted message block to the configured Slack incoming webhook URL.
+
+**Webhook** - Sends a generic JSON POST to any URL. Payload includes `workflow`, `status`, `duration`, `message`, and `outputs` fields.
+
+---
+
 ## External RPC Plugins
 
 Plugins extend AWF with custom operations via RPC (HashiCorp go-plugin).

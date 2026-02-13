@@ -7,14 +7,14 @@
   "metadata": {
     "description": "AWF plugin for Claude Code",
     "homepage": "https://vanoix.com",
-    "version": "0.5.42"
+    "version": "0.5.43"
   },
   "plugins": [
     {
       "name": "awf",
       "source": "./awf",
       "description": "AWF CLI - skills, agents, and commands",
-      "version": "0.5.42",
+      "version": "0.5.43",
       "author": {
         "name": "Alex pocky Balmes"
       },
