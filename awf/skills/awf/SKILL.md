@@ -111,6 +111,11 @@ command: echo "{{.states.get_issue.Response.title}}"
 # Environment
 command: echo "{{.env.HOME}}"
 
+# AWF system directories (XDG-compliant)
+command: echo "{{.awf.config_dir}}"    # ~/.config/awf
+command: echo "{{.awf.prompts_dir}}"   # prompts directory
+prompt_file: "{{.awf.prompts_dir}}/analyze.md"
+
 # Loop context
 command: echo "{{.loop.index1}}/{{.loop.length}}"
 ```
@@ -183,6 +188,24 @@ process:
   command: echo "Result: {{.states.analyze.Output}}"
   on_success: done
 ```
+
+### External Prompt Files
+
+```yaml
+analyze:
+  type: agent
+  provider: claude
+  prompt_file: prompts/code_review.md   # Mutually exclusive with prompt
+  timeout: 120
+  on_success: done
+```
+
+- `prompt_file` loads prompt from external `.md` file with full template interpolation
+- Paths resolve relative to workflow directory, support absolute, `~/`, and `{{.awf.*}}` variables
+- 1MB size limit on prompt files
+- Template helpers available: `split`, `join`, `readFile`, `trimSpace`
+
+**Details**: [Agent Steps - External Prompt Files](references/agent-steps.md)
 
 ### Multi-Turn Conversation
 

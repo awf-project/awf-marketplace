@@ -87,6 +87,28 @@ command: echo "{{.workflow.id}} {{.workflow.name}}"
 command: echo "{{.env.HOME}}"
 ```
 
+### AWF Directory Context
+
+Access system directories configured per XDG standards:
+
+```yaml
+{{.awf.config_dir}}      # ~/.config/awf (or $XDG_CONFIG_HOME/awf)
+{{.awf.data_dir}}        # ~/.local/share/awf (or $XDG_DATA_HOME/awf)
+{{.awf.cache_dir}}       # ~/.cache/awf (or $XDG_CACHE_HOME/awf)
+{{.awf.prompts_dir}}     # Designated prompts directory within config_dir
+{{.awf.workflows_dir}}   # Designated workflows directory within config_dir
+{{.awf.plugins_dir}}     # Plugin installation directory
+```
+
+Example:
+```yaml
+analyze:
+  type: agent
+  provider: claude
+  prompt_file: "{{.awf.prompts_dir}}/code_review.md"
+  on_success: done
+```
+
 ### Loop Context
 
 ```yaml
@@ -224,6 +246,70 @@ These accessors are syntactic sugar over the PascalCase properties, automaticall
 - `{{error.*}}` → `{{Error.*}}`
 
 Both syntaxes are valid. Use whichever style is more readable for your workflow.
+
+## Template Helper Functions
+
+Available in template interpolation (prompts, prompt files, commands):
+
+### `split`
+
+Split a string into an array by delimiter:
+
+```yaml
+{{split "apple,banana,orange" ","}}
+```
+
+Use with `range` to iterate:
+```markdown
+{{range split .states.select.Output ","}}
+- {{trimSpace .}}
+{{end}}
+```
+
+### `join`
+
+Join an array into a string with separator:
+
+```yaml
+{{join (split .states.agents.Output ",") " | "}}
+```
+
+### `readFile`
+
+Read and inline file contents (1MB size limit):
+
+```markdown
+## Specification
+
+{{readFile .states.spec_path.Output}}
+```
+
+File path is relative to the workflow directory. Fails if file doesn't exist, exceeds 1MB, or is not readable.
+
+### `trimSpace`
+
+Remove leading and trailing whitespace:
+
+```yaml
+Result: {{trimSpace .states.process.Output}}
+```
+
+### Example: Combined Usage
+
+```markdown
+# Analysis Report
+
+## Available Agents
+{{range split .states.list_agents.Output ","}}
+- {{trimSpace .}}
+{{end}}
+
+## Research Summary
+{{readFile .states.research_summary_path.Output}}
+
+## Status
+{{trimSpace .states.final_status.Output}}
+```
 
 ## Security
 

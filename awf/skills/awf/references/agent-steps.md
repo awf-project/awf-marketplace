@@ -8,6 +8,7 @@ Agent steps integrate AI CLI tools into AWF workflows. Define prompts as templat
 
 **Features:**
 - Non-interactive execution for CI/CD automation
+- **External prompt files** — load prompts from `.md` files with template interpolation
 - **Conversation mode** for multi-turn interactions with automatic context management
 - Multi-turn conversations via state passing (legacy)
 - Automatic JSON response parsing
@@ -141,6 +142,182 @@ review:
 - `{{.states.step_name.Response}}` - Previous step parsed JSON
 - `{{.env.VAR_NAME}}` - Environment variables
 - `{{.workflow.id}}` - Execution ID
+
+## External Prompt Files
+
+Instead of inlining prompts in YAML, load prompts from external Markdown files using `prompt_file`:
+
+```yaml
+analyze:
+  type: agent
+  provider: claude
+  prompt_file: prompts/code_review.md
+  timeout: 120
+  on_success: done
+```
+
+**File:** `prompts/code_review.md`
+```markdown
+# Code Review Instructions
+
+Analyze the following file for:
+- Performance issues
+- Security vulnerabilities
+
+## File Path
+{{.inputs.file_path}}
+
+## File Content
+{{.inputs.file_content}}
+```
+
+### Features
+
+- **Full Template Interpolation** — Same variable access as inline prompts (`{{.inputs.*}}`, `{{.states.*}}`, `{{.env.*}}`)
+- **Helper Functions** — `split`, `join`, `readFile`, `trimSpace` available in templates
+- **Path Resolution** — Relative paths resolve to workflow directory
+- **XDG Directory Support** — Access system directories via `{{.awf.*}}`
+
+### Mutual Exclusivity
+
+`prompt` and `prompt_file` cannot both be set on the same agent step:
+
+```yaml
+# Invalid: both prompt and prompt_file
+step:
+  type: agent
+  provider: claude
+  prompt: "Do this"
+  prompt_file: "prompts/template.md"  # ERROR: only one allowed
+
+# Valid: prompt_file only
+step:
+  type: agent
+  provider: claude
+  prompt_file: "prompts/template.md"
+```
+
+### Path Resolution
+
+1. **Relative to workflow directory:**
+   ```yaml
+   prompt_file: prompts/analyze.md           # <workflow_dir>/prompts/analyze.md
+   ```
+
+2. **Absolute paths:**
+   ```yaml
+   prompt_file: /home/user/my-prompts/template.md
+   ```
+
+3. **Home directory expansion:**
+   ```yaml
+   prompt_file: ~/my-prompts/template.md
+   ```
+
+4. **XDG-compliant system directories:**
+   ```yaml
+   prompt_file: "{{.awf.prompts_dir}}/analyze.md"  # ~/.config/awf/prompts/analyze.md
+   ```
+
+### Template Helper Functions
+
+Four helper functions are available in prompt templates:
+
+#### `split`
+
+Split a string into an array:
+
+```markdown
+## Selected Agents
+
+{{range split .states.select_agents.Output ","}}
+- {{trimSpace .}}
+{{end}}
+```
+
+#### `join`
+
+Join an array into a string:
+
+```markdown
+Skills to use: {{join .states.available_skills.Output ", "}}
+```
+
+#### `readFile`
+
+Inline file contents (1MB size limit):
+
+```markdown
+## Specification
+
+{{readFile .states.get_spec.Output}}
+```
+
+#### `trimSpace`
+
+Remove leading/trailing whitespace:
+
+```markdown
+Result: {{trimSpace .states.process.Output}}
+```
+
+### Example: Multi-File Workflow
+
+**Workflow:** `code-review.yaml`
+```yaml
+name: code-review
+version: "1.0.0"
+
+inputs:
+  - name: file_path
+    type: string
+    required: true
+    validation:
+      file_exists: true
+  - name: focus_areas
+    type: string
+
+states:
+  initial: read_file
+
+  read_file:
+    type: step
+    command: cat "{{.inputs.file_path}}"
+    on_success: analyze
+
+  analyze:
+    type: agent
+    provider: claude
+    prompt_file: prompts/code_review.md
+    timeout: 120
+    on_success: done
+
+  done:
+    type: terminal
+```
+
+**Template:** `prompts/code_review.md`
+```markdown
+# Code Review
+
+File: `{{.inputs.file_path}}`
+
+Focus on:
+{{.inputs.focus_areas}}
+
+## Code to Review
+
+{{.states.read_file.Output}}
+
+Provide:
+1. Issues found
+2. Suggested fixes
+3. Overall assessment
+```
+
+```bash
+awf run code-review --input file_path=main.py --input focus_areas="Performance and security"
+```
 
 ## Response Handling
 
@@ -367,18 +544,25 @@ missing_provider:
 
 ## Common Mistakes & Verification
 
-### 1. Agent Steps Need Preparation Steps
+### 1. Use `prompt_file` for External Prompts
 
-Agent steps that use dynamic prompts from external files need a **preparation step** first:
+Agent steps can load prompts from external files directly using `prompt_file` (no preparation step needed):
 
 ```yaml
-# ❌ WRONG: Agent step can't read external files
+# ❌ WRONG: Shell not executed in prompt field
 analyze:
   type: agent
   provider: claude
-  prompt: "$(cat prompt.md)"  # Shell not executed in prompt field
+  prompt: "$(cat prompt.md)"
 
-# ✅ CORRECT: Prepare prompt in shell step, then use agent
+# ✅ CORRECT: Use prompt_file to load external prompts
+analyze:
+  type: agent
+  provider: claude
+  prompt_file: prompts/analyze.md  # Full template interpolation supported
+  on_success: next
+
+# ✅ ALSO CORRECT: Prepare prompt in shell step (legacy approach)
 prepare_prompt:
   type: step
   command: |
@@ -493,8 +677,9 @@ fix_code:
 
 Before running a workflow with agent steps:
 
-- [ ] Each agent step has a **preparation step** that captures the prompt
-- [ ] All **transitions** point to preparation steps (not directly to agents)
+- [ ] Agent prompts use either `prompt_file` (preferred) or a **preparation step** (legacy)
+- [ ] `prompt` and `prompt_file` are **never both set** on the same agent step
+- [ ] All **transitions** point to preparation steps (not directly to agents) when using legacy approach
 - [ ] **for_each/while body** lists all steps that should execute
 - [ ] Template syntax uses **PascalCase** (`.Output`, `.Item`, not `.output`, `.item`)
 - [ ] JSON values use **heredocs** with quoted delimiters

@@ -515,7 +515,8 @@ refine_code:
 |--------|------|----------|-------------|
 | `provider` | string | Yes | `claude`, `codex`, `gemini`, `opencode` |
 | `mode` | string | No | `single` (default) or `conversation` for multi-turn |
-| `prompt` | string | Yes | Prompt template (executed each turn in conversation mode) |
+| `prompt` | string | Yes* | Prompt template (supports `{{.inputs.*}}` and `{{.states.*}}` interpolation) |
+| `prompt_file` | string | No* | Path to external prompt template file (mutually exclusive with `prompt`) |
 | `system_prompt` | string | No | System message (preserved across turns) |
 | `conversation` | object | No | Conversation configuration (required if mode=conversation) |
 | `options` | map | No | Provider options (model, temperature, max_tokens) |
@@ -551,6 +552,8 @@ my_ai:
   prompt: "Analyze: {{.inputs.data}}"
   on_success: next
 ```
+
+\* Use `prompt` or `prompt_file` for single-turn mode (mutually exclusive), `initial_prompt` for conversation mode. See [Agent Steps - External Prompt Files](agent-steps.md#external-prompt-files) for `prompt_file` details.
 
 **Details:** [Agent Steps Reference](agent-steps.md) | [Conversation Mode](conversation-steps.md)
 
