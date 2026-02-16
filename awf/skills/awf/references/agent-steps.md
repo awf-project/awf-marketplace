@@ -8,6 +8,7 @@ Agent steps integrate AI CLI tools into AWF workflows. Define prompts as templat
 
 **Features:**
 - Non-interactive execution for CI/CD automation
+- **Output formatting** — strip markdown code fences and validate JSON with `output_format`
 - **External prompt files** — load prompts from `.md` files with template interpolation
 - **Conversation mode** for multi-turn interactions with automatic context management
 - Multi-turn conversations via state passing (legacy)
@@ -59,7 +60,6 @@ analyze:
 | `model` | string | Model alias (sonnet, opus, haiku) or full ID |
 | `allowedTools` | string | Comma-separated Claude CLI tools to enable |
 | `dangerouslySkipPermissions` | bool | Skip interactive permission prompts |
-| `output_format` | string | Response format: `text` (default) or `json` |
 
 ### Codex (OpenAI)
 
@@ -138,8 +138,9 @@ review:
 
 **Available Variables:**
 - `{{.inputs.*}}` - Workflow inputs
-- `{{.states.step_name.Output}}` - Previous step raw output
-- `{{.states.step_name.Response}}` - Previous step parsed JSON
+- `{{.states.step_name.Output}}` - Previous step raw output (or cleaned text if `output_format` is set)
+- `{{.states.step_name.Response}}` - Previous step parsed JSON (automatic heuristic)
+- `{{.states.step_name.JSON}}` - Parsed JSON from `output_format: json` (explicit)
 - `{{.env.VAR_NAME}}` - Environment variables
 - `{{.workflow.id}}` - Execution ID
 
@@ -325,8 +326,9 @@ Agent responses are captured in state:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `output` | string | Raw response text |
-| `response` | object | Parsed JSON (if valid) |
+| `output` | string | Raw response text (or cleaned text if `output_format` is set) |
+| `response` | object | Parsed JSON response (automatic heuristic) |
+| `json` | object | Parsed JSON from `output_format: json` (explicit, see [Output Formatting](#output-formatting)) |
 | `tokens` | object | Token usage metadata |
 | `exit_code` | int | 0 for success |
 
@@ -351,6 +353,113 @@ process:
   command: echo "Found {{.states.analyze.Response.issues}} issues"
   on_success: done
 ```
+
+## Output Formatting
+
+When an agent wraps its output in markdown code fences (common with many LLMs), use `output_format` to automatically strip the fences and optionally validate the content:
+
+```yaml
+analyze:
+  type: agent
+  provider: claude
+  prompt: "Return JSON analysis"
+  output_format: json
+  on_success: process
+```
+
+### Available Formats
+
+#### `json` Format
+
+Strips markdown code fences and validates the output as valid JSON. Parsed JSON is accessible via `{{.states.step_name.JSON}}`:
+
+```yaml
+analyze:
+  type: agent
+  provider: claude
+  prompt: |
+    Analyze the code and return results as JSON:
+    {
+      "issues": [<list of issues>],
+      "severity": "high|medium|low"
+    }
+  output_format: json
+  on_success: process_results
+
+process_results:
+  type: step
+  command: echo "Severity: {{.states.analyze.JSON.severity}}"
+  on_success: done
+```
+
+**Behavior:**
+- Strips outermost markdown code fences (e.g., `` ```json ... ``` ``)
+- Validates stripped content as valid JSON
+- Stores parsed JSON in `{{.states.step_name.JSON}}`
+- If validation fails, step fails with a descriptive error
+- Works with both objects and arrays
+
+**Example agent output:**
+```
+```json
+{"issues": ["buffer overflow", "memory leak"], "severity": "high"}
+```
+```
+
+**After processing:**
+- `{{.states.analyze.Output}}` = `{"issues": ["buffer overflow", "memory leak"], "severity": "high"}`
+- `{{.states.analyze.JSON.issues}}` = `["buffer overflow", "memory leak"]`
+- `{{.states.analyze.JSON.severity}}` = `"high"`
+
+#### `text` Format
+
+Strips markdown code fences without JSON validation. Useful for code or plain text output:
+
+```yaml
+generate_code:
+  type: agent
+  provider: claude
+  prompt: "Generate a Python function to..."
+  output_format: text
+  on_success: save_code
+
+save_code:
+  type: step
+  command: echo "{{.states.generate_code.Output}}" > generated.py
+  on_success: done
+```
+
+**Behavior:**
+- Strips outermost markdown code fences (e.g., `` ```python ... ``` ``)
+- Returns clean text in `{{.states.step_name.Output}}`
+- Does not populate `{{.states.step_name.JSON}}`
+
+#### No Format (Default)
+
+Omit `output_format` for backward compatibility. Raw agent output is stored unchanged.
+
+### Error Handling
+
+When `output_format: json` is specified but the output is invalid JSON:
+
+```yaml
+analyze:
+  type: agent
+  provider: claude
+  prompt: "Return valid JSON"
+  output_format: json
+  timeout: 60
+  on_failure: handle_json_error
+
+handle_json_error:
+  type: step
+  command: echo "JSON parsing failed"
+  on_success: done
+```
+
+**Error message includes:**
+- Clear indication of JSON validation failure
+- First 200 characters of the malformed output (for debugging)
 
 ## Multi-Turn Conversations
 
@@ -499,6 +608,8 @@ performance_review:
 
 ### 2. Request Structured Output
 
+Use `output_format: json` to strip markdown fences and validate JSON:
+
 ```yaml
 analyze:
   type: agent
@@ -508,7 +619,13 @@ analyze:
     {"issues": [...], "severity": "high|medium|low"}
 
     Code: {{.inputs.code}}
+  output_format: json
   on_success: process
+
+process:
+  type: step
+  command: echo "Severity: {{.states.analyze.JSON.severity}}"
+  on_success: done
 ```
 
 ### 3. Set Timeouts
@@ -629,7 +746,7 @@ prompt: "{{.states.step.Output}}"
 when: "states.step.ExitCode == 0"
 ```
 
-**State properties (uppercase):** `.Output`, `.Stderr`, `.ExitCode`, `.Status`, `.Response`, `.Tokens`
+**State properties (uppercase):** `.Output`, `.Stderr`, `.ExitCode`, `.Status`, `.Response`, `.JSON`, `.Tokens`
 
 **Loop context (lowercase):** `.item`, `.index`, `.index1`, `.first`, `.last`, `.length`
 

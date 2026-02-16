@@ -548,6 +548,7 @@ refine_code:
 | `prompt` | string | Yes* | Prompt template (supports `{{.inputs.*}}` and `{{.states.*}}` interpolation) |
 | `prompt_file` | string | No* | Path to external prompt template file (mutually exclusive with `prompt`) |
 | `system_prompt` | string | No | System message (preserved across turns) |
+| `output_format` | string | No | Post-processing format: `json` (strip fences + validate JSON) or `text` (strip fences only) |
 | `conversation` | object | No | Conversation configuration (required if mode=conversation) |
 | `options` | map | No | Provider options (model, temperature, max_tokens) |
 | `timeout` | int | No | Timeout in seconds |
@@ -567,8 +568,9 @@ refine_code:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `{{.states.step.Output}}` | string | Raw response text |
-| `{{.states.step.Response}}` | object | Parsed JSON (if valid) |
+| `{{.states.step.Output}}` | string | Raw response text (or cleaned text if `output_format` is set) |
+| `{{.states.step.Response}}` | object | Parsed JSON response (automatic heuristic) |
+| `{{.states.step.JSON}}` | object | Parsed JSON from `output_format: json` (explicit) |
 | `{{.states.step.Tokens}}` | object | Token usage metadata |
 | `{{.states.step.conversation}}` | object | Conversation state (if mode=conversation) |
 
