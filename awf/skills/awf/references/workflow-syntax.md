@@ -62,12 +62,48 @@ my_step:
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `command` | string | - | Shell command |
+| `command` | string | - | Shell command (mutually exclusive with `script_file`) |
+| `script_file` | string | - | Path to external shell script file (mutually exclusive with `command`) |
 | `dir` | string | cwd | Working directory |
 | `timeout` | int | 0 | Timeout in seconds |
 | `on_success` | string | - | Next state on success |
 | `on_failure` | string | - | Next state on failure |
 | `continue_on_error` | bool | false | Always follow on_success |
+
+### External Script Files
+
+Instead of inlining commands in YAML, load from external script files:
+
+```yaml
+deploy:
+  type: step
+  script_file: scripts/deploy.sh
+  timeout: 60
+  on_success: verify
+  on_failure: error
+```
+
+**File:** `scripts/deploy.sh`
+```bash
+#!/bin/sh
+echo "Deploying version {{.inputs.version}} to {{.inputs.env}}"
+kubectl apply -f manifests/
+kubectl rollout status deployment/app
+```
+
+**Mutual Exclusivity:** `command` and `script_file` cannot both be set on the same step.
+
+**Path Resolution:**
+1. **Absolute paths** — used as-is
+2. **Home directory expansion** — `~/scripts/build.sh`
+3. **Relative to workflow directory** — `scripts/test.sh` resolves to `<workflow_dir>/scripts/test.sh`
+4. **XDG scripts directory** — `"{{.awf.scripts_dir}}/checks/lint.sh"` resolves to `~/.config/awf/scripts/checks/lint.sh`
+
+**Template Interpolation:** Both the path and loaded script contents undergo full template interpolation with workflow context (`{{.inputs.*}}`, `{{.states.*}}`, `{{.env.*}}`, `{{.awf.*}}`).
+
+**Limits:** 1MB file size limit. Errors include the resolved file path for debugging.
+
+**Dry run:** `--dry-run` displays the resolved script path and interpolated content.
 
 ## Parallel State
 
@@ -224,7 +260,7 @@ states:
 
 ### GitHub Operations
 
-AWF includes a built-in GitHub plugin with 9 declarative operations. Authentication is handled automatically via `gh` CLI or `GITHUB_TOKEN` environment variable. The repository is auto-detected from git remote when the `repo` input is omitted.
+AWF includes a built-in GitHub plugin with 8 declarative operations. Authentication is handled automatically via `gh` CLI or `GITHUB_TOKEN` environment variable. The repository is auto-detected from git remote when the `repo` input is omitted.
 
 #### Issue & PR Operations
 
@@ -237,12 +273,6 @@ AWF includes a built-in GitHub plugin with 9 declarative operations. Authenticat
 | `github.add_labels` | Add labels to issue or PR | `number`, `labels` | `labels` |
 | `github.add_comment` | Add a comment | `number`, `body` | `comment_id`, `url` |
 | `github.list_comments` | List comments | `number` | `comments`, `total` |
-
-#### Project Operations
-
-| Operation | Description | Required Inputs | Outputs |
-|-----------|-------------|-----------------|---------|
-| `github.set_project_status` | Set project field value | `number`, `project`, `field`, `value` | `project_id`, `item_id`, `field_name`, `value` |
 
 #### Common Optional Inputs
 

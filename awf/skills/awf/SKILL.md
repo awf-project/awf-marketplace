@@ -84,7 +84,7 @@ awf run hello --input name=Claude
 
 | Type | Use |
 |------|-----|
-| `step` | Execute command |
+| `step` | Execute command (inline or from script file) |
 | `agent` | Invoke AI agent (Claude, Codex, Gemini, OpenCode) |
 | `parallel` | Run concurrent steps |
 | `terminal` | End workflow |
@@ -114,7 +114,9 @@ command: echo "{{.env.HOME}}"
 # AWF system directories (XDG-compliant)
 command: echo "{{.awf.config_dir}}"    # ~/.config/awf
 command: echo "{{.awf.prompts_dir}}"   # prompts directory
+command: echo "{{.awf.scripts_dir}}"   # scripts directory
 prompt_file: "{{.awf.prompts_dir}}/analyze.md"
+script_file: "{{.awf.scripts_dir}}/deploy.sh"
 
 # Loop context
 command: echo "{{.loop.index1}}/{{.loop.length}}"
@@ -207,6 +209,23 @@ analyze:
 
 **Details**: [Agent Steps - External Prompt Files](references/agent-steps.md)
 
+### External Script Files
+
+```yaml
+deploy:
+  type: step
+  script_file: scripts/deploy.sh   # Mutually exclusive with command
+  timeout: 60
+  on_success: verify
+```
+
+- `script_file` loads shell script from external `.sh` file with full template interpolation
+- Paths resolve relative to workflow directory, support absolute, `~/`, and `{{.awf.scripts_dir}}` variables
+- 1MB size limit on script files
+- Mutually exclusive with `command` on the same step
+
+**Details**: [Workflow Syntax - External Script Files](references/workflow-syntax.md#external-script-files)
+
 ### Multi-Turn Conversation
 
 ```yaml
@@ -240,7 +259,7 @@ process:
   on_success: done
 ```
 
-9 built-in operations: `get_issue`, `get_pr`, `create_issue`, `create_pr`, `add_labels`, `add_comment`, `list_comments`, `set_project_status`, `batch`. Auth via `gh` CLI or `GITHUB_TOKEN`. Repo auto-detected from git remote.
+8 built-in operations: `get_issue`, `get_pr`, `create_issue`, `create_pr`, `add_labels`, `add_comment`, `list_comments`, `batch`. Auth via `gh` CLI or `GITHUB_TOKEN`. Repo auto-detected from git remote.
 
 ### Notification Operations
 

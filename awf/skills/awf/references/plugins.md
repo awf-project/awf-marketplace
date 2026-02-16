@@ -4,10 +4,10 @@ AWF supports plugins to extend functionality with custom operations. AWF ships w
 
 ## Built-in GitHub Plugin
 
-AWF includes a built-in GitHub operation provider with 9 declarative operations for issues, PRs, labels, comments, and projects. Runs in-process with zero IPC overhead.
+AWF includes a built-in GitHub operation provider with 8 declarative operations for issues, PRs, labels, and comments. Runs in-process with zero IPC overhead.
 
 **Key features:**
-- 9 operations: `get_issue`, `get_pr`, `create_issue`, `create_pr`, `add_labels`, `add_comment`, `list_comments`, `set_project_status`, `batch`
+- 8 operations: `get_issue`, `get_pr`, `create_issue`, `create_pr`, `add_labels`, `add_comment`, `list_comments`, `batch`
 - Automatic auth via `gh` CLI or `GITHUB_TOKEN` environment variable
 - Repository auto-detection from git remote
 - Batch execution with configurable concurrency and failure strategies
