@@ -116,10 +116,10 @@ command: echo "{{.env.HOME}}"
 
 # AWF system directories (XDG-compliant)
 command: echo "{{.awf.config_dir}}"    # ~/.config/awf
-command: echo "{{.awf.prompts_dir}}"   # prompts directory
-command: echo "{{.awf.scripts_dir}}"   # scripts directory
-prompt_file: "{{.awf.prompts_dir}}/analyze.md"
-script_file: "{{.awf.scripts_dir}}/deploy.sh"
+command: echo "{{.awf.prompts_dir}}"   # prompts directory (local override)
+command: echo "{{.awf.scripts_dir}}"   # scripts directory (local override)
+prompt_file: "{{.awf.prompts_dir}}/analyze.md"   # checks <workflow_dir>/prompts/ first
+script_file: "{{.awf.scripts_dir}}/deploy.sh"    # checks <workflow_dir>/scripts/ first
 
 # Loop context
 command: echo "{{.loop.index1}}/{{.loop.length}}"
@@ -249,6 +249,7 @@ analyze:
 
 - `prompt_file` loads prompt from external `.md` file with full template interpolation
 - Paths resolve relative to workflow directory, support absolute, `~/`, and `{{.awf.*}}` variables
+- **Local-before-global resolution**: `{{.awf.prompts_dir}}/file.md` checks `<workflow_dir>/prompts/file.md` first, then falls back to global XDG path
 - 1MB size limit on prompt files
 - Template helpers available: `split`, `join`, `readFile`, `trimSpace`
 
@@ -266,6 +267,7 @@ deploy:
 
 - `script_file` loads shell script from external `.sh` file with full template interpolation
 - Paths resolve relative to workflow directory, support absolute, `~/`, and `{{.awf.scripts_dir}}` variables
+- **Local-before-global resolution**: `{{.awf.scripts_dir}}/deploy.sh` checks `<workflow_dir>/scripts/deploy.sh` first, then falls back to global XDG path
 - 1MB size limit on script files
 - Mutually exclusive with `command` on the same step
 
