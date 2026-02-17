@@ -160,18 +160,36 @@ build_all:
   on_success: deploy
 ```
 
-### Conditional Branching
+### Conditional Branching (Exit Code Routing)
 
 ```yaml
-check:
+test_runner:
   type: step
-  command: ./check.sh
+  command: pytest
   transitions:
-    - when: "states.check.ExitCode == 0 and inputs.env == 'prod'"
-      goto: deploy_prod
-    - when: "states.check.ExitCode == 0"
-      goto: deploy_staging
-    - goto: error
+    - when: "states.test_runner.ExitCode == 0"
+      goto: deploy
+    - when: "states.test_runner.ExitCode > 1"
+      goto: critical_failure
+    - when: "states.test_runner.ExitCode != 0"
+      goto: report_warnings
+    - goto: unknown_error  # default fallback
+```
+
+> **Transition evaluation (v0.6.3)**: Transitions are evaluated on **both success and failure paths**. When a transition matches, it takes priority over `on_success`, `on_failure`, and `continue_on_error`. If no transition matches, legacy routing applies as fallback.
+
+### Mixed Exit Code + Output Routing
+
+```yaml
+build:
+  type: step
+  command: make build
+  transitions:
+    - when: "states.build.ExitCode == 0 and states.build.Output contains 'OPTIMIZED'"
+      goto: fast_deploy
+    - when: "states.build.ExitCode == 0"
+      goto: standard_deploy
+    - goto: fix_errors
 ```
 
 ### AI Agent Execution

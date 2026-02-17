@@ -16,13 +16,47 @@ State property names must be uppercase (Go template convention):
 
 ```yaml
 {{.states.step_name.Output}}            # Command output (raw text, or cleaned if output_format set)
-{{.states.step_name.ExitCode}}          # Exit code (0 for success, non-zero for failure)
+{{.states.step_name.ExitCode}}          # Exit code (integer, POSIX 0-255)
 {{.states.step_name.TokensUsed}}        # Tokens consumed by agent steps
 {{.states.step_name.Response.field}}    # Parsed field from operation/agent structured output (heuristic)
 {{.states.step_name.JSON.field}}        # Parsed field from output_format: json (explicit)
 ```
 
 > **Breaking Change (v0.5.12)**: Lowercase properties (`.output`, `.exit_code`) were never functional. Use `awf validate` to detect casing issues.
+
+### ExitCode in Transitions and Templates
+
+The exit code from the step's command execution. Use in transitions, expressions, and templates.
+
+**In transitions (numeric comparison):**
+```yaml
+transitions:
+  - when: "states.test_run.ExitCode == 0"
+    goto: success
+  - when: "states.test_run.ExitCode != 0"
+    goto: failure
+```
+
+**In templates (as string):**
+```yaml
+report_failure:
+  type: step
+  command: |
+    echo "Test failed with exit code: {{.states.test_run.ExitCode}}"
+```
+
+**Numeric range expressions:**
+```yaml
+transitions:
+  - when: "states.build.ExitCode >= 100 and states.build.ExitCode < 128"
+    goto: handle_user_error
+  - when: "states.build.ExitCode >= 128"
+    goto: handle_signal
+```
+
+On POSIX systems, exit codes are typically 0-255. Exit code 0 indicates success; non-zero indicates failure.
+
+**Transition priority:** Transitions are evaluated on both success and failure paths. When a matching transition is found, it takes priority over `on_success`, `on_failure`, and `continue_on_error`. If no transition matches, the legacy routing applies as fallback.
 
 ### Agent State Outputs
 
