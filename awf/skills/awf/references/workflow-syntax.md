@@ -97,7 +97,7 @@ kubectl rollout status deployment/app
 1. **Absolute paths** — used as-is
 2. **Home directory expansion** — `~/scripts/build.sh`
 3. **Relative to workflow directory** — `scripts/test.sh` resolves to `<workflow_dir>/scripts/test.sh`
-4. **XDG scripts directory** — `"{{.awf.scripts_dir}}/checks/lint.sh"` resolves to `~/.config/awf/scripts/checks/lint.sh`
+4. **XDG scripts directory with local override** — `"{{.awf.scripts_dir}}/checks/lint.sh"` checks `<workflow_dir>/scripts/checks/lint.sh` first, then falls back to `~/.config/awf/scripts/checks/lint.sh`
 
 **Template Interpolation:** Both the path and loaded script contents undergo full template interpolation with workflow context (`{{.inputs.*}}`, `{{.states.*}}`, `{{.env.*}}`, `{{.awf.*}}`).
 

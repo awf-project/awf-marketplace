@@ -215,9 +215,12 @@ step:
    prompt_file: ~/my-prompts/template.md
    ```
 
-4. **XDG-compliant system directories:**
+4. **XDG prompts directory with local override** — via template interpolation with local-before-global resolution:
    ```yaml
-   prompt_file: "{{.awf.prompts_dir}}/analyze.md"  # ~/.config/awf/prompts/analyze.md
+   prompt_file: "{{.awf.prompts_dir}}/analyze.md"
+   # Checks in order:
+   # 1. <workflow_dir>/prompts/analyze.md (local override)
+   # 2. ~/.config/awf/prompts/analyze.md (global fallback)
    ```
 
 ### Template Helper Functions
