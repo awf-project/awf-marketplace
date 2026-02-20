@@ -192,6 +192,29 @@ build:
     - goto: fix_errors
 ```
 
+### Inline Error Shorthand
+
+```yaml
+deploy:
+  type: step
+  command: ./deploy.sh
+  on_success: done
+  on_failure: {message: "Deploy failed: {{.states.deploy.Output}}", status: 2}
+
+done:
+  type: terminal
+  status: success
+```
+
+- `on_failure` accepts an inline object `{message: "...", status: N}` as shorthand for a named terminal state
+- Synthesized into an anonymous terminal step at parse time — no changes to execution engine
+- `message` supports full template interpolation (`{{.inputs.*}}`, `{{.states.*}}`, `{{.env.*}}`)
+- `status` defaults to exit code `1` when omitted
+- `awf validate` reports clear errors for missing or empty `message`
+- String form `on_failure: step_name` remains unchanged
+
+**Details**: [Workflow Syntax - Inline Error Shorthand](references/workflow-syntax.md#inline-error-shorthand)
+
 ### AI Agent Execution
 
 ```yaml

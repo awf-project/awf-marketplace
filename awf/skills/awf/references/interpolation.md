@@ -153,6 +153,22 @@ command: echo "Stopped by: {{.states.review.Conversation.StoppedBy}}"
 
 See [Conversation Mode](conversation-steps.md) for details.
 
+### Terminal Message Interpolation
+
+Inline `on_failure` error terminals support `message` template interpolation at runtime. The `message` field has access to the full interpolation context:
+
+```yaml
+deploy:
+  type: step
+  command: ./deploy.sh
+  on_success: done
+  on_failure: {message: "Deploy failed (exit {{.states.deploy.ExitCode}}): {{.states.deploy.Output}}", status: 2}
+```
+
+Available in `message` templates: `{{.inputs.*}}`, `{{.states.*}}`, `{{.env.*}}`, `{{.awf.*}}`.
+
+See [Workflow Syntax - Inline Error Shorthand](workflow-syntax.md#inline-error-shorthand) for full syntax.
+
 ### Workflow Metadata
 
 ```yaml
