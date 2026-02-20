@@ -67,7 +67,7 @@ my_step:
 | `dir` | string | cwd | Working directory |
 | `timeout` | int | 0 | Timeout in seconds |
 | `on_success` | string | - | Next state on success |
-| `on_failure` | string | - | Next state on failure |
+| `on_failure` | string or object | - | Next state on failure — string (named terminal ref) or inline object (see [Inline Error Shorthand](#inline-error-shorthand)) |
 | `continue_on_error` | bool | false | Always follow on_success |
 
 ### External Script Files
@@ -215,7 +215,7 @@ get_issue:
 | `operation` | string | Yes | Operation name (e.g., `github.get_issue`) |
 | `inputs` | map | Varies | Input parameters (validated against operation schema) |
 | `on_success` | string | No | Next state on success |
-| `on_failure` | string | No | Next state on failure |
+| `on_failure` | string or object | No | Next state on failure — string (named terminal ref) or inline object (see [Inline Error Shorthand](#inline-error-shorthand)) |
 | `retry` | object | No | Retry configuration (same as step retry) |
 
 ### Operation Output
@@ -423,7 +423,7 @@ run_tests:
 | `inputs` | map | Input mapping (parent → child) |
 | `outputs` | map | Output mapping (child → parent) |
 | `on_success` | string | Next state on success |
-| `on_failure` | string | Next state on failure |
+| `on_failure` | string or object | Next state on failure — string (named terminal ref) or inline object (see [Inline Error Shorthand](#inline-error-shorthand)) |
 
 **Safety:** Circular call detection prevents infinite recursion.
 
@@ -553,7 +553,7 @@ refine_code:
 | `options` | map | No | Provider options (model, temperature, max_tokens) |
 | `timeout` | int | No | Timeout in seconds |
 | `on_success` | string | No | Next state on success |
-| `on_failure` | string | No | Next state on failure |
+| `on_failure` | string or object | No | Next state on failure — string (named terminal ref) or inline object (see [Inline Error Shorthand](#inline-error-shorthand)) |
 
 ### Conversation Configuration
 
@@ -700,6 +700,77 @@ build:
 **Namespaces (PascalCase):** `states.X.Output`, `inputs.X`, `Context.RetryCount`, `Error.Message`, `Loop.Index`
 
 > **v0.5.20**: Expression context uses PascalCase. Lowercase auto-converts for backward compatibility.
+
+## Inline Error Shorthand
+
+Instead of defining separate terminal states for every error path, use inline `on_failure` objects:
+
+```yaml
+states:
+  initial: deploy
+
+  deploy:
+    type: step
+    command: ./deploy.sh
+    on_success: done
+    on_failure: {message: "Deploy failed: {{.states.deploy.Output}}", status: 2}
+
+  done:
+    type: terminal
+    status: success
+```
+
+The inline object is synthesized into an anonymous terminal step at parse time. No changes to the execution engine.
+
+### Inline Object Fields
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `message` | string | Yes | - | Error message template (supports full interpolation) |
+| `status` | int | No | 1 | Process exit code (POSIX 0-255) |
+
+### Rules
+
+- `message` must be non-empty — `awf validate` reports clear errors otherwise
+- `message` supports `{{.inputs.*}}`, `{{.states.*}}`, `{{.env.*}}` interpolation at runtime
+- `status` defaults to exit code `1` when omitted
+- Works on all step types: `step`, `agent`, `operation`, `parallel`, `call_workflow`
+- Works in parallel step branches
+- String form `on_failure: step_name` remains unchanged and takes precedence when both forms could apply
+
+### Examples
+
+Agent step with inline error:
+
+```yaml
+analyze:
+  type: agent
+  provider: claude
+  prompt: "Review: {{.inputs.code}}"
+  timeout: 120
+  on_success: done
+  on_failure: {message: "Agent analysis failed", status: 3}
+```
+
+Minimal form (status defaults to 1):
+
+```yaml
+build:
+  type: step
+  command: make build
+  on_success: deploy
+  on_failure: {message: "Build failed"}
+```
+
+Message with interpolation:
+
+```yaml
+test:
+  type: step
+  command: pytest
+  on_success: deploy
+  on_failure: {message: "Tests failed with exit code {{.states.test.ExitCode}}: {{.states.test.Output}}", status: 2}
+```
 
 ## Input Definitions
 
