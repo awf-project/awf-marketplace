@@ -27,6 +27,7 @@ description: |
 1. `awf validate <name>` to check syntax (validates expressions since v0.5.33)
 2. Run with `--verbose` for details
 3. Check `$XDG_STATE_HOME/awf/` for logs (~/.local/state/awf/)
+4. Review audit trail at `$XDG_DATA_HOME/awf/audit.jsonl` for execution history (v0.6.7)
 
 **Developing AWF?**
 1. See [Architecture](references/architecture.md)
@@ -387,6 +388,7 @@ notify_team:
 - [references/examples.md](references/examples.md) - Real-world examples
 
 **Reference**
+- [references/audit-trail.md](references/audit-trail.md) - Structured JSONL audit trail
 - [references/interpolation.md](references/interpolation.md) - Variable substitution
 - [references/interactive-inputs.md](references/interactive-inputs.md) - Auto-prompting for missing inputs
 - [references/agent-steps.md](references/agent-steps.md) - AI agent integration

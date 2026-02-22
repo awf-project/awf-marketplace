@@ -49,12 +49,13 @@ awf/
 │   │   │   ├── validation.go    # Input validation
 │   │   │   ├── graph.go         # Graph algorithms (cycle detection, execution order)
 │   │   │   ├── template_validation.go  # Template validation with BFS helpers
+│   │   │   ├── audit_event.go   # AuditEvent model with start/complete constructors (v0.6.7)
 │   │   │   ├── domain_test_helpers_test.go  # Shared test utilities (v0.5.26)
 │   │   │   ├── agent_config_*_test.go       # Agent config tests (split, v0.5.26)
 │   │   │   ├── step_*_test.go               # Step tests by type (v0.5.26)
 │   │   │   └── template_validation_*_test.go  # Template tests by namespace (v0.5.26)
 │   │   ├── operation/           # Operation interface
-│   │   └── ports/               # Repository, StateStore, Executor, ExpressionValidator (v0.5.33)
+│   │   └── ports/               # Repository, StateStore, Executor, ExpressionValidator (v0.5.33), AuditTrailWriter (v0.6.7)
 │   ├── application/             # Services (depends on ports only, v0.5.34)
 │   │   ├── workflow_service.go  # Loading/validation
 │   │   ├── execution_service.go # Execution engine (AgentRegistry interface, v0.5.34)
@@ -99,8 +100,11 @@ awf/
 │   │   │   ├── sqlite_history_store_test.go  # SQLite tests (2,082 lines, 43 tests)
 │   │   │   ├── json_store.go                 # JSON state store
 │   │   │   └── json_store_test.go            # JSON tests (+384 lines, 13 tests)
+│   │   ├── audit/               # Audit trail writer (v0.6.7)
+│   │   │   ├── file_writer.go   # POSIX atomic JSONL append, 4KB truncation, mutex
+│   │   │   └── doc.go           # Package documentation
 │   │   ├── logger/              # Logging utilities (v0.5.24)
-│   │   │   └── masker.go        # Secret masking in logs/errors
+│   │   │   └── masker.go        # Secret masking in logs/errors (TOKEN pattern added v0.6.7)
 │   │   ├── diagram/             # Workflow visualization (v0.5.28)
 │   │   │   ├── dot_generator.go              # DOT format generation
 │   │   │   ├── diagram_test_helpers_test.go  # Shared test utilities
@@ -271,6 +275,12 @@ type AgentRegistry interface {
     // GetAgents returns all registered agent names (v0.5.34)
     GetAgents() []string
 }
+
+// AuditTrailWriter defines the contract for appending audit trail entries (v0.6.7)
+type AuditTrailWriter interface {
+    Write(ctx context.Context, event *workflow.AuditEvent) error
+    Close() error
+}
 ```
 
 ## Application Layer
@@ -281,7 +291,7 @@ Orchestrates use cases using domain and ports.
 
 **Services:**
 - `WorkflowService` - Loading, validation, listing
-- `ExecutionService` - Execution engine with loop pattern detection helpers
+- `ExecutionService` - Execution engine with loop pattern detection helpers and optional audit trail
 - `ConversationManager` - Multi-turn conversation coordination with state helpers
 - `InteractiveExecutor` - Step-by-step execution with extracted result handlers
 - `ParallelExecutor` - Concurrent step coordination with branch helpers
@@ -301,6 +311,7 @@ Implements domain ports with concrete tech.
 - `executor/` - Shell executor
 - `store/` - SQLite history (WAL mode for concurrent execution) with nil record validation (v0.5.30)
 - `agents/` - AgentRegistry implementation with AI providers (v0.5.34 - implements ports.AgentRegistry interface)
+- `audit/` - Audit trail writer with POSIX atomic JSONL append, 4KB entry limit, mutex for thread safety (v0.6.7)
 - `github/` - Built-in GitHub plugin with 9 declarative operations, auth detection, batch execution (v0.5.41)
 - `notify/` - Built-in notification plugin with 4 backends (desktop, ntfy, slack, webhook), dynamic backend registration (v0.5.43)
 - `plugin/` - RPC plugin registry + CompositeOperationProvider that multiplexes GitHub and Notify providers (v0.5.43)
@@ -319,6 +330,9 @@ func NewExecutionService(
 
 // AgentRegistry injected via setter (optional dependency)
 func (s *ExecutionService) SetAgentRegistry(registry ports.AgentRegistry)
+
+// AuditTrailWriter injected via setter (optional dependency, v0.6.7)
+func (s *ExecutionService) SetAuditTrailWriter(writer ports.AuditTrailWriter)
 ```
 
 ### Validator Injection via Function Type (v0.5.33)
@@ -383,7 +397,7 @@ make test-integration  # Integration tests (tests/integration/)
 make test-external  # Tests requiring external CLI tools (v0.5.39)
 make lint           # golangci-lint (17 linters)
 make lint-fix       # Auto-fix linter issues
-make fmt            # gofumpt (stricter than gofmt)
+make format         # gofumpt (stricter than gofmt)
 make quality        # lint + fmt + vet + test
 ```
 
