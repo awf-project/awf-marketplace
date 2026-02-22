@@ -82,6 +82,7 @@ AWF supports environment variables for configuration:
 | Variable | Description |
 |----------|-------------|
 | `AWF_PROMPT_PATH` | Custom path for prompt file resolution |
+| `AWF_AUDIT_LOG` | Audit trail file path, or `off` to disable (v0.6.7) |
 
 ### Prompt Path Resolution
 
@@ -164,6 +165,25 @@ AWF monitors heap allocation and logs warnings when memory thresholds are exceed
 - Parallel execution with many concurrent branches
 
 No configuration required - monitoring is automatic. Warnings appear in verbose mode (`--verbose`).
+
+## Audit Trail (v0.6.7)
+
+AWF automatically records paired `workflow.started` / `workflow.completed` JSONL entries per execution.
+
+```bash
+# Default location
+~/.local/share/awf/audit.jsonl
+
+# Custom path
+export AWF_AUDIT_LOG=/var/log/awf/audit.jsonl
+
+# Disable
+export AWF_AUDIT_LOG=off
+```
+
+Secret inputs (keys matching `SECRET_*`, `API_KEY*`, `PASSWORD*`, `TOKEN*`) are masked to `***` before being written.
+
+**Details**: [Audit Trail Reference](audit-trail.md)
 
 ## Best Practices
 
