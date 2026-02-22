@@ -115,7 +115,9 @@ awf/
 │   │   │   ├── helpers.go       # Shared utilities (cloneState, estimateTokens)
 │   │   │   ├── claude_provider.go
 │   │   │   ├── codex_provider.go
-│   │   │   └── gemini_provider.go
+│   │   │   ├── gemini_provider.go
+│   │   │   ├── openai_compatible_provider.go  # Chat Completions API (v0.6.6)
+│   │   │   └── options.go       # Functional options (WithHTTPClient)
 │   │   ├── github/              # Built-in GitHub plugin (v0.5.41)
 │   │   │   ├── auth.go          # gh CLI auth detection and token retrieval
 │   │   │   ├── client.go        # gh CLI wrapper via exec.Command (no shell)

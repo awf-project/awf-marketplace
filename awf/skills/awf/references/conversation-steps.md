@@ -58,7 +58,7 @@ states:
 |--------|------|----------|---------|-------------|
 | `type` | string | Yes | - | Must be `agent` |
 | `mode` | string | No | `single` | Set to `conversation` for multi-turn |
-| `provider` | string | Yes | - | Agent provider: `claude`, `codex`, `gemini`, `opencode` |
+| `provider` | string | Yes | - | Agent provider: `claude`, `codex`, `gemini`, `opencode`, `openai_compatible` |
 | `system_prompt` | string | No | - | System message preserved across turns |
 | `prompt` | string | Yes | - | User message (executed each turn) |
 | `options` | object | No | - | Provider-specific options |

@@ -85,7 +85,7 @@ awf run hello --input name=Claude
 | Type | Use |
 |------|-----|
 | `step` | Execute command (inline or from script file) |
-| `agent` | Invoke AI agent (Claude, Codex, Gemini, OpenCode) |
+| `agent` | Invoke AI agent (Claude, Codex, Gemini, OpenCode, OpenAI-Compatible) |
 | `parallel` | Run concurrent steps |
 | `terminal` | End workflow |
 | `for_each` | Iterate over list (supports transitions) |
@@ -128,6 +128,8 @@ command: echo "{{.loop.index1}}/{{.loop.length}}"
 > **Breaking Change (v0.5.12)**: State property names must be uppercase: `.Output`, `.ExitCode`, `.Status`, `.Stderr`. Lowercase was never functional with Go templates. Use `awf validate` to detect casing issues.
 
 > **Architecture (v0.5.34)**: ExecutionService now uses `ports.AgentRegistry` interface instead of concrete type. Custom agent registries can implement the interface for test isolation or alternative providers.
+
+> **Breaking Change (v0.6.6)**: `provider: custom` and `command` field removed. Use `provider: openai_compatible` with `base_url` and `model` options for any Chat Completions API endpoint (OpenAI, Ollama, vLLM, Groq, LM Studio).
 
 ## Common Patterns
 
@@ -234,6 +236,27 @@ process:
   command: echo "Result: {{.states.analyze.Output}}"
   on_success: done
 ```
+
+### OpenAI-Compatible Agent (Ollama, vLLM, Groq)
+
+```yaml
+analyze:
+  type: agent
+  provider: openai_compatible
+  prompt: "Review this code: {{.inputs.code}}"
+  options:
+    base_url: "http://localhost:11434/v1"
+    model: "llama3"
+    api_key: "sk-..."   # optional, falls back to OPENAI_API_KEY
+  timeout: 120
+  on_success: process
+```
+
+- Native multi-turn conversation support via `mode: conversation`
+- Accurate token tracking from API `usage` fields
+- Structured HTTP error mapping: 401 (auth), 429 (rate limit), 5xx (server)
+
+**Details**: [Agent Steps - OpenAI-Compatible Provider](references/agent-steps.md#openai-compatible-provider)
 
 ### Output Formatting for Agent Steps
 

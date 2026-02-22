@@ -1,10 +1,10 @@
 # Agent Steps Reference
 
-Invoke AI agents (Claude, Codex, Gemini, OpenCode) in workflows with structured prompts and response parsing.
+Invoke AI agents (Claude, Codex, Gemini, OpenCode, OpenAI-Compatible) in workflows with structured prompts and response parsing.
 
 ## Overview
 
-Agent steps integrate AI CLI tools into AWF workflows. Define prompts as templates that get interpolated with workflow context and executed through provider-specific CLIs.
+Agent steps integrate AI tools into AWF workflows. Define prompts as templates that get interpolated with workflow context and executed through provider-specific CLIs or direct HTTP APIs.
 
 **Features:**
 - Non-interactive execution for CI/CD automation
@@ -98,21 +98,42 @@ refactor:
   on_success: next
 ```
 
-### Custom Provider
+### OpenAI-Compatible Provider
 
-For unsupported AI CLIs:
+For any backend that speaks the Chat Completions API (OpenAI, Ollama, vLLM, Groq, LM Studio):
 
 ```yaml
 my_ai:
   type: agent
-  provider: custom
-  command: "my-ai-tool --prompt={{prompt}} --json --timeout=30"
+  provider: openai_compatible
   prompt: "Analyze: {{.inputs.data}}"
+  options:
+    base_url: "http://localhost:11434/v1"   # Required: API endpoint
+    model: "llama3"                          # Required: model name
+    api_key: "sk-..."                        # Optional: falls back to OPENAI_API_KEY env var
+    max_tokens: 2048
+    temperature: 0.7
   timeout: 60
   on_success: next
 ```
 
-The `{{prompt}}` placeholder is replaced with the shell-escaped resolved prompt.
+**OpenAI-Compatible Options:**
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `base_url` | string | Yes | Chat Completions API endpoint URL |
+| `model` | string | Yes | Model identifier |
+| `api_key` | string | No | API key (falls back to `OPENAI_API_KEY` env var) |
+| `max_tokens` | int | No | Maximum response tokens |
+| `temperature` | float | No | Sampling temperature |
+
+**Features:**
+- Native multi-turn conversation support via `mode: conversation`
+- Accurate token tracking from API `usage` response fields
+- Structured HTTP error mapping: 401 (auth), 429 (rate limit), 5xx (server), timeout (deadline)
+- Response body limited to 10MB
+- API keys never logged or exposed in error messages
+
+> **Breaking Change (v0.6.6)**: `provider: custom` has been removed. Workflows using `provider: custom` will fail validation with migration guidance to use `provider: openai_compatible` instead. The `command` field on agent steps has also been removed.
 
 ## Prompt Templates
 

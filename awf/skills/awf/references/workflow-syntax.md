@@ -543,7 +543,7 @@ refine_code:
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
-| `provider` | string | Yes | `claude`, `codex`, `gemini`, `opencode` |
+| `provider` | string | Yes | `claude`, `codex`, `gemini`, `opencode`, `openai_compatible` |
 | `mode` | string | No | `single` (default) or `conversation` for multi-turn |
 | `prompt` | string | Yes* | Prompt template (supports `{{.inputs.*}}` and `{{.states.*}}` interpolation) |
 | `prompt_file` | string | No* | Path to external prompt template file (mutually exclusive with `prompt`) |
@@ -574,16 +574,20 @@ refine_code:
 | `{{.states.step.Tokens}}` | object | Token usage metadata |
 | `{{.states.step.conversation}}` | object | Conversation state (if mode=conversation) |
 
-### Custom Provider
+### OpenAI-Compatible Provider
 
 ```yaml
 my_ai:
   type: agent
-  provider: custom
-  command: "my-ai-tool --prompt={{prompt}} --json"
+  provider: openai_compatible
   prompt: "Analyze: {{.inputs.data}}"
+  options:
+    base_url: "http://localhost:11434/v1"
+    model: "llama3"
   on_success: next
 ```
+
+> **Breaking Change (v0.6.6)**: `provider: custom` and the `command` field have been removed. Use `provider: openai_compatible` instead. See [Agent Steps - OpenAI-Compatible Provider](agent-steps.md#openai-compatible-provider) for full options.
 
 \* Use `prompt` or `prompt_file` for single-turn mode (mutually exclusive), `initial_prompt` for conversation mode. See [Agent Steps - External Prompt Files](agent-steps.md#external-prompt-files) for `prompt_file` details.
 
