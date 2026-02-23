@@ -193,16 +193,16 @@ awf/
 
 ```go
 // Domain (no external imports)
-import "github.com/vanoix/awf/internal/domain/workflow"
+import "github.com/awf-project/awf/internal/domain/workflow"
 
 // Application (imports domain only)
-import "github.com/vanoix/awf/internal/application"
+import "github.com/awf-project/awf/internal/application"
 
 // Infrastructure (imports domain ports)
-import "github.com/vanoix/awf/internal/infrastructure/repository"
+import "github.com/awf-project/awf/internal/infrastructure/repository"
 
 // Public packages (safe for external use)
-import "github.com/vanoix/awf/pkg/interpolation"
+import "github.com/awf-project/awf/pkg/interpolation"
 ```
 
 ## Domain Layer
