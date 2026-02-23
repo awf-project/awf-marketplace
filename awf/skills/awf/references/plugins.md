@@ -242,7 +242,7 @@ notify:
 ```go
 package main
 
-import "github.com/vanoix/awf/pkg/plugin/sdk"
+import "github.com/awf-project/awf/pkg/plugin/sdk"
 
 type MyPlugin struct{}
 

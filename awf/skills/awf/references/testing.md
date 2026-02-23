@@ -546,7 +546,7 @@ internal/application/
 ### Fluent Builder API
 
 ```go
-import "github.com/vanoix/awf/internal/application"
+import "github.com/awf-project/awf/internal/application"
 
 // Before (10-15 lines per test)
 mockRepo := testutil.NewMockRepository()
@@ -589,7 +589,7 @@ service, mocks := application.NewServiceTestHarness().
 ### Test Builders (Fluent API)
 
 ```go
-import "github.com/vanoix/awf/internal/testutil"
+import "github.com/awf-project/awf/internal/testutil"
 
 // Build workflow with fluent API (2-3 lines instead of 30+)
 wf := testutil.NewWorkflowBuilder("test").
@@ -957,7 +957,7 @@ func TestWorkflowValidation(t *testing.T) {
 Use interfaces for easy mocking. As of v0.5.22, prefer the testutil package for thread-safe mocks:
 
 ```go
-import "github.com/vanoix/awf/internal/testutil"
+import "github.com/awf-project/awf/internal/testutil"
 
 func TestExecution(t *testing.T) {
     mock := testutil.NewMockExecutor()

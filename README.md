@@ -5,7 +5,7 @@ Claude Code plugin marketplace for AWF tool.
 ## Installation
 
 ```bash
-/plugin marketplace add vanoix/awf-marketplace
+/plugin marketplace add awf-project/awf-marketplace
 ```
 
 ## Plugins
