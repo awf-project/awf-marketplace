@@ -10,10 +10,13 @@ AWF validates that state property references use uppercase names. This catches a
 
 | Property | Description |
 |----------|-------------|
-| `.Output` | Command stdout |
+| `.Output` | Command stdout (or cleaned text if `output_format` is set) |
 | `.Stderr` | Command stderr |
 | `.ExitCode` | Exit code |
 | `.Status` | State status |
+| `.Response` | Parsed JSON response (automatic heuristic) |
+| `.JSON` | Parsed JSON from `output_format: json` (explicit) |
+| `.TokensUsed` | Token usage metadata |
 
 ### Validation Example
 
@@ -25,6 +28,7 @@ $ awf validate my-workflow
 validation error: invalid state property casing
   - line 15: "states.build.output" should be "states.build.Output"
   - line 22: "states.test.exit_code" should be "states.test.ExitCode"
+  - line 30: "states.analyze.json" should be "states.analyze.JSON"
 ```
 
 ### Migration

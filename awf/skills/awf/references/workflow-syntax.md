@@ -63,7 +63,7 @@ my_step:
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `command` | string | - | Shell command (mutually exclusive with `script_file`) |
-| `script_file` | string | - | Path to external shell script file (mutually exclusive with `command`) |
+| `script_file` | string | - | Path to external script file (mutually exclusive with `command`). Supports shebang dispatch. |
 | `dir` | string | cwd | Working directory |
 | `timeout` | int | 0 | Timeout in seconds |
 | `on_success` | string | - | Next state on success |
@@ -100,6 +100,30 @@ kubectl rollout status deployment/app
 4. **XDG scripts directory with local override** — `"{{.awf.scripts_dir}}/checks/lint.sh"` checks `<workflow_dir>/scripts/checks/lint.sh` first, then falls back to `~/.config/awf/scripts/checks/lint.sh`
 
 **Template Interpolation:** Both the path and loaded script contents undergo full template interpolation with workflow context (`{{.inputs.*}}`, `{{.states.*}}`, `{{.env.*}}`, `{{.awf.*}}`).
+
+**Shebang Support:** Scripts with a shebang line are executed directly via the kernel, letting any interpreter run (Python, Ruby, Perl, etc.). Scripts without a shebang fall back to `$SHELL -c`.
+
+```yaml
+# Python script with shebang — executed via python3
+analyze:
+  type: step
+  script_file: scripts/analyze.py
+  on_success: report
+
+# Legacy shell script without shebang — falls back to $SHELL -c
+deploy:
+  type: step
+  script_file: scripts/deploy.sh
+  on_success: verify
+```
+
+**File:** `scripts/analyze.py`
+```python
+#!/usr/bin/env python3
+import json
+data = {"status": "ok", "env": "{{.inputs.env}}"}
+print(json.dumps(data))
+```
 
 **Limits:** 1MB file size limit. Errors include the resolved file path for debugging.
 

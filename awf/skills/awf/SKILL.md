@@ -312,7 +312,8 @@ deploy:
   on_success: verify
 ```
 
-- `script_file` loads shell script from external `.sh` file with full template interpolation
+- `script_file` loads script from external file with full template interpolation
+- **Shebang support**: scripts with a shebang (`#!/usr/bin/env python3`, `#!/bin/bash`) are executed directly via the kernel interpreter; scripts without a shebang fall back to `$SHELL -c`
 - Paths resolve relative to workflow directory, support absolute, `~/`, and `{{.awf.scripts_dir}}` variables
 - **Local-before-global resolution**: `{{.awf.scripts_dir}}/deploy.sh` checks `<workflow_dir>/scripts/deploy.sh` first, then falls back to global XDG path
 - 1MB size limit on script files
