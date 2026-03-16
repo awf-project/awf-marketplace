@@ -70,7 +70,7 @@ awf run hello --input name=Claude
 
 | Command | Description |
 |---------|-------------|
-| `awf init` | Initialize AWF in directory |
+| `awf init` | Initialize AWF in directory (workflows, prompts, scripts) |
 | `awf run <workflow>` | Execute workflow |
 | `awf run <workflow> --help` | Show workflow inputs |
 | `awf validate <workflow>` | Check syntax |
@@ -119,10 +119,12 @@ command: echo "{{.env.HOME}}"
 
 # AWF system directories (XDG-compliant)
 command: echo "{{.awf.config_dir}}"    # ~/.config/awf
-command: echo "{{.awf.prompts_dir}}"   # prompts directory (local override)
-command: echo "{{.awf.scripts_dir}}"   # scripts directory (local override)
+command: echo "{{.awf.prompts_dir}}"   # prompts directory (local-before-global)
+command: echo "{{.awf.scripts_dir}}"   # scripts directory (local-before-global)
 prompt_file: "{{.awf.prompts_dir}}/analyze.md"   # checks <workflow_dir>/prompts/ first
 script_file: "{{.awf.scripts_dir}}/deploy.sh"    # checks <workflow_dir>/scripts/ first
+# Local-before-global applies to command:, dir:, script_file:, prompt_file:
+command: "{{.awf.scripts_dir}}/deploy.sh --env prod"  # resolves local first
 
 # Loop context
 command: echo "{{.loop.index1}}/{{.loop.length}}"
@@ -298,7 +300,7 @@ analyze:
 
 - `prompt_file` loads prompt from external `.md` file with full template interpolation
 - Paths resolve relative to workflow directory, support absolute, `~/`, and `{{.awf.*}}` variables
-- **Local-before-global resolution**: `{{.awf.prompts_dir}}/file.md` checks `<workflow_dir>/prompts/file.md` first, then falls back to global XDG path
+- **Local-before-global resolution**: `{{.awf.prompts_dir}}/file.md` checks `<workflow_dir>/prompts/file.md` first, then falls back to global XDG path. Same resolution applies when `{{.awf.prompts_dir}}` is used in `command:` or `dir:` fields.
 - 1MB size limit on prompt files
 - Template helpers available: `split`, `join`, `readFile`, `trimSpace`
 
@@ -317,7 +319,7 @@ deploy:
 - `script_file` loads script from external file with full template interpolation
 - **Shebang support**: scripts with a shebang (`#!/usr/bin/env python3`, `#!/bin/bash`) are executed directly via the kernel interpreter; scripts without a shebang fall back to `$SHELL -c`
 - Paths resolve relative to workflow directory, support absolute, `~/`, and `{{.awf.scripts_dir}}` variables
-- **Local-before-global resolution**: `{{.awf.scripts_dir}}/deploy.sh` checks `<workflow_dir>/scripts/deploy.sh` first, then falls back to global XDG path
+- **Local-before-global resolution**: `{{.awf.scripts_dir}}/deploy.sh` checks `<workflow_dir>/scripts/deploy.sh` first, then falls back to global XDG path. Same resolution applies when `{{.awf.scripts_dir}}` is used in `command:` or `dir:` fields.
 - 1MB size limit on script files
 - Mutually exclusive with `command` on the same step
 

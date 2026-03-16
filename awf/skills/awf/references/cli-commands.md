@@ -43,7 +43,7 @@ awf init [--force] [--global]
 | Flag | Description |
 |------|-------------|
 | `--force` | Overwrite existing files |
-| `--global` | Create global prompts in `$XDG_CONFIG_HOME/awf/prompts/` |
+| `--global` | Create global prompts and scripts in `$XDG_CONFIG_HOME/awf/` |
 
 Creates:
 ```
@@ -51,7 +51,8 @@ Creates:
 .awf/
 ├── workflows/example.yaml
 ├── templates/
-└── prompts/           # Local prompts
+├── prompts/           # Local prompts
+└── scripts/           # Local scripts (example.sh included)
 ```
 
 State storage uses XDG paths: `$XDG_STATE_HOME/awf/` (~/.local/state/awf/)
@@ -59,7 +60,8 @@ State storage uses XDG paths: `$XDG_STATE_HOME/awf/` (~/.local/state/awf/)
 With `--global`:
 ```
 $XDG_CONFIG_HOME/awf/
-└── prompts/           # Global prompts (shared across projects)
+├── prompts/           # Global prompts (shared across projects)
+└── scripts/           # Global scripts (shared across projects)
 ```
 
 ## awf run

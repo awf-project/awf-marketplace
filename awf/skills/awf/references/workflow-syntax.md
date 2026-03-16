@@ -62,9 +62,9 @@ my_step:
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `command` | string | - | Shell command (mutually exclusive with `script_file`) |
+| `command` | string | - | Shell command (mutually exclusive with `script_file`). `{{.awf.scripts_dir}}` and `{{.awf.prompts_dir}}` use local-before-global resolution. |
 | `script_file` | string | - | Path to external script file (mutually exclusive with `command`). Supports shebang dispatch. |
-| `dir` | string | cwd | Working directory |
+| `dir` | string | cwd | Working directory. `{{.awf.scripts_dir}}` and `{{.awf.prompts_dir}}` use local-before-global resolution. |
 | `timeout` | int | 0 | Timeout in seconds |
 | `on_success` | string | - | Next state on success |
 | `on_failure` | string or object | - | Next state on failure — string (named terminal ref) or inline object (see [Inline Error Shorthand](#inline-error-shorthand)) |
