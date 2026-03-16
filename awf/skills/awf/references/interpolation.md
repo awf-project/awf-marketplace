@@ -219,6 +219,23 @@ When using `{{.awf.prompts_dir}}` or `{{.awf.scripts_dir}}`, AWF implements **lo
    - `<workflow_dir>/scripts/deploy.sh` (local override)
    - Then `~/.config/awf/scripts/deploy.sh` (global fallback)
 
+**Applies to all field types:** Local-before-global resolution works in `command:`, `dir:`, `script_file:`, and `prompt_file:` fields. Any occurrence of `{{.awf.scripts_dir}}` or `{{.awf.prompts_dir}}` in these fields resolves local paths first.
+
+```yaml
+# command: field — local-before-global resolution applies
+deploy:
+  type: step
+  command: "{{.awf.scripts_dir}}/deploy.sh --env {{.inputs.env}}"
+  on_success: done
+
+# dir: field — local-before-global resolution applies
+build:
+  type: step
+  command: make build
+  dir: "{{.awf.scripts_dir}}/build"
+  on_success: done
+```
+
 This applies only to `prompts_dir` and `scripts_dir`. Other AWF directory variables (`config_dir`, `data_dir`, etc.) resolve directly to their XDG paths.
 
 ### Loop Context
