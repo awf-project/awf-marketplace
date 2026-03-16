@@ -95,10 +95,11 @@ awf run deploy
 # > 1.2.3
 ```
 
-**Behavior:**
-- **Terminal**: Prompts interactively for each missing required input
+**Behavior (v0.6.18):**
+- **Terminal**: Prompts interactively, with config file values pre-filling inputs
 - **Non-terminal** (pipes, scripts, CI/CD): Returns error requiring `--input` flags
 - **All inputs provided**: Executes immediately without prompts
+- **Config integration**: `.awf/config.yaml` values reduce prompts in `--interactive` and `--dry-run` modes
 
 **Enum inputs** display numbered options:
 

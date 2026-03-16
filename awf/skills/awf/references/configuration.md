@@ -51,9 +51,19 @@ When both a config `default_backend` and an explicit `backend` input are set, th
 Config File < CLI Flags
 ```
 
-CLI `--input` flags override config values.
+CLI `--input` flags override config values across all execution modes.
 
-## Example
+### Input Pre-population (v0.6.18)
+
+Configuration values now pre-populate inputs in `--interactive` and `--dry-run` modes:
+
+- **Normal mode**: Config values applied, missing inputs cause errors
+- **Interactive mode**: Config values pre-fill prompts, only missing inputs are prompted
+- **Dry-run mode**: Config values shown in execution plan preview
+
+## Examples
+
+### Standard Execution
 
 ```yaml
 # .awf/config.yaml
@@ -65,6 +75,29 @@ inputs:
 ```bash
 awf run deploy --input env=production
 # env=production (CLI wins), project=my-app (from config)
+```
+
+### Interactive Mode with Config
+
+```bash
+# With config file above
+awf run deploy --interactive
+
+# Only prompts for missing inputs:
+# version (string, required):
+# > 1.2.3
+
+# Uses: env=staging (from config), project=my-app (from config), version=1.2.3 (prompted)
+```
+
+### Dry-run Mode with Config
+
+```bash
+# With config file above
+awf run deploy --dry-run --input version=1.2.3
+
+# Preview shows:
+# Inputs: env=staging (config), project=my-app (config), version=1.2.3 (flag)
 ```
 
 ## Commands

@@ -21,8 +21,8 @@ argument-hint: "[topic]"
 **Running a workflow?**
 1. `awf run <name> --input key=value`
 2. Missing inputs? AWF prompts in terminal - see [Interactive Inputs](references/interactive-inputs.md)
-3. Use `--dry-run` to preview
-4. Use `--interactive` for step-by-step
+3. Use `--dry-run` to preview (config values pre-populate)
+4. Use `--interactive` for step-by-step (config values reduce prompts)
 5. See [CLI Commands](references/cli-commands.md)
 
 **Debugging issues?**

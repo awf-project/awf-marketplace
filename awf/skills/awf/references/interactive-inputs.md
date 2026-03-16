@@ -189,6 +189,74 @@ timeout (integer, optional, default: 300)
 Workflow started...
 ```
 
+## Configuration File Integration (v0.6.18)
+
+Configuration files (`.awf/config.yaml`) pre-populate interactive inputs, reducing prompts:
+
+### Pre-filled Inputs
+
+```yaml
+# .awf/config.yaml
+inputs:
+  env: "staging"
+  timeout: 300
+```
+
+```yaml
+# workflow with required inputs: env, version, timeout (optional)
+inputs:
+  - name: env
+    type: string
+    required: true
+  - name: version
+    type: string
+    required: true
+  - name: timeout
+    type: integer
+    default: 60
+```
+
+```bash
+$ awf run deploy --interactive
+
+# Only prompts for missing required input:
+version (string, required)
+> 1.2.3
+
+# Uses: env=staging (config), timeout=300 (config override), version=1.2.3 (prompted)
+```
+
+Merge order: Config File → CLI Flags → Interactive Prompts (see [Configuration - Priority Order](configuration.md#priority-order))
+
+### Complete Example
+
+```yaml
+# .awf/config.yaml
+inputs:
+  env: "staging"
+  project: "my-app"
+  timeout: 300
+```
+
+```bash
+# Override config value via CLI, prompt for missing
+$ awf run deploy --input env=production --interactive
+
+project (string, required, from config: my-app)
+Press Enter to use config value
+>
+Using config: my-app
+
+version (string, required)
+> 1.2.3
+
+timeout (integer, optional, from config: 300)
+Press Enter to use config value
+> 600
+
+# Final inputs: env=production (CLI), project=my-app (config), version=1.2.3 (prompt), timeout=600 (prompt override)
+```
+
 ## When Not Available
 
 Interactive input collection requires stdin connected to a terminal.
