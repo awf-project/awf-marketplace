@@ -9,13 +9,13 @@
 ## Quick Install
 
 ```bash
-go install github.com/awf-project/awf/cmd/awf@latest
+go install github.com/awf-project/cli/cmd/awf@latest
 ```
 
 ## From Source
 
 ```bash
-git clone https://github.com/awf-project/awf.git
+git clone https://github.com/awf-project/cli.git
 cd awf
 make build    # Binary at ./bin/awf
 make install  # Optional: install to /usr/local/bin
