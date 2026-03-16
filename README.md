@@ -1,6 +1,6 @@
 # AWF Marketplace
 
-Claude Code plugin marketplace for AWF tool.
+Claude Code plugin marketplace for AWF [CLI](https://github.com/awf-project/cli).
 
 ## Installation
 
@@ -16,7 +16,10 @@ Claude Code plugin marketplace for AWF tool.
 
 ## Author
 
-Alex "pocky" Balmes - [vanoix.com](https://vanoix.com)
+Alex "pocky" Balmes 
+
+- [alex.balmes.co](https://alex.balmes.co)
+- [vanoix.com](https://vanoix.com)
 
 ## License
 
