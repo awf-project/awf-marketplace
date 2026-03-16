@@ -1,0 +1,14 @@
+# AWF Project Configuration
+# https://github.com/awf-project/cli
+#
+# This file provides default values for workflow inputs.
+# CLI --input flags override these values.
+#
+# IMPORTANT: Do not store secrets here - use environment variables instead.
+
+# Workflow inputs - pre-populate values for awf run
+# Uncomment and modify the examples below:
+inputs:
+  # project: my-project
+  # environment: staging
+  # debug: false

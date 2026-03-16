@@ -1,0 +1,83 @@
+# .awf/workflows/update-skill.yaml
+# Workflow to update the AWF skill with auto version bump
+name: update-skill
+version: "2.0.0"
+description: Update the AWF skill based on a PR from awf-project/cli
+
+inputs:
+  - name: update_type
+    type: string
+    description: Type of update
+    default: feature
+    validation:
+      enum: [feature, bugfix, breaking, docs]
+
+  - name: pull_request
+    type: string
+    description: PR number from github.com/awf-project/cli
+    required: true
+    validation:
+      pattern: "^[0-9]+$"
+
+states:
+  initial: fetch_pr_content
+
+  fetch_pr_content:
+    type: step
+    description: Fetch PR content from awf-project/cli
+    command: |
+      gh pr view {{.inputs.pull_request}} \
+        --repo awf-project/cli \
+        --json title,body,files \
+        --jq '"# " + .title + "\n\n" + .body + "\n\n## Files changed\n" + ([.files[].path] | join("\n"))'
+    on_success: read_and_bump_version
+    on_failure: {message: "Failed to fetch PR #{{.inputs.pull_request}} from awf-project/cli"}
+
+  read_and_bump_version:
+    type: step
+    description: Read current plugin version and increment patch
+    script_file: "{{.awf.scripts_dir}}/bump-version.sh"
+    on_success: update_marketplace_version
+    on_failure: {message: "Failed to read or bump version from marketplace.json"}
+
+  update_marketplace_version:
+    type: step
+    description: Update plugins.version in marketplace.json
+    script_file: "{{.awf.scripts_dir}}/update-marketplace.sh"
+    on_success: create_branch
+    on_failure: {message: "Failed to update marketplace.json to {{.states.read_and_bump_version.Output}}"}
+
+  create_branch:
+    type: step
+    description: Create branch for skill update
+    script_file: "{{.awf.scripts_dir}}/create-branch.sh"
+    timeout: 30s
+    on_success: execute_claude
+    on_failure: {message: "Failed to create branch for PR #{{.inputs.pull_request}}"}
+
+  execute_claude:
+    type: agent
+    description: Execute skill update with Claude
+    provider: claude
+    prompt_file: "{{.awf.prompts_dir}}/claude-skill-updater.md"
+    options:
+      model: sonnet
+      allowedTools: "Read,Grep,Glob,Edit,Write,Bash,Task"
+      dangerously_skip_permissions: true
+    timeout: 600
+    on_success: commit_and_pr
+    on_failure: {message: "Claude agent failed to update skill documentation"}
+
+  commit_and_pr:
+    type: call_workflow
+    description: Commit changes and create PR
+    workflow: commit
+    inputs:
+      pr: true
+    on_success: done
+    on_failure: {message: "Failed to commit and create PR"}
+
+  done:
+    type: terminal
+    status: success
+    message: "Skill updated to version {{.states.read_and_bump_version.Output}} based on PR #{{.inputs.pull_request}}"
