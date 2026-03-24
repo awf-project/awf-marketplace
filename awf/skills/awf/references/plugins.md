@@ -110,12 +110,33 @@ plugins:
 
 ## External RPC Plugins
 
-Plugins extend AWF with custom operations via RPC (HashiCorp go-plugin).
+Plugins extend AWF with custom operations via gRPC (HashiCorp go-plugin). Each plugin runs as an isolated subprocess; the host connects via a Unix socket negotiated at startup.
 
-- Process isolation
+- Process isolation — plugin crashes do not affect AWF
+- gRPC transport with protobuf serialization (`proto/plugin/v1/`)
+- 5-second connection timeout during init
 - Cross-platform support
 - Safe updates without recompiling
-- Graceful failure handling
+- Graceful failure handling via `Shutdown`/`ShutdownAll`
+
+### Operation Namespacing
+
+External plugin operations are prefixed with the plugin ID to avoid collisions with built-in providers:
+
+```
+{plugin-id}.{operation}       # e.g., awf-plugin-echo.echo
+```
+
+Use the namespaced form in workflow steps:
+
+```yaml
+echo_step:
+  type: operation
+  operation: awf-plugin-echo.echo
+  inputs:
+    message: "hello"
+  on_success: done
+```
 
 ## Plugin Directory
 
@@ -223,7 +244,7 @@ Built-in providers (`github`, `http`, `notify`) appear in `awf plugin list` alon
 
 ```bash
 awf plugin list                      # List all plugins (built-in + external) with TYPE column
-awf plugin list --operations         # List individual operations per plugin
+awf plugin list --operations         # List operations (triggers full gRPC init for external plugins)
 awf plugin enable notify             # Enable built-in provider
 awf plugin disable notify            # Disable built-in provider (blocks notify.send at run time)
 awf plugin enable awf-plugin-slack   # Enable external plugin
@@ -251,17 +272,30 @@ awf validate my-workflow
 
 ## Using in Workflows
 
+Operation names follow the format `{plugin-id}.{operation}`. Built-in providers use short names (`github`, `notify`, `http`); external plugins use their full plugin ID as prefix:
+
 ```yaml
+# Built-in provider
 notify:
-  type: step
-  operation: slack.send_message    # plugin.operation
+  type: operation
+  operation: notify.send
   inputs:
-    channel: "#deployments"
-    message: "Deploy completed: {{.states.deploy.Output}}"
+    backend: slack
+    message: "Deploy completed"
+  on_success: done
+
+# External plugin (namespaced with plugin ID)
+echo_step:
+  type: operation
+  operation: awf-plugin-echo.echo   # plugin-id.operation
+  inputs:
+    message: "{{.states.build.Output}}"
   on_success: done
 ```
 
 ## Plugin SDK
+
+The SDK (`pkg/plugin/sdk/`) provides `sdk.Serve()` as the single entry point. Plugin authors implement the `AWFPlugin` interface and call `sdk.Serve()` — gRPC internals are handled by the SDK.
 
 ```go
 package main
@@ -290,6 +324,10 @@ func (p *MyPlugin) Operations() []sdk.Operation {
 
 func main() { sdk.Serve(&MyPlugin{}) }
 ```
+
+The `Handshake` config is exported from `sdk` as the single source of truth shared by both the host and all plugins — do not define your own handshake.
+
+See `examples/plugins/awf-plugin-echo/` for a minimal working plugin with `echo` and `reverse` operations.
 
 ## Schema Validation (v0.5.38)
 
@@ -363,3 +401,6 @@ schema validation failed: 3 errors:
 | Plugin not found | Check directory name matches plugin name |
 | Exec format error | Rebuild binary for your platform |
 | Version mismatch | Update AWF or use compatible plugin version |
+| Connection timeout (5s) | Plugin binary failed to start; check binary path and permissions |
+| Operation not found | Use namespaced form `{plugin-id}.{operation}` in workflow step |
+| Handshake mismatch | Rebuild plugin with same SDK version as AWF host |

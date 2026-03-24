@@ -81,7 +81,7 @@ awf run hello --input name=Claude
 | `awf history` | Show history |
 | `awf config show` | Display project config |
 | `awf plugin list` | List plugins (built-in + external, with TYPE column) |
-| `awf plugin list --operations` | List operations per plugin |
+| `awf plugin list --operations` | List operations per plugin (triggers gRPC init for external plugins) |
 
 **Details**: [CLI Commands Reference](references/cli-commands.md)
 
