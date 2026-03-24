@@ -227,6 +227,7 @@ awf validate <workflow> [-v]
 - Template references
 - Input definitions
 - Parallel strategies
+- Operations from disabled plugins (emits actionable warnings, not errors)
 
 ## awf diagram
 
@@ -337,25 +338,35 @@ awf config show -f json
 Manage AWF plugins.
 
 ```bash
-awf plugin list                     # List all plugins with status
+awf plugin list                     # List all plugins (built-in + external) with TYPE column
+awf plugin list --operations        # List individual operations per plugin
 awf plugin enable <plugin-name>     # Enable a plugin
 awf plugin disable <plugin-name>    # Disable a plugin
 ```
 
 **Plugin location:** `$XDG_DATA_HOME/awf/plugins/` (~/.local/share/awf/plugins/)
 
+Built-in providers (`github`, `http`, `notify`) are listed with `TYPE=builtin`. External plugins show `TYPE=external`. The output includes VERSION, STATUS, ENABLED, and CAPABILITIES columns. Disabling any plugin gates its operations at both `awf validate` and `awf run` time.
+
 ```bash
 # List plugins
 awf plugin list
 # Output:
-# NAME                STATUS    VERSION
-# awf-plugin-slack    enabled   1.0.0
-# awf-plugin-github   disabled  0.5.0
+# NAME               TYPE      VERSION  STATUS   ENABLED  CAPABILITIES
+# github             builtin   v0.4.0   builtin  yes      operations
+# http               builtin   v0.4.0   builtin  yes      operations
+# notify             builtin   v0.4.0   builtin  yes      operations
+# awf-plugin-slack   external  1.0.0    running  yes      operations
+
+# List operations per plugin
+awf plugin list --operations
+# github: get_issue, get_pr, create_issue, create_pr, add_labels, add_comment, list_comments, batch
+# notify: send
 
 # Enable plugin
 awf plugin enable awf-plugin-slack
 
-# Disable plugin
+# Disable plugin (also disables built-ins: awf plugin disable notify)
 awf plugin disable awf-plugin-slack
 ```
 

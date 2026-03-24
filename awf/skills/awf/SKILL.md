@@ -26,10 +26,11 @@ argument-hint: "[topic]"
 5. See [CLI Commands](references/cli-commands.md)
 
 **Debugging issues?**
-1. `awf validate <name>` to check syntax (validates expressions since v0.5.33)
+1. `awf validate <name>` to check syntax (validates expressions since v0.5.33; warns on disabled plugin references)
 2. Run with `--verbose` for details
 3. Check `$XDG_STATE_HOME/awf/` for logs (~/.local/state/awf/)
 4. Review audit trail at `$XDG_DATA_HOME/awf/audit.jsonl` for execution history (v0.6.7)
+5. `awf plugin list` to verify built-in providers (github, http, notify) are enabled
 
 **Developing AWF?**
 1. See [Architecture](references/architecture.md)
@@ -79,7 +80,8 @@ awf run hello --input name=Claude
 | `awf resume` | Resume interrupted |
 | `awf history` | Show history |
 | `awf config show` | Display project config |
-| `awf plugin list` | List plugins |
+| `awf plugin list` | List plugins (built-in + external, with TYPE column) |
+| `awf plugin list --operations` | List operations per plugin |
 
 **Details**: [CLI Commands Reference](references/cli-commands.md)
 

@@ -41,10 +41,15 @@ awf validate my-workflow
 - Command returned non-zero
 - Command timed out
 - Retry attempts exhausted
+- Operation from disabled plugin invoked at run time
 
 ```bash
 awf run deploy
 # Error: step 'build' failed with exit code 1
+
+awf run my-workflow
+# Error: step 'notify_team' uses plugin 'notify' which is disabled
+# Run 'awf plugin enable notify' to enable it
 ```
 
 ## Exit Code 4: System Error
