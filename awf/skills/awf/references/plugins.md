@@ -219,10 +219,34 @@ config:
 
 ## Managing Plugins
 
+Built-in providers (`github`, `http`, `notify`) appear in `awf plugin list` alongside external plugins with `TYPE=builtin`. They can be enabled and disabled like external plugins — disabling gates all operations from that provider at both validation and execution time.
+
 ```bash
-awf plugin list                    # List plugins
-awf plugin enable awf-plugin-slack # Enable
-awf plugin disable awf-plugin-slack # Disable
+awf plugin list                      # List all plugins (built-in + external) with TYPE column
+awf plugin list --operations         # List individual operations per plugin
+awf plugin enable notify             # Enable built-in provider
+awf plugin disable notify            # Disable built-in provider (blocks notify.send at run time)
+awf plugin enable awf-plugin-slack   # Enable external plugin
+awf plugin disable awf-plugin-slack  # Disable external plugin
+```
+
+**Example output:**
+
+```
+NAME               TYPE      VERSION  STATUS   ENABLED  CAPABILITIES
+github             builtin   v0.4.0   builtin  yes      operations
+http               builtin   v0.4.0   builtin  yes      operations
+notify             builtin   v0.4.0   builtin  yes      operations
+awf-plugin-slack   external  1.0.0    running  yes      operations
+```
+
+**Disabled-plugin warnings:** `awf validate <workflow>` emits a warning for each step that references an operation from a disabled plugin. This catches mismatches before execution rather than failing at run time.
+
+```bash
+awf plugin disable notify
+awf validate my-workflow
+# Warning: step 'notify_team' references operation 'notify.send' from disabled plugin 'notify'
+# Run 'awf plugin enable notify' to enable it
 ```
 
 ## Using in Workflows
