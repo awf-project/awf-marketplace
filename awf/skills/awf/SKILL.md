@@ -126,8 +126,8 @@ script_file: "{{.awf.scripts_dir}}/deploy.sh"    # checks <workflow_dir>/scripts
 # Local-before-global applies to command:, dir:, script_file:, prompt_file:
 command: "{{.awf.scripts_dir}}/deploy.sh --env prod"  # resolves local first
 
-# Loop context
-command: echo "{{.loop.index1}}/{{.loop.length}}"
+# Loop context (PascalCase)
+command: echo "{{.loop.Index1}}/{{.loop.Length}}"
 ```
 
 > **Breaking Change (v0.5.12)**: State property names must be uppercase: `.Output`, `.ExitCode`, `.Status`, `.Stderr`. Lowercase was never functional with Go templates. Use `awf validate` to detect casing issues.
@@ -183,7 +183,7 @@ test_runner:
     - goto: unknown_error  # default fallback
 ```
 
-> **Transition evaluation (v0.6.3)**: Transitions are evaluated on **both success and failure paths**. When a transition matches, it takes priority over `on_success`, `on_failure`, and `continue_on_error`. If no transition matches, legacy routing applies as fallback.
+> **Transition evaluation (v0.6.3)**: Transitions are evaluated on **both success and failure paths**, including execution errors and timeouts. When a transition matches, it takes priority over `on_success`, `on_failure`, and `continue_on_error`. If no transition matches, legacy routing applies as fallback.
 
 ### Mixed Exit Code + Output Routing
 
@@ -233,7 +233,7 @@ analyze:
     {{.inputs.code}}
   options:
     model: claude-sonnet-4-20250514
-  timeout: 120
+  timeout: 120                        # seconds or Go duration: "2m", "1m30s"
   on_success: process
 
 process:
@@ -252,7 +252,9 @@ analyze:
   options:
     base_url: "http://localhost:11434/v1"
     model: "llama3"
-    api_key: "sk-..."   # optional, falls back to OPENAI_API_KEY
+    api_key: "sk-..."                   # optional, falls back to OPENAI_API_KEY
+    max_completion_tokens: 2048         # max_tokens accepted as legacy fallback
+    temperature: 0.7
   timeout: 120
   on_success: process
 ```
@@ -260,6 +262,7 @@ analyze:
 - Native multi-turn conversation support via `mode: conversation`
 - Accurate token tracking from API `usage` fields
 - Structured HTTP error mapping: 401 (auth), 429 (rate limit), 5xx (server)
+- `temperature` and `max_completion_tokens` only supported by `openai_compatible` — CLI providers (`claude`, `codex`, `gemini`, `opencode`) do not forward these options
 
 **Details**: [Agent Steps - OpenAI-Compatible Provider](references/agent-steps.md#openai-compatible-provider)
 
@@ -337,10 +340,18 @@ review:
   conversation:
     max_turns: 10
     stop_condition: "inputs.response contains 'APPROVED'"
+    continue_from: previous_review    # Resume session from another step
+    inject_context: |                  # Append context on turns 2+
+      Latest state: {{.states.check.Output}}
   on_success: done
 ```
 
-> **Note**: Conversation mode executes the same prompt each turn. Use `inputs.` prefix for stop condition variables.
+- Same prompt executed each turn. Use `inputs.` prefix in stop conditions.
+- **Session resume**: All CLI providers persist sessions across turns via native flags.
+- **`continue_from`**: Resume a previous step's conversation (SessionID or Turns). Validated at `awf validate` time.
+- **`inject_context`**: Append interpolated context to prompts on turns 2+. Re-resolved each turn. Requires `mode: conversation`.
+
+**Details**: [Conversation Mode](references/conversation-steps.md)
 
 ### GitHub Operations
 

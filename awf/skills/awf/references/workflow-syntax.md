@@ -65,7 +65,7 @@ my_step:
 | `command` | string | - | Shell command (mutually exclusive with `script_file`). `{{.awf.scripts_dir}}` and `{{.awf.prompts_dir}}` use local-before-global resolution. |
 | `script_file` | string | - | Path to external script file (mutually exclusive with `command`). Supports shebang dispatch. |
 | `dir` | string | cwd | Working directory. `{{.awf.scripts_dir}}` and `{{.awf.prompts_dir}}` use local-before-global resolution. |
-| `timeout` | int | 0 | Timeout in seconds |
+| `timeout` | int/string | 0 | Timeout in seconds (`30`) or Go duration string (`"1m30s"`, `"500ms"`) |
 | `on_success` | string | - | Next state on success |
 | `on_failure` | string or object | - | Next state on failure — string (named terminal ref) or inline object (see [Inline Error Shorthand](#inline-error-shorthand)) |
 | `continue_on_error` | bool | false | Always follow on_success |
@@ -163,17 +163,17 @@ process_files:
   on_complete: aggregate
 ```
 
-**Loop Context Variables:**
+**Loop Context Variables (PascalCase):**
 
 | Variable | Description |
 |----------|-------------|
-| `{{.loop.item}}` | Current item |
-| `{{.loop.index}}` | 0-based index |
-| `{{.loop.index1}}` | 1-based index |
-| `{{.loop.first}}` | True on first |
-| `{{.loop.last}}` | True on last |
-| `{{.loop.length}}` | Total count |
-| `{{.loop.parent}}` | Parent loop (nested) |
+| `{{.loop.Item}}` | Current item |
+| `{{.loop.Index}}` | 0-based index |
+| `{{.loop.Index1}}` | 1-based index |
+| `{{.loop.First}}` | True on first |
+| `{{.loop.Last}}` | True on last |
+| `{{.loop.Length}}` | Total count |
+| `{{.loop.Parent}}` | Parent loop (nested) |
 
 **Advanced patterns**: [Loop Reference](loop.md) - transitions within body, early exit, nested loops.
 
@@ -182,7 +182,7 @@ process_files:
 ```yaml
 poll_status:
   type: while
-  while: "states.check.output != 'ready'"
+  while: "states.check.Output != 'ready'"
   max_iterations: 60
   body:
     - check
@@ -478,8 +478,8 @@ analyze_file:
   type: call_workflow
   workflow: analyze-source-file
   inputs:
-    # {{.loop.item}} is automatically JSON-serialized for complex types
-    file_info: "{{.loop.item}}"
+    # {{.loop.Item}} is automatically JSON-serialized for complex types
+    file_info: "{{.loop.Item}}"
   outputs:
     analysis: file_analysis
   on_success: next
@@ -528,7 +528,6 @@ analyze:
     {{.inputs.code}}
   options:
     model: claude-sonnet-4-20250514
-    max_tokens: 2048
   timeout: 120
   on_success: review
   on_failure: error
@@ -551,7 +550,6 @@ refine_code:
     {{.inputs.code}}
   options:
     model: claude-sonnet-4-20250514
-    max_tokens: 4096
   conversation:
     max_turns: 10
     max_context_tokens: 100000
@@ -574,8 +572,8 @@ refine_code:
 | `system_prompt` | string | No | System message (preserved across turns) |
 | `output_format` | string | No | Post-processing format: `json` (strip fences + validate JSON) or `text` (strip fences only) |
 | `conversation` | object | No | Conversation configuration (required if mode=conversation) |
-| `options` | map | No | Provider options (model, temperature, max_tokens) |
-| `timeout` | int | No | Timeout in seconds |
+| `options` | map | No | Provider options (`model` for all; `temperature`/`max_completion_tokens` for `openai_compatible` only) |
+| `timeout` | int/string | No | Timeout in seconds (`120`) or Go duration string (`"2m"`, `"1m30s"`) |
 | `on_success` | string | No | Next state on success |
 | `on_failure` | string or object | No | Next state on failure — string (named terminal ref) or inline object (see [Inline Error Shorthand](#inline-error-shorthand)) |
 
@@ -585,8 +583,10 @@ refine_code:
 |--------|------|---------|-------------|
 | `max_turns` | int | 10 | Maximum conversation turns |
 | `max_context_tokens` | int | model limit | Token budget for conversation |
-| `strategy` | string | `sliding_window` | Context window strategy |
+| `strategy` | string | `sliding_window` | Context window strategy (only `sliding_window` accepted) |
 | `stop_condition` | string | - | Expression to exit early |
+| `continue_from` | string | - | Step name to resume session from (validated at `awf validate`) |
+| `inject_context` | string | - | Template appended to prompt on turns 2+ (requires `mode: conversation`) |
 
 ### Agent Output
 
@@ -621,19 +621,21 @@ my_ai:
 
 ```yaml
 retry:
-  max_attempts: 5
-  initial_delay: 1s
-  max_delay: 30s
-  backoff: exponential
-  multiplier: 2
-  jitter: 0.1
-  retryable_exit_codes: [1, 22]
+  max_attempts: 5                    # >= 1, validated at awf validate time
+  initial_delay: 1s                  # Go duration string ("500ms", "2s", "1m")
+  max_delay: 30s                     # Omitting does NOT cap delays (fixed: was silently zeroing)
+  backoff: exponential               # constant, linear, exponential
+  multiplier: 2                      # Default: 2.0 when omitted (fixed: was defaulting to 0)
+  jitter: 0.1                        # Range: [0.0, 1.0]
+  retryable_exit_codes: [1, 22]      # Only retry on specific exit codes
 ```
 
 **Backoff Strategies:**
 - `constant` - Always initial_delay
 - `linear` - initial_delay * attempt
 - `exponential` - initial_delay * multiplier^(attempt-1)
+
+**Validation:** `RetryConfig.Validate()` checks `max_attempts >= 1`, valid backoff strategy, `jitter` in `[0.0, 1.0]`, `multiplier >= 0`, and valid duration strings. Errors surfaced at `awf validate` time.
 
 ## Conditional Transitions
 
@@ -719,9 +721,9 @@ build:
 
 ### Transition Evaluation
 
-- Transitions are evaluated **on both success and failure paths** (non-zero exit codes included)
+- Transitions are evaluated **on both success and failure paths** (non-zero exit codes, execution errors, and timeouts included)
 - Transitions are evaluated **in order**; first matching condition wins
-- When a transition matches, it **takes priority** over `on_success`, `on_failure`, and `continue_on_error`
+- When a transition matches, it **takes priority** over `on_success`, `on_failure`, and `continue_on_error` (including in `handleExecutionError` paths)
 - A transition without `when` acts as **default fallback**
 - If no transition matches and no default fallback exists, falls back to legacy `on_success`/`on_failure` behavior
 
@@ -870,8 +872,8 @@ command: echo "ID: {{.workflow.id}}"
 # Environment
 command: echo "{{.env.HOME}}"
 
-# Loop context
-command: echo "{{.loop.item}} ({{.loop.index1}}/{{.loop.length}})"
+# Loop context (PascalCase)
+command: echo "{{.loop.Item}} ({{.loop.Index1}}/{{.loop.Length}})"
 ```
 
 > **Breaking Change (v0.5.12)**: Lowercase state properties (`.output`, `.exit_code`) were never functional. Use `awf validate` to detect casing issues.

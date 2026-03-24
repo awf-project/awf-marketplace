@@ -238,21 +238,21 @@ build:
 
 This applies only to `prompts_dir` and `scripts_dir`. Other AWF directory variables (`config_dir`, `data_dir`, etc.) resolve directly to their XDG paths.
 
-### Loop Context
+### Loop Context (PascalCase)
 
 ```yaml
-{{.loop.item}}      # Current item
-{{.loop.index}}     # 0-based index
-{{.loop.index1}}    # 1-based index
-{{.loop.first}}     # True on first iteration
-{{.loop.last}}      # True on last iteration
-{{.loop.length}}    # Total items
-{{.loop.parent}}    # Parent loop context (nested)
+{{.loop.Item}}      # Current item
+{{.loop.Index}}     # 0-based index
+{{.loop.Index1}}    # 1-based index
+{{.loop.First}}     # True on first iteration
+{{.loop.Last}}      # True on last iteration
+{{.loop.Length}}     # Total items
+{{.loop.Parent}}    # Parent loop context (nested, recursive chain)
 ```
 
 ### Loop Item JSON Serialization
 
-When `{{.loop.item}}` contains complex types (objects, arrays), it is automatically serialized to JSON:
+When `{{.loop.Item}}` contains complex types (objects, arrays), it is automatically serialized to JSON:
 
 - **Objects** → JSON object: `{"name":"value","nested":{"key":"data"}}`
 - **Arrays** → JSON array: `[1,2,3]` or `["a","b","c"]`
@@ -280,17 +280,17 @@ call_child_workflow:
   type: call_workflow
   workflow: review-file
   inputs:
-    review: "{{.loop.item}}"  # Passed as valid JSON object to child
+    review: "{{.loop.Item}}"  # Passed as valid JSON object to child
 
 # Child workflow receives: {"file":"main.go","type":"fix"}
 ```
 
-**Note**: Primitive values remain unchanged. `{{.loop.item}}` with `"main.go"` stays as `main.go`.
+**Note**: Primitive values remain unchanged. `{{.loop.Item}}` with `"main.go"` stays as `main.go`.
 
 ### Nested Loop Example
 
 ```yaml
-command: echo "outer={{.loop.parent.item}} inner={{.loop.item}}"
+command: echo "outer={{.loop.Parent.Item}} inner={{.loop.Item}}"
 ```
 
 ## Arithmetic Expressions

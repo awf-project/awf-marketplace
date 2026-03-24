@@ -120,14 +120,14 @@ process_files:
 
 ### Item Access
 
-Access current item with `{{.loop.item}}`:
+Access current item with `{{.loop.Item}}`:
 
 ```yaml
 process:
   type: step
   command: |
-    echo "Processing {{.loop.item}}"
-    cat "{{.loop.item}}" | process.sh
+    echo "Processing {{.loop.Item}}"
+    cat "{{.loop.Item}}" | process.sh
   on_success: process_files
 ```
 
@@ -144,7 +144,7 @@ deploy_all:
 
 deploy_to_env:
   type: step
-  command: ./deploy.sh --env={{.loop.item}}
+  command: ./deploy.sh --env={{.loop.Item}}
   on_success: deploy_all
 ```
 
@@ -256,13 +256,13 @@ buggy_step:
 
 | Variable | Type | Availability | Description |
 |----------|------|--------------|-------------|
-| `{{.loop.index}}` | int | All loops | 0-based iteration index |
-| `{{.loop.index1}}` | int | All loops | 1-based iteration index |
-| `{{.loop.item}}` | any | for_each | Current item value |
-| `{{.loop.first}}` | bool | All loops | True on first iteration |
-| `{{.loop.last}}` | bool | All loops | True on last iteration |
-| `{{.loop.length}}` | int | for_each | Total item count |
-| `{{.loop.parent.*}}` | any | Nested | Parent loop context |
+| `{{.loop.Index}}` | int | All loops | 0-based iteration index |
+| `{{.loop.Index1}}` | int | All loops | 1-based iteration index |
+| `{{.loop.Item}}` | any | for_each | Current item value |
+| `{{.loop.First}}` | bool | All loops | True on first iteration |
+| `{{.loop.Last}}` | bool | All loops | True on last iteration |
+| `{{.loop.Length}}` | int | for_each | Total item count |
+| `{{.loop.Parent.*}}` | any | Nested | Parent loop context (recursive chain) |
 
 ### Exponential Backoff Example
 
@@ -280,8 +280,8 @@ retry_with_backoff:
 wait_backoff:
   type: step
   command: |
-    # Exponential backoff: 2^index seconds
-    sleep $((2 ** {{.loop.index}}))
+    # Exponential backoff: 2^Index seconds
+    sleep $((2 ** {{.loop.Index}}))
   on_success: retry_with_backoff
 ```
 
@@ -293,8 +293,9 @@ Loops can nest. Inner loop context isolated from outer.
 
 | Variable | Description |
 |----------|-------------|
-| `{{.loop.parent.index}}` | Parent iteration index |
-| `{{.loop.parent.item}}` | Parent current item |
+| `{{.loop.Parent.Index}}` | Parent iteration index |
+| `{{.loop.Parent.Item}}` | Parent current item |
+| `{{.loop.Parent.Parent.*}}` | Grandparent loop (recursive chain) |
 
 ### Example: Test Matrix
 
@@ -318,8 +319,8 @@ browser_loop:
 run_browser_tests:
   type: step
   command: |
-    echo "Testing {{.loop.parent.item}} with {{.loop.item}}"
-    ./test.sh --env={{.loop.parent.item}} --browser={{.loop.item}}
+    echo "Testing {{.loop.Parent.Item}} with {{.loop.Item}}"
+    ./test.sh --env={{.loop.Parent.Item}} --browser={{.loop.Item}}
   transitions:
     - when: 'states.run_browser_tests.ExitCode != 0'
       goto: test_failed
@@ -402,13 +403,13 @@ states:
 
   process_event:
     type: step
-    command: ./process.sh --event={{.loop.item}}
+    command: ./process.sh --event={{.loop.Item}}
     on_success: process_loop
 
   log_progress:
     type: step
     command: |
-      echo "Processed {{.loop.index1}}/{{.loop.length}}"
+      echo "Processed {{.loop.Index1}}/{{.loop.Length}}"
     on_success: process_loop
 
   done:
@@ -543,7 +544,7 @@ states:
 
   check_service:
     type: step
-    command: systemctl is-active "{{.loop.item}}"
+    command: systemctl is-active "{{.loop.Item}}"
     transitions:
       - when: 'states.check_service.ExitCode != 0'
         goto: critical_error  # Exit loop immediately
@@ -551,7 +552,7 @@ states:
 
   validate_config:
     type: step
-    command: validate-config --service={{.loop.item}}
+    command: validate-config --service={{.loop.Item}}
     on_success: validate_loop
 
   critical_error:

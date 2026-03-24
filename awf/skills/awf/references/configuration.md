@@ -186,7 +186,7 @@ states:
 
 - **Rolling window**: When `max_results` is set, only the most recent N iteration results are kept in memory
 - **Early results pruned**: Oldest results are automatically pruned as new iterations complete
-- **Access pattern**: Use `{{.loop.index}}` to track current position; accessing pruned results returns empty values
+- **Access pattern**: Use `{{.loop.Index}}` to track current position; accessing pruned results returns empty values
 - **Backward compatible**: Default (unlimited) preserves existing behavior for loops with reasonable iteration counts
 
 ## Memory Monitoring

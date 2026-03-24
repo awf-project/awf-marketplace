@@ -46,8 +46,6 @@ analyze:
   prompt: "Code review: {{.inputs.file_content}}"
   options:
     model: sonnet                          # sonnet, opus, haiku, or full model ID
-    max_tokens: 4096
-    temperature: 0.7
     allowedTools: "Read,Grep,Glob,Edit"    # Claude CLI tools to enable
     dangerouslySkipPermissions: true       # Skip permission prompts (for automation)
   timeout: 120
@@ -61,6 +59,8 @@ analyze:
 | `allowedTools` | string | Comma-separated Claude CLI tools to enable |
 | `dangerouslySkipPermissions` | bool | Skip interactive permission prompts |
 
+> `temperature` and `max_tokens` are **not forwarded** to the Claude CLI.
+
 ### Codex (OpenAI)
 
 ```yaml
@@ -69,10 +69,17 @@ generate:
   provider: codex
   prompt: "Generate function: {{.inputs.requirement}}"
   options:
-    max_tokens: 2048
+    model: codex-mini                      # Model flag (--model)
   timeout: 60
   on_success: next
 ```
+
+**Codex Options:**
+| Option | Type | Description |
+|--------|------|-------------|
+| `model` | string | Model to use (passed as `--model` flag) |
+
+> `temperature` and `max_tokens` are **not forwarded** to the Codex CLI.
 
 ### Gemini (Google)
 
@@ -87,6 +94,13 @@ summarize:
   on_success: next
 ```
 
+**Gemini Options:**
+| Option | Type | Description |
+|--------|------|-------------|
+| `model` | string | Model identifier |
+
+> `temperature` and `max_tokens` are **not forwarded** to the Gemini CLI.
+
 ### OpenCode
 
 ```yaml
@@ -97,6 +111,8 @@ refactor:
   timeout: 120
   on_success: next
 ```
+
+> OpenCode accepts no provider-specific options. `temperature` and `max_tokens` are not forwarded.
 
 ### OpenAI-Compatible Provider
 
@@ -111,7 +127,7 @@ my_ai:
     base_url: "http://localhost:11434/v1"   # Required: API endpoint
     model: "llama3"                          # Required: model name
     api_key: "sk-..."                        # Optional: falls back to OPENAI_API_KEY env var
-    max_tokens: 2048
+    max_completion_tokens: 2048              # max_tokens accepted as legacy fallback
     temperature: 0.7
   timeout: 60
   on_success: next
@@ -123,7 +139,7 @@ my_ai:
 | `base_url` | string | Yes | Chat Completions API endpoint URL |
 | `model` | string | Yes | Model identifier |
 | `api_key` | string | No | API key (falls back to `OPENAI_API_KEY` env var) |
-| `max_tokens` | int | No | Maximum response tokens |
+| `max_completion_tokens` | int | No | Maximum response tokens (`max_tokens` accepted as legacy fallback) |
 | `temperature` | float | No | Sampling temperature |
 
 **Features:**
@@ -791,7 +807,7 @@ when: "states.step.ExitCode == 0"
 
 **State properties (uppercase):** `.Output`, `.Stderr`, `.ExitCode`, `.Status`, `.Response`, `.JSON`, `.Tokens`
 
-**Loop context (lowercase):** `.item`, `.index`, `.index1`, `.first`, `.last`, `.length`
+**Loop context (PascalCase):** `.Item`, `.Index`, `.Index1`, `.First`, `.Last`, `.Length`, `.Parent`
 
 > Use `awf validate` to detect casing issues.
 

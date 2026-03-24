@@ -38,7 +38,6 @@ states:
       {{.inputs.code}}
     options:
       model: claude-sonnet-4-20250514
-      max_tokens: 4096
     conversation:
       max_turns: 10
       max_context_tokens: 100000
@@ -61,8 +60,8 @@ states:
 | `provider` | string | Yes | - | Agent provider: `claude`, `codex`, `gemini`, `opencode`, `openai_compatible` |
 | `system_prompt` | string | No | - | System message preserved across turns |
 | `prompt` | string | Yes | - | User message (executed each turn) |
-| `options` | object | No | - | Provider-specific options |
-| `timeout` | int | No | `300` | Timeout per turn in seconds |
+| `options` | map | No | - | Provider-specific options (see [Agent Steps](agent-steps.md#providers)) |
+| `timeout` | int/string | No | `300` | Timeout per turn — seconds (`120`) or Go duration (`"2m"`, `"1m30s"`) |
 | `on_success` | string | Yes | - | Next state on completion |
 | `on_failure` | string | No | - | Next state on error |
 
@@ -74,6 +73,9 @@ conversation:
   max_context_tokens: 100000       # Token budget (default: unlimited)
   strategy: sliding_window         # Only supported strategy
   stop_condition: "expression"     # Exit condition (optional)
+  continue_from: previous_step     # Resume session from another step (optional)
+  inject_context: |                # Append context on turns 2+ (optional)
+    Latest: {{.states.check.Output}}
 ```
 
 #### max_turns
@@ -104,7 +106,39 @@ Context window strategy when token limit is reached:
 strategy: sliding_window
 ```
 
-> **Not Yet Implemented**: `summarize`, `truncate_middle`
+> `summarize` and `truncate_middle` are **rejected at validation** with "not yet implemented" errors. Only `sliding_window` is accepted.
+
+#### continue_from
+
+Resume the session state (SessionID or Turns) from a previously executed conversation step. The target step must exist in the same workflow and must have completed with a non-empty session.
+
+```yaml
+conversation:
+  continue_from: initial_review   # Resume from initial_review's session
+  max_turns: 5
+```
+
+- Static step-name validation at `awf validate` time
+- CLI providers resume via SessionID; `openai_compatible` uses Turns
+- Missing step, nil state, or empty session produces a clear error
+
+#### inject_context
+
+Append interpolated context to agent prompts on turns 2+. Template variables are re-resolved each turn against the current interpolation context, so `{{.states.*}}` and `{{.inputs.*}}` reflect the latest step outputs.
+
+```yaml
+conversation:
+  inject_context: |
+    Current test results: {{.states.test_run.Output}}
+    Iteration: {{.states.counter.Output}}
+  max_turns: 10
+```
+
+- First turn: only `prompt` is sent (no injection)
+- Turns 2+: `inject_context` is appended with `\n\n` separator
+- Empty/whitespace values are treated as no-ops
+- Requires `mode: conversation` — rejected on `mode: single`
+- Interpolation errors are wrapped with `inject_context: <error>` for attribution
 
 #### stop_condition
 
@@ -171,6 +205,7 @@ states:
     Output: "Final response text..."
     Status: completed
     Conversation:
+      SessionID: "sess_abc123"     # Provider-native session ID for resume
       Turns:
         - Role: system
           Content: "You are a code reviewer..."
@@ -206,7 +241,10 @@ states:
 +-------------------------------------------------------------+
 ```
 
-**Key point**: The same `prompt` is sent each turn. The conversation history accumulates in state, but the provider CLI is invoked with the same prompt repeatedly.
+**Key points**:
+- The same `prompt` is sent each turn. The provider CLI is invoked with the same prompt repeatedly.
+- **Session resume**: All 4 CLI providers persist sessions across turns via native flags (Claude `-r`, Codex `--resume`, Gemini `--resume`, OpenCode `-s`). `SessionID` is extracted from command output after each turn and passed back on subsequent turns.
+- CLI providers (`claude`, `codex`, `gemini`, `opencode`) execute each turn independently — only `openai_compatible` maintains true HTTP-level multi-turn history continuity.
 
 ## Examples
 
@@ -247,6 +285,45 @@ states:
     type: terminal
 ```
 
+### Cross-Step Resume with continue_from
+
+```yaml
+name: two-phase-review
+version: "1.0.0"
+
+inputs:
+  - name: code
+    type: string
+    required: true
+
+states:
+  initial: initial_review
+
+  initial_review:
+    type: agent
+    provider: claude
+    mode: conversation
+    system_prompt: "You are a code reviewer."
+    prompt: "Review: {{.inputs.code}}"
+    conversation:
+      max_turns: 3
+    on_success: deep_review
+
+  deep_review:
+    type: agent
+    provider: claude
+    mode: conversation
+    prompt: "Now focus on security issues."
+    conversation:
+      continue_from: initial_review    # Resumes initial_review's session
+      max_turns: 3
+      stop_condition: "inputs.response contains 'SECURE'"
+    on_success: done
+
+  done:
+    type: terminal
+```
+
 ### Turn-Limited Generation
 
 ```yaml
@@ -280,19 +357,17 @@ states:
 
 ### Current Implementation
 
-- **Single prompt per conversation** - Same prompt executed each turn
+- **Single prompt per conversation** - Same prompt executed each turn (use `inject_context` to vary context on turns 2+)
 - **No interactive input** - Cannot inject user messages between turns
-- **Only `sliding_window` strategy** - Other strategies not implemented
-- **No conversation continuation** - `continue_from` not implemented
+- **Only `sliding_window` strategy** - `summarize` and `truncate_middle` rejected at validation
 - **No branching** - Single linear path only
 
 ### Not Yet Implemented
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| `continue_from` | Not implemented | Resume conversation from previous step |
-| `summarize` strategy | Not implemented | LLM-based compression of old turns |
-| `truncate_middle` strategy | Not implemented | Keep first and last turns |
+| `summarize` strategy | Rejected at validation | LLM-based compression of old turns |
+| `truncate_middle` strategy | Rejected at validation | Keep first and last turns |
 | `on_error` mapping | Not implemented | Route to specific states by error type |
 | Interactive input | Not implemented | User input between turns |
 

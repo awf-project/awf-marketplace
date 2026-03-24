@@ -83,3 +83,5 @@ awf run deploy -f json
   }
 }
 ```
+
+> **Output Routing**: JSON error responses are always written to **stderr**, not stdout. This preserves stdout cleanliness for script piping contracts. Check `stderr` when consuming JSON errors programmatically.

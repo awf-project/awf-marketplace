@@ -93,7 +93,7 @@ states:
   process_single:
     type: step
     command: |
-      echo "Processing {{.loop.item}} ({{.loop.index1}}/{{.loop.length}})"
+      echo "Processing {{.loop.Item}} ({{.loop.Index1}}/{{.loop.Length}})"
     on_success: process_loop
   done:
     type: terminal
@@ -195,7 +195,7 @@ states:
     on_complete: outer_loop
   process:
     type: step
-    command: echo "outer={{.loop.parent.item}} inner={{.loop.item}}"
+    command: echo "outer={{.loop.Parent.Item}} inner={{.loop.Item}}"
     on_success: inner_loop
   done:
     type: terminal
