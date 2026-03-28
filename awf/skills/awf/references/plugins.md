@@ -240,26 +240,52 @@ config:
 
 ## Managing Plugins
 
-Built-in providers (`github`, `http`, `notify`) appear in `awf plugin list` alongside external plugins with `TYPE=builtin`. They can be enabled and disabled like external plugins — disabling gates all operations from that provider at both validation and execution time.
+### Installing from GitHub Releases
 
 ```bash
-awf plugin list                      # List all plugins (built-in + external) with TYPE column
+awf plugin install myorg/awf-plugin-slack          # latest release
+awf plugin install myorg/awf-plugin-slack@v1.2.0   # pin version
+awf plugin install myorg/awf-plugin-slack --force   # reinstall
+```
+
+Downloads the platform-matched binary, verifies SHA-256 checksum, and atomically installs. Uses `gh auth token` for auth; falls back to `GITHUB_TOKEN`. The `owner/repo` is persisted as `SOURCE` for future updates.
+
+```bash
+awf plugin update awf-plugin-slack          # fetch latest from stored SOURCE
+awf plugin remove awf-plugin-slack          # remove binary and state
+awf plugin remove awf-plugin-slack --keep-data  # remove binary, preserve state
+awf plugin search slack                     # search GitHub for AWF plugins
+```
+
+### Listing and Visibility
+
+Built-in providers (`github`, `http`, `notify`) appear in `awf plugin list` alongside external plugins with `TYPE=builtin`. The `SOURCE` column shows the GitHub `owner/repo` for plugins installed via `awf plugin install`.
+
+```bash
+awf plugin list                      # List all plugins with TYPE and SOURCE columns
 awf plugin list --operations         # List operations (triggers full gRPC init for external plugins)
+```
+
+**Example output:**
+
+```
+NAME               TYPE      VERSION  STATUS   ENABLED  CAPABILITIES  SOURCE
+github             builtin   v0.4.0   builtin  yes      operations
+http               builtin   v0.4.0   builtin  yes      operations
+notify             builtin   v0.4.0   builtin  yes      operations
+awf-plugin-slack   external  1.0.0    running  yes      operations    myorg/awf-plugin-slack
+```
+
+### Enabling and Disabling
+
+```bash
 awf plugin enable notify             # Enable built-in provider
 awf plugin disable notify            # Disable built-in provider (blocks notify.send at run time)
 awf plugin enable awf-plugin-slack   # Enable external plugin
 awf plugin disable awf-plugin-slack  # Disable external plugin
 ```
 
-**Example output:**
-
-```
-NAME               TYPE      VERSION  STATUS   ENABLED  CAPABILITIES
-github             builtin   v0.4.0   builtin  yes      operations
-http               builtin   v0.4.0   builtin  yes      operations
-notify             builtin   v0.4.0   builtin  yes      operations
-awf-plugin-slack   external  1.0.0    running  yes      operations
-```
+Disabling any plugin gates all its operations at both validation and execution time.
 
 **Disabled-plugin warnings:** `awf validate <workflow>` emits a warning for each step that references an operation from a disabled plugin. This catches mismatches before execution rather than failing at run time.
 

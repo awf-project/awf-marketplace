@@ -80,8 +80,12 @@ awf run hello --input name=Claude
 | `awf resume` | Resume interrupted |
 | `awf history` | Show history |
 | `awf config show` | Display project config |
-| `awf plugin list` | List plugins (built-in + external, with TYPE column) |
+| `awf plugin list` | List plugins (built-in + external, with TYPE and SOURCE columns) |
 | `awf plugin list --operations` | List operations per plugin (triggers gRPC init for external plugins) |
+| `awf plugin install <owner/repo>` | Install plugin from GitHub Releases |
+| `awf plugin update <name>` | Update installed plugin to latest release |
+| `awf plugin remove <name>` | Remove installed plugin |
+| `awf plugin search <query>` | Search GitHub for AWF plugins |
 
 **Details**: [CLI Commands Reference](references/cli-commands.md)
 
