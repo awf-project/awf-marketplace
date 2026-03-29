@@ -99,8 +99,9 @@ awf run hello --input name=Claude
 | `terminal` | End workflow |
 | `for_each` | Iterate over list (supports transitions) |
 | `while` | Repeat until false (supports transitions) |
-| `operation` | Invoke plugin operation |
+| `operation` | Invoke plugin operation (`{plugin-id}.{operation}`) |
 | `call_workflow` | Execute sub-workflow |
+| `{plugin-id}.{step-type}` | Execute custom plugin-defined step type with `config:` block |
 
 **Details**: [Workflow Syntax Reference](references/workflow-syntax.md)
 
@@ -395,6 +396,32 @@ notify_team:
 4 backends: `desktop` (OS-native), `ntfy` (push notifications), `slack` (webhook), `webhook` (generic HTTP). Configure in `.awf/config.yaml` under `plugins.notify`.
 
 **Details**: [Plugins Reference](references/plugins.md) | [Workflow Syntax - Operation State](references/workflow-syntax.md)
+
+### Plugin Custom Step Types
+
+Plugins can define new step types referenced as `{plugin-id}.{step-type}` with a `config:` block:
+
+```yaml
+query_db:
+  type: awf-plugin-database.sql_query
+  config:
+    query: "SELECT * FROM users WHERE id = {{.inputs.user_id}}"
+    connection: postgres
+  on_success: process
+  on_failure: error
+```
+
+Use `--skip-plugins` during development to bypass plugin validation and execution:
+
+```bash
+awf validate my-workflow --skip-plugins
+awf run my-workflow --skip-plugins
+awf run my-workflow --validator-timeout 30s   # control validator plugin timeout
+```
+
+Plugins declaring `validators` capability run at `awf validate` and `awf run` time to enforce custom rules (e.g. block hardcoded secrets).
+
+**Details**: [Plugins Reference](references/plugins.md)
 
 ## Resources
 

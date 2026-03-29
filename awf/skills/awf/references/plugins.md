@@ -167,7 +167,7 @@ config:
 | `name` | Yes | Plugin identifier (see naming rules below) |
 | `version` | Yes | Non-empty version string |
 | `awf_version` | Yes | AWF version constraint |
-| `capabilities` | Yes | `operations`, `commands`, `validators` |
+| `capabilities` | Yes | `operations`, `step_types`, `validators` |
 | `config` | No | Configuration schema |
 
 ## Manifest Validation (v0.5.40)
@@ -193,8 +193,8 @@ my_plugin       # Invalid: underscore
 
 Only these capabilities are allowed:
 - `operations` - Custom workflow operations
-- `commands` - CLI command extensions
-- `validators` - Custom validation rules
+- `step_types` - Custom workflow step type definitions
+- `validators` - Workflow validation rules enforced during `awf validate`
 
 Unknown capabilities are rejected.
 
@@ -419,6 +419,107 @@ schema validation failed: 3 errors:
   - operations.send_notification.inputs.priority: default value type "string" does not match declared type "integer"
   - operations.send_notification.outputs: duplicate output name "message_id"
 ```
+
+## Workflow Validators
+
+Plugins that declare the `validators` capability implement `ValidatorService` gRPC. AWF invokes all loaded validator plugins during `awf validate` and at the start of `awf run` (before execution begins).
+
+```yaml
+# plugin.yaml
+name: awf-plugin-security-validator
+capabilities:
+  - validators
+```
+
+```go
+// SDK implementation
+import "github.com/awf-project/cli/pkg/plugin/sdk"
+
+type SecurityValidator struct{ sdk.BasePlugin }
+
+func (v *SecurityValidator) Validators() []sdk.Validator {
+    return []sdk.Validator{
+        {
+            Name: "secrets",
+            Validate: func(ctx sdk.Context, workflow []byte) []string {
+                // Return validation error strings; empty slice = valid
+                return []string{"hardcoded secret detected in state 'deploy'"}
+            },
+        },
+    }
+}
+
+func main() { sdk.Serve(&SecurityValidator{}) }
+```
+
+Use `--skip-plugins` to bypass all validator plugins:
+
+```bash
+awf validate my-workflow --skip-plugins
+awf run my-workflow --skip-plugins
+awf run my-workflow --validator-timeout 30s   # per-validator timeout
+```
+
+See `examples/plugins/awf-plugin-security-validator/` for a complete example.
+
+---
+
+## Custom Step Types
+
+Plugins that declare the `step_types` capability implement `StepTypeService` gRPC. They register named step types that workflows use as the `type:` field, namespaced as `{plugin-id}.{step-type-name}`.
+
+The `config:` block passes arbitrary key-value configuration to the step handler. All values support template interpolation.
+
+```yaml
+# Workflow using a plugin-defined step type
+query_db:
+  type: awf-plugin-database.sql_query
+  config:
+    query: "SELECT * FROM users WHERE id = {{.inputs.user_id}}"
+    connection: postgres
+  on_success: process
+  on_failure: error
+
+process:
+  type: step
+  command: echo "Result: {{.states.query_db.Output}}"
+  on_success: done
+```
+
+```yaml
+# plugin.yaml
+name: awf-plugin-database
+capabilities:
+  - step_types
+```
+
+```go
+// SDK implementation
+import "github.com/awf-project/cli/pkg/plugin/sdk"
+
+type DatabasePlugin struct{ sdk.BasePlugin }
+
+func (p *DatabasePlugin) StepTypes() []sdk.StepType {
+    return []sdk.StepType{
+        {
+            Name: "sql_query",
+            Execute: func(ctx sdk.Context, config map[string]any) (sdk.Result, error) {
+                query := config["query"].(string)
+                // execute query against config["connection"] pool ...
+                return sdk.Result{Output: results}, nil
+            },
+        },
+    }
+}
+
+func main() { sdk.Serve(&DatabasePlugin{}) }
+```
+
+AWF validates step type names at `awf validate` time: unknown `{plugin-id}.{step-type}` references produce an error unless `--skip-plugins` is passed.
+
+See `examples/plugins/awf-plugin-database/` for a complete example.
+
+---
 
 ## Troubleshooting
 
