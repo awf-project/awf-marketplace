@@ -87,6 +87,8 @@ awf run <workflow> --help    # Show workflow inputs
 | `--dry-run` | Preview without executing |
 | `--interactive` | Step-by-step mode |
 | `--breakpoint, -b` | Pause at specific steps |
+| `--skip-plugins` | Skip loading and executing plugins |
+| `--validator-timeout` | Timeout for validator plugins (e.g. `30s`) |
 
 ### Interactive Input Collection
 
@@ -220,8 +222,12 @@ awf status <workflow-id> [-f json]
 Validate workflow syntax.
 
 ```bash
-awf validate <workflow> [-v]
+awf validate <workflow> [-v] [--skip-plugins]
 ```
+
+| Flag | Description |
+|------|-------------|
+| `--skip-plugins` | Skip validator plugins during validation |
 
 **Validates:**
 - YAML syntax
@@ -344,6 +350,8 @@ Manage AWF plugins.
 ```bash
 awf plugin list                          # List all plugins (built-in + external)
 awf plugin list --operations             # List operations per plugin
+awf plugin list --step-types             # Show STEP TYPES capability column
+awf plugin list --validators             # Show VALIDATORS capability column
 awf plugin install <owner/repo>          # Install plugin from GitHub Releases
 awf plugin update <name>                 # Update installed plugin to latest release
 awf plugin remove <name>                 # Remove installed plugin
@@ -360,16 +368,24 @@ Built-in providers (`github`, `http`, `notify`) are listed with `TYPE=builtin`. 
 # List plugins
 awf plugin list
 # Output:
-# NAME               TYPE      VERSION  STATUS   ENABLED  CAPABILITIES  SOURCE
-# github             builtin   v0.4.0   builtin  yes      operations
-# http               builtin   v0.4.0   builtin  yes      operations
-# notify             builtin   v0.4.0   builtin  yes      operations
-# awf-plugin-slack   external  1.0.0    running  yes      operations    myorg/awf-plugin-slack
+# NAME                        TYPE      VERSION  STATUS   ENABLED  CAPABILITIES  SOURCE
+# github                      builtin   v0.4.0   builtin  yes      operations
+# http                        builtin   v0.4.0   builtin  yes      operations
+# notify                      builtin   v0.4.0   builtin  yes      operations
+# awf-plugin-slack            external  1.0.0    running  yes      operations    myorg/awf-plugin-slack
+# awf-plugin-database         external  1.0.0    running  yes      step_types    myorg/awf-plugin-database
+# awf-plugin-security-valid   external  1.2.0    running  yes      validators    myorg/awf-plugin-security-validator
 
 # List operations per plugin
 awf plugin list --operations
 # github: get_issue, get_pr, create_issue, create_pr, add_labels, add_comment, list_comments, batch
 # notify: send
+
+# Show step-type and validator capability details
+awf plugin list --step-types --validators
+# NAME                      STEP TYPES   VALIDATORS
+# awf-plugin-database       sql_query    -
+# awf-plugin-security-val   -            secrets,commands
 
 # Install from GitHub Releases
 awf plugin install myorg/awf-plugin-slack
