@@ -141,10 +141,18 @@ echo_step:
 ## Plugin Directory
 
 ```
-$XDG_DATA_HOME/awf/plugins/     # ~/.local/share/awf/plugins/
+$XDG_DATA_HOME/awf/plugins/     # ~/.local/share/awf/plugins/ (default)
 └── awf-plugin-slack/
     ├── plugin.yaml             # Manifest
     └── awf-plugin-slack        # Binary
+```
+
+Set `AWF_PLUGINS_PATH` to include additional plugin directories (colon-separated). `awf plugin update` and `awf plugin remove` search all configured paths — including `AWF_PLUGINS_PATH` entries — when locating a plugin.
+
+```bash
+export AWF_PLUGINS_PATH="/opt/awf-plugins:/home/user/dev-plugins"
+awf plugin update awf-plugin-local   # found in /home/user/dev-plugins/awf-plugin-local/
+awf plugin remove awf-plugin-local
 ```
 
 ## Manifest
