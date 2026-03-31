@@ -21,6 +21,8 @@
 | `awf plugin search <query>` | Search GitHub for AWF plugins |
 | `awf plugin enable <name>` | Enable a plugin |
 | `awf plugin disable <name>` | Disable a plugin |
+| `awf workflow install <owner/repo>` | Install workflow pack from GitHub Releases |
+| `awf workflow remove <name>` | Remove installed workflow pack |
 | `awf version` | Show version |
 | `awf completion <shell>` | Generate autocompletion |
 
@@ -426,6 +428,80 @@ Downloads the platform-matched binary from GitHub Releases, verifies SHA-256 che
 ### awf plugin update
 
 Fetches the latest release from the stored `SOURCE` repository and atomically replaces the binary. Requires the plugin to have been installed via `awf plugin install`.
+
+## awf workflow
+
+Manage workflow packs.
+
+```bash
+awf workflow install <owner/repo>    # Install workflow pack from GitHub Releases
+awf workflow install <owner/repo>@<version>  # Pin to specific version
+awf workflow remove <name>           # Remove installed workflow pack
+```
+
+**Pack location:** `$XDG_DATA_HOME/awf/workflow-packs/` (~/.local/share/awf/workflow-packs/)
+
+A workflow pack is a GitHub Release tarball containing an `awf-pack.yaml` manifest and workflow YAML files. AWF downloads the tarball, verifies the SHA-256 checksum, validates the manifest, and atomically installs the pack.
+
+### awf workflow install
+
+```bash
+awf workflow install <owner/repo>            # install latest release
+awf workflow install <owner/repo>@v1.2.0     # pin to specific release tag
+```
+
+| Flag | Description |
+|------|-------------|
+| `@<version>` | Pin to a specific release tag (e.g. `owner/repo@v1.2.0`) |
+
+**Behavior:**
+- Downloads and verifies SHA-256 checksum against the release manifest
+- Validates `awf-pack.yaml` including CLI version constraints
+- Warns if the pack declares plugin dependencies not currently installed
+- Substitutes `dev` CLI version with `0.5.0` for constraint evaluation
+- Enforces 1MB size limit on manifest reads (OOM protection)
+
+```bash
+awf workflow install myorg/my-workflows
+awf workflow install myorg/my-workflows@v2.0.0
+```
+
+### awf workflow remove
+
+```bash
+awf workflow remove <name>
+```
+
+Removes the named workflow pack directory from `$XDG_DATA_HOME/awf/workflow-packs/`.
+
+```bash
+awf workflow remove my-workflows
+```
+
+### awf-pack.yaml manifest
+
+Each workflow pack contains an `awf-pack.yaml` manifest:
+
+```yaml
+name: my-workflows
+version: "1.0.0"
+min_cli_version: "0.6.0"    # optional, semver constraint
+max_cli_version: "1.0.0"    # optional
+plugins:                     # optional, warns if not installed
+  - awf-plugin-database
+workflows:
+  - deploy.yaml
+  - release.yaml
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | yes | Pack identifier used for install/remove |
+| `version` | yes | Pack version |
+| `min_cli_version` | no | Minimum AWF CLI version required |
+| `max_cli_version` | no | Maximum AWF CLI version supported |
+| `plugins` | no | Plugin dependencies (installation warnings only) |
+| `workflows` | yes | List of workflow YAML files included in the pack |
 
 ## awf completion
 
