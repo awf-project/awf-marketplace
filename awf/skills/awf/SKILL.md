@@ -86,6 +86,8 @@ awf run hello --input name=Claude
 | `awf plugin update <name>` | Update installed plugin to latest release |
 | `awf plugin remove <name>` | Remove installed plugin |
 | `awf plugin search <query>` | Search GitHub for AWF plugins |
+| `awf workflow install <owner/repo>` | Install workflow pack from GitHub Releases into XDG data dir |
+| `awf workflow remove <name>` | Remove installed workflow pack |
 
 **Details**: [CLI Commands Reference](references/cli-commands.md)
 
