@@ -116,6 +116,7 @@ AWF supports environment variables for configuration:
 |----------|-------------|
 | `AWF_PROMPT_PATH` | Custom path for prompt file resolution |
 | `AWF_AUDIT_LOG` | Audit trail file path, or `off` to disable (v0.6.7) |
+| `AWF_PLUGINS_PATH` | Colon-separated list of additional plugin search directories |
 
 ### Prompt Path Resolution
 
