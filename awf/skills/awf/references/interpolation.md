@@ -238,6 +238,28 @@ build:
 
 This applies only to `prompts_dir` and `scripts_dir`. Other AWF directory variables (`config_dir`, `data_dir`, etc.) resolve directly to their XDG paths.
 
+#### 3-Tier Resolution Inside Pack Workflows
+
+When a workflow is executed via `awf run <pack>/<workflow>`, the resolution for `{{.awf.prompts_dir}}` and `{{.awf.scripts_dir}}` extends to **3 tiers**:
+
+1. **User override** — `.awf/prompts/<pack-name>/` in the current project directory (highest priority)
+2. **Pack embedded** — the pack's own `prompts/` directory (installed with the pack)
+3. **Global XDG** — `$XDG_CONFIG_HOME/awf/prompts/` (lowest priority fallback)
+
+No new template variables are introduced — `{{.awf.prompts_dir}}` and `{{.awf.scripts_dir}}` automatically use 3-tier resolution when a pack name is in context.
+
+```
+.awf/
+└── prompts/
+    └── speckit/               # User override directory for "speckit" pack
+        └── specify.md         # Overrides pack-embedded prompts/specify.md
+```
+
+**Example**: A pack workflow using `prompt_file: "{{.awf.prompts_dir}}/specify.md"` resolves:
+1. `.awf/prompts/speckit/specify.md` (user override, project-level)
+2. `~/.local/share/awf/workflow-packs/speckit/prompts/specify.md` (pack embedded)
+3. `~/.config/awf/prompts/specify.md` (global fallback)
+
 ### Loop Context (PascalCase)
 
 ```yaml

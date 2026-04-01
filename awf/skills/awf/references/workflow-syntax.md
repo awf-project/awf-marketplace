@@ -451,6 +451,36 @@ run_tests:
 
 **Safety:** Circular call detection prevents infinite recursion.
 
+### Pack Workflow Resolution
+
+When a workflow runs inside a pack (via `awf run <pack>/<workflow>`), `call_workflow` resolves names differently:
+
+| Reference form | Resolution |
+|----------------|------------|
+| `call_workflow: helper` | Pack's own `workflows/helper.yaml` (intra-pack) |
+| `call_workflow: speckit/helper` | Installed pack `speckit`, workflow `helper.yaml` (cross-pack) |
+| `call_workflow: my-local-wf` (no slash, not in pack) | Local `.awf/workflows/my-local-wf.yaml` |
+
+Unnamespaced references (`helper`) inside a pack resolve to the pack's own `workflows/` directory first, enabling intra-pack composition. Cross-pack calls require the `<pack>/<workflow>` namespace syntax.
+
+```yaml
+# Inside a pack workflow: calls pack's own helper.yaml
+run_helper:
+  type: call_workflow
+  workflow: helper
+  inputs:
+    data: "{{.inputs.data}}"
+  on_success: done
+
+# Cross-pack: explicitly namespace the target pack
+run_external:
+  type: call_workflow
+  workflow: other-pack/utility
+  inputs:
+    data: "{{.inputs.data}}"
+  on_success: done
+```
+
 ### Using Call Workflow in Loops
 
 Combine `for_each` with `call_workflow` to process multiple items. Loop items (especially complex objects) are automatically serialized to JSON:

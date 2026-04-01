@@ -6,6 +6,7 @@
 |---------|-------------|
 | `awf init` | Initialize AWF in directory |
 | `awf run <workflow>` | Execute a workflow |
+| `awf run <pack>/<workflow>` | Execute workflow from installed pack |
 | `awf run <workflow> --help` | Show workflow inputs |
 | `awf resume [id]` | Resume interrupted workflow |
 | `awf list` | List available workflows |
@@ -72,12 +73,32 @@ $XDG_CONFIG_HOME/awf/
 
 ## awf run
 
-Execute a workflow.
+Execute a workflow or a workflow from an installed pack.
 
 ```bash
 awf run <workflow> [flags]
-awf run <workflow> --help    # Show workflow inputs
+awf run <pack>/<workflow> [flags]    # Run workflow from installed pack
+awf run <workflow> --help            # Show workflow inputs
 ```
+
+### Running Pack Workflows
+
+Use `<pack>/<workflow>` syntax to execute workflows from installed packs without path juggling:
+
+```bash
+# Install pack first
+awf workflow install myorg/speckit
+
+# Run workflow from pack
+awf run speckit/specify --input file=main.go
+```
+
+**Pack resolution order** (for `{{.awf.prompts_dir}}` and `{{.awf.scripts_dir}}` inside a pack workflow):
+1. `.awf/prompts/<pack-name>/` — local user override (project-level)
+2. Pack's embedded `prompts/` directory — pack-provided default
+3. `$XDG_CONFIG_HOME/awf/prompts/` — global XDG fallback
+
+Place a file at `.awf/prompts/<pack>/override.md` to override any pack-embedded prompt without modifying the pack.
 
 | Flag | Description |
 |------|-------------|
@@ -147,6 +168,9 @@ Displays:
 ```bash
 # Basic
 awf run deploy
+
+# Pack workflow
+awf run speckit/specify --input file=main.go
 
 # With inputs
 awf run deploy -i env=prod -i version=1.2.3

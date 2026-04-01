@@ -20,10 +20,11 @@ argument-hint: "[topic]"
 
 **Running a workflow?**
 1. `awf run <name> --input key=value`
-2. Missing inputs? AWF prompts in terminal - see [Interactive Inputs](references/interactive-inputs.md)
-3. Use `--dry-run` to preview (config values pre-populate)
-4. Use `--interactive` for step-by-step (config values reduce prompts)
-5. See [CLI Commands](references/cli-commands.md)
+2. To run a workflow from an installed pack: `awf run <pack>/<workflow> --input key=value`
+3. Missing inputs? AWF prompts in terminal - see [Interactive Inputs](references/interactive-inputs.md)
+4. Use `--dry-run` to preview (config values pre-populate)
+5. Use `--interactive` for step-by-step (config values reduce prompts)
+6. See [CLI Commands](references/cli-commands.md)
 
 **Debugging issues?**
 1. `awf validate <name>` to check syntax (validates expressions since v0.5.33; warns on disabled plugin references)
@@ -73,6 +74,7 @@ awf run hello --input name=Claude
 |---------|-------------|
 | `awf init` | Initialize AWF in directory (workflows, prompts, scripts) |
 | `awf run <workflow>` | Execute workflow |
+| `awf run <pack>/<workflow>` | Execute workflow from installed pack |
 | `awf run <workflow> --help` | Show workflow inputs |
 | `awf validate <workflow>` | Check syntax |
 | `awf diagram <workflow>` | Generate visualization |
@@ -128,8 +130,8 @@ command: echo "{{.env.HOME}}"
 
 # AWF system directories (XDG-compliant)
 command: echo "{{.awf.config_dir}}"    # ~/.config/awf
-command: echo "{{.awf.prompts_dir}}"   # prompts directory (local-before-global)
-command: echo "{{.awf.scripts_dir}}"   # scripts directory (local-before-global)
+command: echo "{{.awf.prompts_dir}}"   # prompts dir: 2-tier local→global; 3-tier inside pack (user override → pack embedded → global XDG)
+command: echo "{{.awf.scripts_dir}}"   # scripts dir: same 2-tier/3-tier resolution as prompts_dir
 prompt_file: "{{.awf.prompts_dir}}/analyze.md"   # checks <workflow_dir>/prompts/ first
 script_file: "{{.awf.scripts_dir}}/deploy.sh"    # checks <workflow_dir>/scripts/ first
 # Local-before-global applies to command:, dir:, script_file:, prompt_file:
