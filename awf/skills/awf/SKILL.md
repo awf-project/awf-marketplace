@@ -78,7 +78,7 @@ awf run hello --input name=Claude
 | `awf run <workflow> --help` | Show workflow inputs |
 | `awf validate <workflow>` | Check syntax |
 | `awf diagram <workflow>` | Generate visualization |
-| `awf list` | List workflows |
+| `awf list` | List workflows (local + pack workflows with `pack/workflow` prefix) |
 | `awf resume` | Resume interrupted |
 | `awf history` | Show history |
 | `awf config show` | Display project config |
@@ -89,6 +89,11 @@ awf run hello --input name=Claude
 | `awf plugin remove <name>` | Remove installed plugin |
 | `awf plugin search <query>` | Search GitHub for AWF plugins |
 | `awf workflow install <owner/repo>` | Install workflow pack from GitHub Releases into XDG data dir |
+| `awf workflow list` | List installed workflow packs with name, version, source, and workflows |
+| `awf workflow info <name>` | Show pack manifest details, plugin status, and embedded README |
+| `awf workflow update <name>` | Update installed workflow pack to latest release |
+| `awf workflow update --all` | Update all installed workflow packs |
+| `awf workflow search <query>` | Search GitHub for AWF workflow packs |
 | `awf workflow remove <name>` | Remove installed workflow pack |
 
 **Details**: [CLI Commands Reference](references/cli-commands.md)

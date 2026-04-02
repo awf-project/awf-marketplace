@@ -23,6 +23,10 @@
 | `awf plugin enable <name>` | Enable a plugin |
 | `awf plugin disable <name>` | Disable a plugin |
 | `awf workflow install <owner/repo>` | Install workflow pack from GitHub Releases |
+| `awf workflow list` | List installed workflow packs |
+| `awf workflow info <name>` | Show pack manifest, plugin status, and README |
+| `awf workflow update <name>` | Update installed workflow pack to latest release |
+| `awf workflow search <query>` | Search GitHub for AWF workflow packs |
 | `awf workflow remove <name>` | Remove installed workflow pack |
 | `awf version` | Show version |
 | `awf completion <shell>` | Generate autocompletion |
@@ -229,10 +233,22 @@ awf resume abc123 -i max_tokens=5000
 
 ## awf list
 
-List available workflows.
+List available workflows — local and from installed packs.
 
 ```bash
 awf list [-f json|table]
+```
+
+Output includes:
+- Local workflows from `.awf/workflows/` (labeled `(local)`)
+- Pack workflows listed as `pack/workflow` with `SOURCE=pack`
+
+```bash
+awf list
+# NAME                   SOURCE
+# hello                  (local)
+# speckit/specify        pack
+# speckit/review         pack
 ```
 
 ## awf status
@@ -460,6 +476,11 @@ Manage workflow packs.
 ```bash
 awf workflow install <owner/repo>    # Install workflow pack from GitHub Releases
 awf workflow install <owner/repo>@<version>  # Pin to specific version
+awf workflow list                    # List installed packs
+awf workflow info <name>             # Show pack details
+awf workflow update <name>           # Update pack to latest release
+awf workflow update --all            # Update all installed packs
+awf workflow search <query>          # Search GitHub for AWF workflow packs
 awf workflow remove <name>           # Remove installed workflow pack
 ```
 
@@ -488,6 +509,75 @@ awf workflow install <owner/repo>@v1.2.0     # pin to specific release tag
 ```bash
 awf workflow install myorg/my-workflows
 awf workflow install myorg/my-workflows@v2.0.0
+```
+
+### awf workflow list
+
+```bash
+awf workflow list
+```
+
+Lists all installed workflow packs with name, version, source URL, and included workflow names.
+
+```bash
+awf workflow list
+# NAME          VERSION  SOURCE                     WORKFLOWS
+# speckit       1.2.0    myorg/speckit              specify, review
+# my-workflows  2.0.0    myorg/my-workflows         deploy, release
+```
+
+Also shows a `(local)` entry when `.awf/workflows/` contains workflow files.
+
+### awf workflow info
+
+```bash
+awf workflow info <name>
+```
+
+Shows manifest details for an installed pack: name, version, source, CLI version constraints, plugin dependencies (with install status and actionable install commands), included workflows, and the pack's embedded README.
+
+```bash
+awf workflow info speckit
+# Name:     speckit
+# Version:  1.2.0
+# Source:   myorg/speckit
+# Requires: awf >= 0.6.0
+# Plugins:
+#   awf-plugin-github  [installed]
+#   awf-plugin-db      [not installed] -> run: awf plugin install myorg/awf-plugin-db
+# Workflows:
+#   specify, review
+```
+
+### awf workflow update
+
+```bash
+awf workflow update <name>     # Update named pack to latest release
+awf workflow update --all      # Update all installed packs
+```
+
+Fetches the latest release from the stored source repository, verifies the checksum, and atomically replaces the pack. Updates `state.json` with the new version and `updated_at` timestamp.
+
+| Flag | Description |
+|------|-------------|
+| `--all` | Update every installed pack; mutually exclusive with `<name>` |
+
+```bash
+awf workflow update speckit
+awf workflow update --all
+```
+
+### awf workflow search
+
+```bash
+awf workflow search [<query>]
+```
+
+Searches GitHub for repositories tagged `awf-workflow`. Optional keyword narrows results. Search queries are URL-encoded automatically.
+
+```bash
+awf workflow search              # list all awf-workflow repos
+awf workflow search speckit      # filter by keyword
 ```
 
 ### awf workflow remove
