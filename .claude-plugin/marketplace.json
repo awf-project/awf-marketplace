@@ -7,14 +7,14 @@
   "metadata": {
     "description": "AWF plugin for Claude Code",
     "homepage": "https://alex.balmes.co",
-    "version": "0.6.30"
+    "version": "0.6.31"
   },
   "plugins": [
     {
       "name": "awf",
       "source": "./awf",
       "description": "AWF CLI - skills, agents, and commands",
-      "version": "0.6.30",
+      "version": "0.6.31",
       "author": {
         "name": "Alex pocky Balmes"
       },

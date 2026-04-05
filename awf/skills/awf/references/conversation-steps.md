@@ -415,6 +415,14 @@ stop_condition: "inputs.response contains 'DONE' || inputs.turn_count >= 10"
 
 ## Troubleshooting
 
+### "conversation manager not configured"
+
+**Problem**: Workflow fails immediately with `"conversation manager not configured"`
+
+**Cause**: `ConversationManager` was not wired into `ExecutionService` at the CLI layer. This affected all conversation features: session resume, `continue_from`, `inject_context`, and stop conditions.
+
+**Fix**: Update to a version that includes the B013 fix. After the fix, conversation errors surface as provider-level API errors (e.g., missing credentials) instead of the wiring sentinel.
+
 ### Stop Condition Not Triggering
 
 **Problem**: Conversation runs to max_turns

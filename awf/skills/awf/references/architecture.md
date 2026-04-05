@@ -331,6 +331,10 @@ func NewExecutionService(
 // AgentRegistry injected via setter (optional dependency)
 func (s *ExecutionService) SetAgentRegistry(registry ports.AgentRegistry)
 
+// ConversationManager injected via setter (required for mode: conversation)
+// Must be called after SetAgentRegistry — uses ApproximationTokenizer for token tracking
+func (s *ExecutionService) SetConversationManager(mgr *ConversationManager)
+
 // AuditTrailWriter injected via setter (optional dependency, v0.6.7)
 func (s *ExecutionService) SetAuditTrailWriter(writer ports.AuditTrailWriter)
 ```
