@@ -151,6 +151,43 @@ my_ai:
 
 > **Breaking Change (v0.6.6)**: `provider: custom` has been removed. Workflows using `provider: custom` will fail validation with migration guidance to use `provider: openai_compatible` instead. The `command` field on agent steps has also been removed.
 
+## Dynamic Provider Selection
+
+The `provider` field supports template expressions, enabling runtime provider selection via workflow inputs:
+
+```yaml
+name: flexible-analysis
+version: "1.0.0"
+
+inputs:
+  - name: agent
+    type: string
+    required: true
+
+states:
+  initial: analyze
+
+  analyze:
+    type: agent
+    provider: "{{.inputs.agent}}"
+    prompt: "Analyze: {{.inputs.code}}"
+    on_success: done
+
+  done:
+    type: terminal
+```
+
+```bash
+awf run flexible-analysis --input agent=claude --input code="$(cat main.go)"
+awf run flexible-analysis --input agent=gemini --input code="$(cat main.go)"
+```
+
+**Behavior:**
+- The expression is resolved before the provider registry lookup
+- An unresolvable template expression fails with a resolution error that includes the step name
+- A resolved value not found in the registry fails with a "provider not found" error that includes both the step name and the resolved value
+- Literal provider names (e.g., `provider: claude`) continue to work unchanged
+
 ## Prompt Templates
 
 Access workflow context in prompts:

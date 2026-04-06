@@ -344,6 +344,7 @@ Values resolved at loop initialization. `awf validate` warns about undefined var
 | Timeout | `timeout: "{{.inputs.timeout}}"` |
 | Conditions | `when: "inputs.mode == 'full'"` |
 | Loop items | `items: "{{.inputs.files}}"` |
+| Provider | `provider: "{{.inputs.agent}}"` |
 
 **Note:** In `when` expressions, use variable names without `{{}}`.
 
