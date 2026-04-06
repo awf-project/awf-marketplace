@@ -95,6 +95,8 @@ awf run hello --input name=Claude
 | `awf workflow update --all` | Update all installed workflow packs |
 | `awf workflow search <query>` | Search GitHub for AWF workflow packs |
 | `awf workflow remove <name>` | Remove installed workflow pack |
+| `awf upgrade` | Self-update the AWF binary from GitHub Releases |
+| `awf upgrade --check` | Check for a newer version without installing |
 
 **Details**: [CLI Commands Reference](references/cli-commands.md)
 
@@ -436,6 +438,7 @@ Plugins declaring `validators` capability run at `awf validate` and `awf run` ti
 
 **Getting Started**
 - [references/installation.md](references/installation.md) - Prerequisites & setup
+- [references/upgrade.md](references/upgrade.md) - Self-update the AWF binary
 
 **User Guide**
 - [references/workflow-syntax.md](references/workflow-syntax.md) - Complete YAML syntax

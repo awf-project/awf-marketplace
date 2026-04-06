@@ -30,6 +30,8 @@
 | `awf workflow remove <name>` | Remove installed workflow pack |
 | `awf version` | Show version |
 | `awf completion <shell>` | Generate autocompletion |
+| `awf upgrade` | Self-update the AWF binary from GitHub Releases |
+| `awf upgrade --check` | Check for a newer version without installing |
 
 ## Global Flags
 
@@ -631,6 +633,38 @@ awf completion zsh > "${fpath[1]}/_awf"
 # Fish
 awf completion fish > ~/.config/fish/completions/awf.fish
 ```
+
+## awf upgrade
+
+Self-update the AWF binary from GitHub Releases.
+
+```bash
+awf upgrade [flags]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--check` | Check for a newer version without downloading |
+| `--force` | Download and install even if already on the latest version |
+| `--version <tag>` | Install a specific release tag (e.g. `v0.6.33`) |
+
+```bash
+# Upgrade to the latest release
+awf upgrade
+
+# Check for a newer version without installing
+awf upgrade --check
+
+# Install a specific version
+awf upgrade --version v0.6.20
+
+# Force reinstall (bypass package manager detection)
+awf upgrade --force
+```
+
+Set `GITHUB_TOKEN` to avoid GitHub API rate limits (shared with `awf plugin install` and `awf workflow install`).
+
+**Details**: [Self-Update Reference](upgrade.md)
 
 ## Output Formats
 
