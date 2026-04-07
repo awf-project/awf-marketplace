@@ -46,8 +46,8 @@ analyze:
   prompt: "Code review: {{.inputs.file_content}}"
   options:
     model: sonnet                          # sonnet, opus, haiku, or full model ID
-    allowedTools: "Read,Grep,Glob,Edit"    # Claude CLI tools to enable
-    dangerouslySkipPermissions: true       # Skip permission prompts (for automation)
+    allowed_tools: "Read,Grep,Glob,Edit"   # Claude CLI tools to enable
+    dangerously_skip_permissions: true     # Skip permission prompts (for automation)
   timeout: 120
   on_success: next
 ```
@@ -56,8 +56,10 @@ analyze:
 | Option | Type | Description |
 |--------|------|-------------|
 | `model` | string | Model alias (sonnet, opus, haiku) or full ID |
-| `allowedTools` | string | Comma-separated Claude CLI tools to enable |
-| `dangerouslySkipPermissions` | bool | Skip interactive permission prompts |
+| `allowed_tools` | string | Comma-separated Claude CLI tools to enable |
+| `dangerously_skip_permissions` | bool | Skip interactive permission prompts |
+
+> **Breaking Change**: All provider option keys use snake_case. camelCase keys (e.g., `allowedTools`, `dangerouslySkipPermissions`) are silently ignored — they will not produce an error but will have no effect.
 
 > `temperature` and `max_tokens` are **not forwarded** to the Claude CLI.
 
@@ -70,6 +72,7 @@ generate:
   prompt: "Generate function: {{.inputs.requirement}}"
   options:
     model: codex-mini                      # Model flag (--model)
+    dangerously_skip_permissions: true     # Maps to --yolo flag
   timeout: 60
   on_success: next
 ```
@@ -78,6 +81,7 @@ generate:
 | Option | Type | Description |
 |--------|------|-------------|
 | `model` | string | Model to use (passed as `--model` flag) |
+| `dangerously_skip_permissions` | bool | Skip permission prompts (maps to `--yolo`) |
 
 > `temperature` and `max_tokens` are **not forwarded** to the Codex CLI.
 
@@ -90,6 +94,7 @@ summarize:
   prompt: "Summarize: {{.inputs.text}}"
   options:
     model: gemini-pro
+    dangerously_skip_permissions: true     # Maps to --approval-mode=yolo
   timeout: 60
   on_success: next
 ```
@@ -98,6 +103,7 @@ summarize:
 | Option | Type | Description |
 |--------|------|-------------|
 | `model` | string | Model identifier |
+| `dangerously_skip_permissions` | bool | Skip permission prompts (maps to `--approval-mode=yolo`) |
 
 > `temperature` and `max_tokens` are **not forwarded** to the Gemini CLI.
 
@@ -867,23 +873,23 @@ command: |
 
 ### 6. Claude Agent Steps: Required Options for File Modifications
 
-If agent needs to modify files, include both options:
+If agent needs to modify files, include both options (use snake_case keys):
 
 ```yaml
-# ❌ WRONG: Missing dangerouslySkipPermissions - agent can't write
+# ❌ WRONG: Missing dangerously_skip_permissions - agent can't write
 fix_code:
   type: agent
   provider: claude
   options:
-    allowedTools: "Read,Edit,Write"  # Not enough!
+    allowed_tools: "Read,Edit,Write"  # Not enough!
 
 # ✅ CORRECT: Both options for automated file changes
 fix_code:
   type: agent
   provider: claude
   options:
-    allowedTools: "Read,Grep,Glob,Edit,Write,Bash"
-    dangerouslySkipPermissions: true
+    allowed_tools: "Read,Grep,Glob,Edit,Write,Bash"
+    dangerously_skip_permissions: true
 ```
 
 ## Verification Checklist
@@ -896,6 +902,6 @@ Before running a workflow with agent steps:
 - [ ] **for_each/while body** lists all steps that should execute
 - [ ] Template syntax uses **PascalCase** (`.Output`, `.Item`, not `.output`, `.item`)
 - [ ] JSON values use **heredocs** with quoted delimiters
-- [ ] File-modifying agents have **`dangerouslySkipPermissions: true`**
+- [ ] File-modifying agents have **`dangerously_skip_permissions: true`**
 
 Run `awf validate <workflow>` to catch syntax errors before execution.
