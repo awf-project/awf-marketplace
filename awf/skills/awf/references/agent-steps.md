@@ -63,6 +63,8 @@ analyze:
 
 > `temperature` and `max_tokens` are **not forwarded** to the Claude CLI.
 
+> When `output_format: json` is set, AWF passes `--output-format stream-json` to the Claude CLI to enable streaming JSON output capture.
+
 ### Codex (OpenAI)
 
 ```yaml
@@ -84,6 +86,8 @@ generate:
 | `dangerously_skip_permissions` | bool | Skip permission prompts (maps to `--yolo`) |
 
 > `temperature` and `max_tokens` are **not forwarded** to the Codex CLI.
+
+> **Breaking Change**: AWF now invokes Codex using the `exec --json <prompt>` subcommand (previously `--prompt <prompt> --quiet`). The `quiet` option has been removed from the Codex provider. Conversation resume uses `codex resume <id> --json` (previously `--prompt`). These are CLI-level implementation details — workflow YAML is unchanged.
 
 ### Gemini (Google)
 
@@ -107,6 +111,8 @@ summarize:
 
 > `temperature` and `max_tokens` are **not forwarded** to the Gemini CLI.
 
+> When `output_format: json` is set, AWF passes `--output-format stream-json` to the Gemini CLI to enable streaming JSON output capture.
+
 ### OpenCode
 
 ```yaml
@@ -114,11 +120,18 @@ refactor:
   type: agent
   provider: opencode
   prompt: "Refactor: {{.inputs.code}}"
+  options:
+    model: anthropic/claude-sonnet-4-5    # Optional: model identifier
   timeout: 120
   on_success: next
 ```
 
-> OpenCode accepts no provider-specific options. `temperature` and `max_tokens` are not forwarded.
+**OpenCode Options:**
+| Option | Type | Description |
+|--------|------|-------------|
+| `model` | string | Model identifier (passed as `--model` flag) |
+
+> OpenCode always runs with `--format json` (applied automatically by AWF). `temperature` and `max_tokens` are not forwarded.
 
 ### OpenAI-Compatible Provider
 
