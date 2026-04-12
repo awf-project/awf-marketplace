@@ -63,7 +63,7 @@ analyze:
 
 > `temperature` and `max_tokens` are **not forwarded** to the Claude CLI.
 
-> When `output_format: json` is set, AWF passes `--output-format stream-json` to the Claude CLI to enable streaming JSON output capture.
+> AWF always passes `--output-format stream-json --verbose` to the Claude CLI. The NDJSON stream is parsed internally: when `output_format` is set, the extracted text goes through the format pipeline (fence stripping, JSON validation); when `output_format` is omitted, clean text is extracted transparently before storing in `states.X.output`. Malformed or absent NDJSON gracefully results in a nil `Response` (no error returned).
 
 ### Codex (OpenAI)
 
@@ -131,7 +131,7 @@ refactor:
 |--------|------|-------------|
 | `model` | string | Model identifier (passed as `--model` flag) |
 
-> OpenCode always runs with `--format json` (applied automatically by AWF). `temperature` and `max_tokens` are not forwarded.
+> OpenCode format mapping: `output_format: text` or `default` maps to `--format default`; all other values (including when `output_format` is omitted) map to `--format json`. `temperature` and `max_tokens` are not forwarded.
 
 ### OpenAI-Compatible Provider
 
