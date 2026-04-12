@@ -302,7 +302,7 @@ process:
 
 - `output_format: json` — strips markdown code fences, validates JSON, stores in `{{.states.step.JSON.field}}`
 - `output_format: text` — strips markdown code fences only, stores cleaned text in `{{.states.step.Output}}`
-- Omitted — backward-compatible, raw output unchanged
+- Omitted — Claude provider still extracts clean text from its NDJSON stream before storing in `{{.states.step.Output}}`
 - Invalid JSON with `output_format: json` fails the step with descriptive error (first 200 chars shown)
 - Domain validation rejects unknown `output_format` values at `awf validate` time
 
