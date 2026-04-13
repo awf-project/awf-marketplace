@@ -243,7 +243,11 @@ states:
 
 **Key points**:
 - The same `prompt` is sent each turn. The provider CLI is invoked with the same prompt repeatedly.
-- **Session resume**: All 4 CLI providers persist sessions across turns via native flags (Claude `-r`, Codex `--resume`, Gemini `--resume`, OpenCode `-s`). `SessionID` is extracted from command output after each turn and passed back on subsequent turns.
+- **Session resume**: All CLI providers persist sessions across turns. `SessionID` is extracted from provider NDJSON output after each turn using per-provider event matching, then passed back on subsequent turns via native resume flags. Extraction is reliable as of F079. Provider details:
+  - **Claude**: `-r <session_id>` flag; session ID from NDJSON stream
+  - **Codex**: `resume <thread_id>` subcommand; `thread_id` extracted from `type: "thread.started"` NDJSON event
+  - **Gemini**: `--resume <session_id>` flag; `session_id` extracted from `type: "init"` NDJSON event; `--output-format stream-json` forced to guarantee parseable output
+  - **OpenCode**: `-s <sessionID>` flag; `sessionID` extracted from `type: "step_start"` NDJSON event; falls back to `-c` (continue last session) when extraction fails but prior turns exist
 - CLI providers (`claude`, `codex`, `gemini`, `opencode`) execute each turn independently — only `openai_compatible` maintains true HTTP-level multi-turn history continuity.
 
 ## Examples
