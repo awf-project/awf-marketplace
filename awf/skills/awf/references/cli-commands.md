@@ -110,7 +110,7 @@ Place a file at `.awf/prompts/<pack>/override.md` to override any pack-embedded 
 |------|-------------|
 | `--help` | Display workflow inputs and description |
 | `--input, -i` | Input (key=value), repeatable |
-| `--output, -o` | Output mode: silent, streaming, buffered |
+| `--output, -o` | Output mode: silent, streaming, buffered (see below) |
 | `--step, -s` | Execute single step |
 | `--mock, -m` | Mock state values (key=value) |
 | `--dry-run` | Preview without executing |
@@ -118,6 +118,27 @@ Place a file at `.awf/prompts/<pack>/override.md` to override any pack-embedded 
 | `--breakpoint, -b` | Pause at specific steps |
 | `--skip-plugins` | Skip loading and executing plugins |
 | `--validator-timeout` | Timeout for validator plugins (e.g. `30s`) |
+
+### Output Mode (`--output`)
+
+| Mode | Behavior |
+|------|----------|
+| `streaming` | Streams step output to terminal as it runs. For agent steps, display depends on `output_format` (see below). |
+| `buffered` | Collects step output and writes it at completion. Same agent-step display filtering as `streaming`. |
+| `silent` | Suppresses all terminal output. Post-processing still runs; template variables are still populated. |
+
+**Agent step display filtering with `--output streaming` or `buffered`:**
+
+The `output_format` field on an agent step controls what appears on the terminal:
+
+| `output_format` | Terminal display |
+|-----------------|-----------------|
+| `text` or omitted | NDJSON filtered to plain text |
+| `json` | Raw NDJSON passed through |
+
+`--output silent` suppresses agent output regardless of `output_format`. Template interpolation (e.g. `{{.states.step.Output}}`) is unaffected by the output mode — `state.Output` always contains the full agent response.
+
+**Details**: [Agent Steps - Streaming Output Display](agent-steps.md#streaming-output-display)
 
 ### Interactive Input Collection
 

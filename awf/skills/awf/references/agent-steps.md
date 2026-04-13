@@ -600,6 +600,64 @@ handle_json_error:
 - Clear indication of JSON validation failure
 - First 200 characters of the malformed output (for debugging)
 
+## Streaming Output Display
+
+When running with `--output streaming` or `--output buffered`, AWF filters agent NDJSON responses to human-readable text instead of displaying raw wire format. The `output_format` field controls both post-processing behavior and terminal display routing.
+
+### Display Matrix
+
+| `output_format` | `--output streaming` / `buffered` | `--output silent` |
+|-----------------|-----------------------------------|-------------------|
+| `text` or omitted | Filters NDJSON to plain text | No terminal output |
+| `json` | Passes raw NDJSON through | No terminal output |
+
+### Behavior Details
+
+- **`text` or omitted** — AWF extracts readable text from the NDJSON stream and writes it to the terminal as the agent responds. `cloneAndInjectOutputFormat` normalizes `output_format` omitted → `text` internally so the display pipeline always receives an explicit format.
+- **`json`** — Raw NDJSON is forwarded directly to the terminal. Use this when you need to inspect the wire format or pipe agent output to another tool.
+- **`silent` mode** — No terminal display regardless of `output_format`. Post-processing still runs, and `{{.states.step.Output}}` is still populated.
+
+### Template Interpolation Is Unchanged
+
+`DisplayOutput` is an internal field populated in `AgentResult` for terminal display. It is **not accessible as a template variable**:
+
+```yaml
+# WRONG — does not resolve
+command: echo "{{.states.analyze.DisplayOutput}}"
+
+# CORRECT — use Output for template interpolation (retains raw NDJSON-derived text)
+command: echo "{{.states.analyze.Output}}"
+```
+
+`state.Output` always retains the raw NDJSON-derived content for use in subsequent step templates, independent of what was displayed on the terminal.
+
+### Example: Streaming a JSON Agent Response
+
+```yaml
+analyze:
+  type: agent
+  provider: claude
+  prompt: "Return JSON analysis with 'issues' and 'severity' fields"
+  output_format: json   # raw NDJSON shown on terminal; JSON parsed for templates
+  on_success: report
+
+report:
+  type: step
+  command: echo "Severity: {{.states.analyze.JSON.severity}}"
+  on_success: done
+```
+
+```bash
+# Shows raw NDJSON stream on terminal
+awf run workflow --output streaming
+
+# Shows filtered plain text on terminal
+awf run workflow --output streaming   # with output_format: text or omitted
+
+# No terminal output, post-processing still runs
+awf run workflow --output silent
+```
+
 ## Multi-Turn Conversations
 
 ### Conversation Mode
