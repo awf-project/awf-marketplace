@@ -1,5 +1,42 @@
 # Validation
 
+## Model Validation
+
+AWF validates model identifiers for Gemini and Codex providers at workflow validation time, before execution.
+
+### Gemini Model Rules
+
+| Rule | Pattern | Examples |
+|------|---------|---------|
+| Required prefix | `gemini-` | `gemini-2.0-flash`, `gemini-pro`, `gemini-1.5-pro` |
+| Rejected | anything else | `gpt-4`, `flash`, `claude-sonnet` |
+
+```bash
+$ awf validate workflow.yaml
+validation error: invalid Gemini model "flash": must start with "gemini-"
+```
+
+### Codex Model Rules
+
+| Pattern | Examples |
+|---------|---------|
+| `gpt-` prefix | `gpt-4o`, `gpt-4o-mini` |
+| `codex-` prefix | `codex-mini` |
+| o-series (`o` + digit) | `o3`, `o1`, `o1-mini` |
+
+Legacy names (e.g., `code-davinci`) are rejected:
+
+```bash
+$ awf validate workflow.yaml
+validation error: invalid Codex model "code-davinci": use gpt-*, codex-*, or o-series (e.g. o3, o1-mini)
+```
+
+> Claude model validation is handled by the Claude CLI. AWF does not validate Claude model names.
+
+For provider configuration, see [Agent Steps - Model Validation](agent-steps.md#model-validation).
+
+---
+
 ## Template Casing Validation
 
 **Added in v0.5.12**

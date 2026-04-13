@@ -170,6 +170,49 @@ my_ai:
 
 > **Breaking Change (v0.6.6)**: `provider: custom` has been removed. Workflows using `provider: custom` will fail validation with migration guidance to use `provider: openai_compatible` instead. The `command` field on agent steps has also been removed.
 
+## Model Validation
+
+AWF validates model names at workflow validation time for Gemini and Codex providers.
+
+### Gemini
+
+Model must start with `gemini-`:
+
+```yaml
+# Valid
+options:
+  model: gemini-2.0-flash
+  model: gemini-pro
+  model: gemini-1.5-pro
+
+# Invalid — rejected at validation
+options:
+  model: gpt-4       # error: invalid Gemini model "gpt-4": must start with "gemini-"
+  model: flash       # error: invalid Gemini model "flash": must start with "gemini-"
+```
+
+### Codex
+
+Accepted patterns: `gpt-` prefix, `codex-` prefix, or o-series (`o` followed by a digit). Legacy names like `code-davinci` are rejected:
+
+```yaml
+# Valid
+options:
+  model: gpt-4o
+  model: codex-mini
+  model: o3
+  model: o1-mini
+
+# Invalid — rejected at validation
+options:
+  model: code-davinci  # error: invalid Codex model "code-davinci": use gpt-*, codex-*, or o-series (e.g. o3, o1-mini)
+  model: gpt-4         # error: invalid Codex model "gpt-4": use gpt-*, codex-*, or o-series (e.g. o3, o1-mini)
+```
+
+> **Note**: Claude model validation is handled by the Claude CLI, not AWF. Passing an unknown alias or full model ID to the Claude provider is not validated at `awf validate` time.
+
+Run `awf validate <workflow>` to catch model name errors before execution. See [Validation Reference](validation.md#model-validation) for full details.
+
 ## Dynamic Provider Selection
 
 The `provider` field supports template expressions, enabling runtime provider selection via workflow inputs:
