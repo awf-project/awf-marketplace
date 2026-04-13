@@ -114,12 +114,13 @@ awf/
 │   │   │   ├── generator_highlight_test.go   # Syntax highlighting (15 tests)
 │   │   │   ├── generator_nodes_test.go       # Node creation (18 tests)
 │   │   │   └── generator_parallel_test.go    # Parallel diagram gen (24 tests)
-│   │   ├── agents/              # AI provider adapters
+│   │   ├── agents/              # AI provider adapters; CLI providers share Execute/ExecuteConversation via baseCLIProvider
 │   │   │   ├── registry.go      # AgentRegistry implementation (GetAgents method, v0.5.34)
-│   │   │   ├── helpers.go       # Shared utilities (cloneState, estimateTokens)
-│   │   │   ├── claude_provider.go
-│   │   │   ├── codex_provider.go
-│   │   │   ├── gemini_provider.go
+│   │   │   ├── base_cli_provider.go  # Shared orchestration for all CLI providers; per-provider behavior via cliProviderHooks
+│   │   │   ├── claude_provider.go    # Delegates to baseCLIProvider; builds cliProviderHooks with extractTextContent hook
+│   │   │   ├── codex_provider.go     # Delegates to baseCLIProvider; exec --json subcommand via buildExecuteArgs hook
+│   │   │   ├── gemini_provider.go    # Delegates to baseCLIProvider; session ID extraction as hook
+│   │   │   ├── opencode_provider.go  # Delegates to baseCLIProvider; validateOptions hook nil (accepts all options)
 │   │   │   ├── openai_compatible_provider.go  # Chat Completions API (v0.6.6)
 │   │   │   └── options.go       # Functional options (WithHTTPClient)
 │   │   ├── github/              # Built-in GitHub plugin (v0.5.41)
@@ -186,6 +187,7 @@ awf/
 |---------|----------|---------|
 | `*_service.go` | Application layer | `workflow_service.go` |
 | `*_test.go` | Same directory | `yaml_test.go` |
+| `*_delegation_test.go` | Infrastructure agents | `claude_provider_delegation_test.go` — validates provider-specific hooks wire correctly through baseCLIProvider |
 | Interfaces | `ports/` | `repository.go` |
 | Adapters | Infrastructure subdirs | `repository/yaml.go` |
 
@@ -310,7 +312,7 @@ Implements domain ports with concrete tech.
 - `state/` - JSON state store
 - `executor/` - Shell executor
 - `store/` - SQLite history (WAL mode for concurrent execution) with nil record validation (v0.5.30)
-- `agents/` - AgentRegistry implementation with AI providers (v0.5.34 - implements ports.AgentRegistry interface)
+- `agents/` - AgentRegistry implementation with AI providers (v0.5.34); CLI providers (Claude, Codex, Gemini, OpenCode) share Execute/ExecuteConversation orchestration via `baseCLIProvider` with per-provider behavior injected as `cliProviderHooks`
 - `audit/` - Audit trail writer with POSIX atomic JSONL append, 4KB entry limit, mutex for thread safety (v0.6.7)
 - `github/` - Built-in GitHub plugin with 9 declarative operations, auth detection, batch execution (v0.5.41)
 - `notify/` - Built-in notification plugin with 4 backends (desktop, ntfy, slack, webhook), dynamic backend registration (v0.5.43)

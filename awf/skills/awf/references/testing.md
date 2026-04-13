@@ -915,6 +915,35 @@ tests/integration/
 | New integration test lines | - | 640 |
 | Test cases added | - | 130+ unit, 18 integration |
 
+## CLI Provider Delegation Tests (v0.6.38)
+
+As of v0.6.38, CLI agent providers (Claude, Codex, Gemini, OpenCode) share Execute/ExecuteConversation orchestration via `baseCLIProvider`. Tests are split between shared orchestration coverage and per-provider delegation validation.
+
+```
+internal/infrastructure/agents/
+├── base_cli_provider.go                    # Shared orchestration
+├── base_cli_provider_test.go               # 585-line suite: empty prompt, context cancellation, validation, session ID extraction, output guard
+├── claude_provider_delegation_test.go      # Claude hooks wire correctly through base
+├── codex_provider_delegation_test.go       # Codex hooks wire correctly through base
+├── gemini_provider_migration_test.go       # Gemini delegation and session resume post-refactor
+└── opencode_provider_delegation_test.go    # OpenCode delegation (nil validateOptions hook)
+```
+
+**Test convention**: `*_delegation_test.go` files validate that per-provider `cliProviderHooks` wire correctly through `baseCLIProvider`. They do not test orchestration logic (covered in `base_cli_provider_test.go`).
+
+**base_cli_provider_test.go coverage**:
+- Empty prompt guard — `" "` fallback normalized across all providers
+- Context cancellation propagation through Execute and ExecuteConversation
+- Validation hook — invoked before execution; nil hook skips validation
+- Session ID extraction hook — tested with and without hook set
+- `TokensEstimated` always `true` for all CLI Execute results
+
+Run delegation tests independently:
+
+```bash
+go test ./internal/infrastructure/agents/... -v -run Delegation
+```
+
 ## Table-Driven Tests
 
 ```go
