@@ -147,7 +147,7 @@ command: echo "Turns: {{.states.review.Conversation.TotalTurns}}"
 # Total tokens used across all turns
 command: echo "Tokens: {{.states.review.TokensUsed}}"
 
-# Exit reason: "condition", "max_turns", or "max_tokens"
+# Exit reason: "user_exit"
 command: echo "Stopped by: {{.states.review.Conversation.StoppedBy}}"
 ```
 
