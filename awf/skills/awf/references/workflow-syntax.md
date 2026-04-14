@@ -565,31 +565,42 @@ analyze:
 
 ### Conversation Mode
 
-Enable multi-turn conversations with automatic context management:
+Interactive user-driven session (`mode: conversation`):
 
 ```yaml
-refine_code:
+chat:
   type: agent
   provider: claude
   mode: conversation
   system_prompt: |
-    You are a code reviewer. Iterate until code is approved.
-    Say "APPROVED" when done.
+    You are a code reviewer. Answer questions about the codebase.
   prompt: |
-    Review this code:
-    {{.inputs.code}}
+    I'm ready to review. What would you like to discuss?
   options:
     model: claude-sonnet-4-20250514
-  conversation:
-    max_turns: 10
-    max_context_tokens: 100000
-    strategy: sliding_window
-    stop_condition: "inputs.response contains 'APPROVED'"
-  on_success: deploy
-  on_failure: error
+  on_success: done
 ```
 
-> **Note**: Conversation mode executes the same `prompt` each turn. Use `inputs.` prefix in stop conditions.
+> **Note**: `prompt` is sent as the first user message. AWF then prompts with `> ` for subsequent input. Empty line exits.
+
+Cross-step session tracking with `continue_from`:
+
+```yaml
+step1:
+  type: agent
+  provider: claude
+  prompt: "Analyze: {{.inputs.code}}"
+  conversation: {}        # enables session tracking
+  on_success: step2
+
+step2:
+  type: agent
+  provider: claude
+  prompt: "Focus on security issues."
+  conversation:
+    continue_from: step1  # resumes step1's session
+  on_success: done
+```
 
 ### Agent Options
 
@@ -611,12 +622,9 @@ refine_code:
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `max_turns` | int | 10 | Maximum conversation turns |
-| `max_context_tokens` | int | model limit | Token budget for conversation |
-| `strategy` | string | `sliding_window` | Context window strategy (only `sliding_window` accepted) |
-| `stop_condition` | string | - | Expression to exit early |
 | `continue_from` | string | - | Step name to resume session from (validated at `awf validate`) |
-| `inject_context` | string | - | Template appended to prompt on turns 2+ (requires `mode: conversation`) |
+
+> **Breaking change**: `max_turns`, `max_context_tokens`, `strategy`, `stop_condition`, and `inject_context` were removed. YAML parsing rejects them with actionable errors. See [Conversation Mode](conversation-steps.md#breaking-changes-from-automated-loop-model) for migration guidance.
 
 ### Agent Output
 
@@ -643,7 +651,7 @@ my_ai:
 
 > **Breaking Change (v0.6.6)**: `provider: custom` and the `command` field have been removed. Use `provider: openai_compatible` instead. See [Agent Steps - OpenAI-Compatible Provider](agent-steps.md#openai-compatible-provider) for full options.
 
-\* Use `prompt` or `prompt_file` for single-turn mode (mutually exclusive), `initial_prompt` for conversation mode. See [Agent Steps - External Prompt Files](agent-steps.md#external-prompt-files) for `prompt_file` details.
+\* Use `prompt` or `prompt_file` (mutually exclusive). `prompt` serves as the first user message in conversation mode. See [Agent Steps - External Prompt Files](agent-steps.md#external-prompt-files) for `prompt_file` details.
 
 **Details:** [Agent Steps Reference](agent-steps.md) | [Conversation Mode](conversation-steps.md)
 
