@@ -93,7 +93,6 @@ AWF validates expression syntax at workflow load time. This catches malformed ex
 | Location | Example |
 |----------|---------|
 | Transition `when` | `when: "states.build.ExitCode == 0"` |
-| Conversation `stop_condition` | `stop_condition: "inputs.response contains 'DONE'"` |
 | While loop `condition` | `condition: "loop.index < 10"` |
 
 ### Validation Example
@@ -105,7 +104,6 @@ $ awf validate my-workflow
 ```
 validation error: invalid expression syntax
   - states.check.transitions[0].when: unexpected token "=="
-  - states.review.conversation.stop_condition: undefined function "conatins"
 ```
 
 ### Architecture Note

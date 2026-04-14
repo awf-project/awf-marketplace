@@ -1,295 +1,86 @@
 # Agent Conversation Mode
 
-Enable multi-turn agent execution with automatic stop conditions and token tracking.
+Two approaches to multi-turn agent conversations: interactive user-driven loops and cross-step session tracking.
 
 ## Overview
 
-While [agent steps](agent-steps.md) invoke agents once per step, **conversation mode** executes the same prompt repeatedly until a stop condition is met. This is useful for:
+### Interactive Conversation (mode: conversation)
 
-- **Iterative generation** - Agent refines output over multiple turns
-- **Autonomous reasoning** - Chain-of-thought across turns until completion signal
-- **Controlled execution** - Stop after N turns or when specific output detected
+`mode: conversation` starts a live, interactive session in the terminal:
 
-> **Important**: Conversation mode does NOT support interactive back-and-forth with user input between turns. Each turn executes the same prompt. For interactive workflows, use multiple separate agent steps.
-
-## Basic Syntax
-
-```yaml
-name: autonomous-review
-version: "1.0.0"
-
-inputs:
-  - name: code
-    type: string
-    required: true
-
-states:
-  initial: review
-
-  review:
-    type: agent
-    provider: claude
-    mode: conversation
-    system_prompt: |
-      You are a code reviewer. Iterate on improvements.
-      Say "APPROVED" when the code meets quality standards.
-    prompt: |
-      Review this code:
-      {{.inputs.code}}
-    options:
-      model: claude-sonnet-4-20250514
-    conversation:
-      max_turns: 10
-      max_context_tokens: 100000
-      strategy: sliding_window
-      stop_condition: "inputs.response contains 'APPROVED'"
-    on_success: done
-
-  done:
-    type: terminal
-```
-
-## Configuration
-
-### Step-Level Options
-
-| Option | Type | Required | Default | Description |
-|--------|------|----------|---------|-------------|
-| `type` | string | Yes | - | Must be `agent` |
-| `mode` | string | No | `single` | Set to `conversation` for multi-turn |
-| `provider` | string | Yes | - | Agent provider: `claude`, `codex`, `gemini`, `opencode`, `openai_compatible`; supports template expressions (e.g., `"{{.inputs.agent}}"`) |
-| `system_prompt` | string | No | - | System message preserved across turns |
-| `prompt` | string | Yes | - | User message (executed each turn) |
-| `options` | map | No | - | Provider-specific options (see [Agent Steps](agent-steps.md#providers)) |
-| `timeout` | int/string | No | `300` | Timeout per turn — seconds (`120`) or Go duration (`"2m"`, `"1m30s"`) |
-| `on_success` | string | Yes | - | Next state on completion |
-| `on_failure` | string | No | - | Next state on error |
-
-### Conversation Configuration
+1. AWF sends `prompt` as the first user message
+2. Agent responds
+3. AWF prints `> ` and reads user input from stdin
+4. Repeat until user sends an empty line (or EOF)
 
 ```yaml
-conversation:
-  max_turns: 10                    # Maximum turns (default: 10)
-  max_context_tokens: 100000       # Token budget (default: unlimited)
-  strategy: sliding_window         # Only supported strategy
-  stop_condition: "expression"     # Exit condition (optional)
-  continue_from: previous_step     # Resume session from another step (optional)
-  inject_context: |                # Append context on turns 2+ (optional)
-    Latest: {{.states.check.Output}}
-```
-
-#### max_turns
-
-Maximum conversation turns before automatic termination. Default is 10.
-
-```yaml
-conversation:
-  max_turns: 5  # Stop after 5 turns regardless of stop_condition
-```
-
-#### max_context_tokens
-
-Token budget for the conversation. When exceeded, oldest turns are dropped (sliding window).
-
-```yaml
-conversation:
-  max_context_tokens: 50000
-```
-
-#### strategy
-
-Context window strategy when token limit is reached:
-
-- **`sliding_window`** (only implemented) - Drop oldest turns, preserve system prompt
-
-```yaml
-strategy: sliding_window
-```
-
-> `summarize` and `truncate_middle` are **rejected at validation** with "not yet implemented" errors. Only `sliding_window` is accepted.
-
-#### continue_from
-
-Resume the session state (SessionID or Turns) from a previously executed conversation step. The target step must exist in the same workflow and must have completed with a non-empty session.
-
-```yaml
-conversation:
-  continue_from: initial_review   # Resume from initial_review's session
-  max_turns: 5
-```
-
-- Static step-name validation at `awf validate` time
-- CLI providers resume via SessionID; `openai_compatible` uses Turns
-- Missing step, nil state, or empty session produces a clear error
-
-#### inject_context
-
-Append interpolated context to agent prompts on turns 2+. Template variables are re-resolved each turn against the current interpolation context, so `{{.states.*}}` and `{{.inputs.*}}` reflect the latest step outputs.
-
-```yaml
-conversation:
-  inject_context: |
-    Current test results: {{.states.test_run.Output}}
-    Iteration: {{.states.counter.Output}}
-  max_turns: 10
-```
-
-- First turn: only `prompt` is sent (no injection)
-- Turns 2+: `inject_context` is appended with `\n\n` separator
-- Empty/whitespace values are treated as no-ops
-- Requires `mode: conversation` — rejected on `mode: single`
-- Interpolation errors are wrapped with `inject_context: <error>` for attribution
-
-#### stop_condition
-
-Expression evaluated after each turn. When true, conversation exits early.
-
-```yaml
-stop_condition: "inputs.response contains 'APPROVED'"
-```
-
-**Compile-time validation (v0.5.30)**: Stop condition expressions are validated during workflow loading using expr-lang. Syntax errors are reported immediately rather than at runtime:
-
-```bash
-$ awf validate my-workflow
-validation error: invalid stop_condition expression
-  - syntax error: unexpected token '&&' (use 'and' instead)
-```
-
-## Stop Condition Expressions
-
-Stop conditions use the expression evaluator with these variables:
-
-| Variable | Type | Description |
-|----------|------|-------------|
-| `inputs.response` | string | Last assistant response |
-| `inputs.turn_count` | int | Number of completed turns |
-
-### Examples
-
-```yaml
-# Exit when response contains keyword
-stop_condition: "inputs.response contains 'DONE'"
-
-# Exit after N turns
-stop_condition: "inputs.turn_count >= 5"
-
-# Complex: exit on keyword OR turn limit
-stop_condition: "inputs.response contains 'APPROVED' || inputs.turn_count >= 10"
-
-# Multiple keywords
-stop_condition: "inputs.response contains 'COMPLETE' || inputs.response contains 'FINISHED'"
-```
-
-> **Important**: Variables must be prefixed with `inputs.` (e.g., `inputs.response`, not just `response`).
-
-## Accessing Conversation State
-
-After execution, conversation state is available in step state:
-
-```yaml
-show_result:
-  type: step
-  command: |
-    echo "Final response: {{.states.review.Output}}"
-    echo "Turns: {{.states.review.Conversation.TotalTurns}}"
-    echo "Tokens: {{.states.review.TokensUsed}}"
+chat:
+  type: agent
+  provider: claude
+  mode: conversation
+  system_prompt: "You are a helpful assistant."
+  prompt: "Hello! How can I help you today?"
   on_success: done
 ```
 
-### State Structure
+> **Requires a terminal.** Interactive conversation is not suitable for CI/CD pipelines or non-interactive scripts. Use sequential agent steps with `continue_from` for automation.
+
+### Cross-Step Session Tracking
+
+Any agent step can enable session tracking by adding `conversation: {}`. This records the session so a downstream step can resume it with `continue_from`.
 
 ```yaml
-states:
-  review:
-    Output: "Final response text..."
-    Status: completed
-    Conversation:
-      SessionID: "sess_abc123"     # Provider-native session ID for resume
-      Turns:
-        - Role: system
-          Content: "You are a code reviewer..."
-          Tokens: 50
-        - Role: user
-          Content: "Review this code..."
-          Tokens: 500
-        - Role: assistant
-          Content: "I found issues... APPROVED"
-          Tokens: 800
-      TotalTurns: 3
-      TotalTokens: 1350
-      StoppedBy: condition  # or "max_turns", "max_tokens"
-    TokensUsed: 1350
+initial_review:
+  type: agent
+  provider: claude
+  prompt: "Review this code: {{.inputs.code}}"
+  conversation: {}         # enables session tracking
+  on_success: deep_review
+
+deep_review:
+  type: agent
+  provider: claude
+  prompt: "Now focus on security issues."
+  conversation:
+    continue_from: initial_review   # resumes initial_review's session
+  on_success: done
 ```
 
-## How It Works
+## Basic Syntax
 
-```
-+-------------------------------------------------------------+
-|                    Conversation Loop                         |
-+-------------------------------------------------------------+
-|                                                              |
-|  Turn 1: Execute prompt -> Response A                        |
-|          Check stop_condition -> false                       |
-|                                                              |
-|  Turn 2: Execute prompt -> Response B                        |
-|          Check stop_condition -> false                       |
-|                                                              |
-|  Turn 3: Execute prompt -> Response C (contains "APPROVED")  |
-|          Check stop_condition -> true -> EXIT                |
-|                                                              |
-+-------------------------------------------------------------+
-```
-
-**Key points**:
-- The same `prompt` is sent each turn. The provider CLI is invoked with the same prompt repeatedly.
-- **Session resume**: All CLI providers persist sessions across turns. `SessionID` is extracted from provider NDJSON output after each turn using per-provider event matching, then passed back on subsequent turns via native resume flags. Extraction is reliable as of F079. Provider details:
-  - **Claude**: `-r <session_id>` flag; session ID from NDJSON stream
-  - **Codex**: `resume <thread_id>` subcommand; `thread_id` extracted from `type: "thread.started"` NDJSON event
-  - **Gemini**: `--resume <session_id>` flag; `session_id` extracted from `type: "init"` NDJSON event; `--output-format stream-json` forced to guarantee parseable output
-  - **OpenCode**: `-s <sessionID>` flag; `sessionID` extracted from `type: "step_start"` NDJSON event; falls back to `-c` (continue last session) when extraction fails but prior turns exist
-- CLI providers (`claude`, `codex`, `gemini`, `opencode`) execute each turn independently — only `openai_compatible` maintains true HTTP-level multi-turn history continuity.
-
-## Examples
-
-### Autonomous Code Review
+### Interactive Mode
 
 ```yaml
-name: code-review
+name: interactive-chat
 version: "1.0.0"
 
-inputs:
-  - name: code
-    type: string
-    required: true
-
 states:
-  initial: review
+  initial: chat
 
-  review:
+  chat:
     type: agent
     provider: claude
     mode: conversation
     system_prompt: |
-      You are a code reviewer. Analyze the code and suggest improvements.
-      After each review iteration, either:
-      - Suggest another improvement
-      - Say "APPROVED" if the code is good
+      You are a code reviewer. Answer questions about the codebase.
     prompt: |
-      Review this code:
-      {{.inputs.code}}
+      I'm ready to review. What would you like to discuss?
     options:
       model: claude-sonnet-4-20250514
-    conversation:
-      max_turns: 5
-      stop_condition: "inputs.response contains 'APPROVED'"
     on_success: done
 
   done:
     type: terminal
 ```
 
-### Cross-Step Resume with continue_from
+```bash
+awf run interactive-chat
+# Agent responds to the prompt
+# > [user types message]
+# > [empty line exits]
+```
+
+### Session Tracking and Resume
 
 ```yaml
 name: two-phase-review
@@ -306,161 +97,248 @@ states:
   initial_review:
     type: agent
     provider: claude
-    mode: conversation
     system_prompt: "You are a code reviewer."
     prompt: "Review: {{.inputs.code}}"
-    conversation:
-      max_turns: 3
+    conversation: {}         # track session for downstream resume
     on_success: deep_review
 
   deep_review:
     type: agent
     provider: claude
-    mode: conversation
-    prompt: "Now focus on security issues."
+    prompt: "Focus on security issues in depth."
     conversation:
-      continue_from: initial_review    # Resumes initial_review's session
-      max_turns: 3
-      stop_condition: "inputs.response contains 'SECURE'"
+      continue_from: initial_review
     on_success: done
 
   done:
     type: terminal
 ```
 
-### Turn-Limited Generation
+## Configuration
+
+### Step-Level Options
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `type` | string | Yes | - | Must be `agent` |
+| `mode` | string | No | `single` | Set to `conversation` for interactive terminal session |
+| `provider` | string | Yes | - | Agent provider: `claude`, `codex`, `gemini`, `opencode`, `openai_compatible` |
+| `system_prompt` | string | No | - | System message preserved across turns |
+| `prompt` | string | Yes | - | First user message sent to agent |
+| `options` | map | No | - | Provider-specific options |
+| `timeout` | int/string | No | `300` | Timeout per turn — seconds (`120`) or Go duration (`"2m"`) |
+| `on_success` | string | Yes | - | Next state on conversation exit |
+| `on_failure` | string | No | - | Next state on error |
+
+### Conversation Configuration
 
 ```yaml
-name: brainstorm
+conversation:
+  continue_from: previous_step     # Resume session from another step (optional)
+```
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `continue_from` | string | Step name to resume session from. Validated at `awf validate` time. |
+
+#### continue_from
+
+Resume the session (SessionID or Turns) from a previously executed agent step. The target step must exist in the same workflow and must have completed with a non-empty session.
+
+```yaml
+conversation:
+  continue_from: initial_review
+```
+
+- Static step-name validation at `awf validate` time
+- CLI providers resume via SessionID; `openai_compatible` resumes via Turns list
+- Missing step, nil state, or empty session produces a clear error
+- Any agent step is a valid resume source when it has `conversation: {}` or `mode: conversation`
+
+## How It Works
+
+### Interactive Mode
+
+```
++--------------------------------------------------+
+|          Interactive Conversation Loop            |
++--------------------------------------------------+
+|                                                  |
+|  AWF sends `prompt` as first user message        |
+|  Agent responds                                  |
+|                                                  |
+|  Loop:                                           |
+|    AWF prints "> " and reads stdin               |
+|    Empty line or EOF -> exit (StopReasonUserExit)|
+|    AWF sends user input to agent                 |
+|    Agent responds                                |
+|    Repeat                                        |
+|                                                  |
++--------------------------------------------------+
+```
+
+**Key points:**
+- `prompt` is the first user message, not repeated each turn
+- Subsequent turns are driven by user input
+- Empty line exits cleanly with `StopReasonUserExit`
+
+### Session Resume
+
+CLI providers persist sessions across turns. `SessionID` is extracted from provider NDJSON output and passed back via native resume flags:
+
+- **Claude**: `-r <session_id>` flag; session ID from NDJSON stream
+- **Codex**: `resume <thread_id>` subcommand; `thread_id` from `type: "thread.started"` NDJSON event
+- **Gemini**: `--resume <session_id>` flag; `session_id` from `type: "init"` NDJSON event
+- **OpenCode**: `-s <sessionID>` flag; `sessionID` from `type: "step_start"` NDJSON event; falls back to `-c` when extraction fails but prior turns exist
+- **openai_compatible**: Resumes via Turns list (HTTP-level multi-turn history)
+
+## Accessing Conversation State
+
+After execution, conversation state is available in step state:
+
+```yaml
+show_result:
+  type: step
+  command: |
+    echo "Final response: {{.states.review.Output}}"
+  on_success: done
+```
+
+### State Structure
+
+```yaml
+states:
+  review:
+    Output: "Final response text..."
+    Status: completed
+    Conversation:
+      SessionID: "sess_abc123"
+      Turns:
+        - Role: system
+          Content: "You are a code reviewer..."
+          Tokens: 50
+        - Role: user
+          Content: "Review this code..."
+          Tokens: 500
+        - Role: assistant
+          Content: "Here are my findings..."
+          Tokens: 800
+    TokensUsed: 1350
+```
+
+## Examples
+
+### Interactive Code Review
+
+```yaml
+name: code-review-session
 version: "1.0.0"
 
 inputs:
-  - name: topic
+  - name: code
     type: string
     required: true
 
 states:
-  initial: generate
+  initial: review
 
-  generate:
+  review:
     type: agent
     provider: claude
     mode: conversation
-    system_prompt: "Generate creative ideas. One idea per turn."
-    prompt: "Generate ideas about: {{.inputs.topic}}"
-    conversation:
-      max_turns: 5
-      stop_condition: "inputs.turn_count >= 3"
+    system_prompt: |
+      You are a code reviewer. Answer questions about the code.
+      Be concise and point to specific line numbers.
+    prompt: |
+      Here is the code to review:
+      {{.inputs.code}}
+
+      What issues do you see?
+    options:
+      model: claude-sonnet-4-20250514
     on_success: done
 
   done:
     type: terminal
 ```
 
-## Limitations
-
-### Current Implementation
-
-- **Single prompt per conversation** - Same prompt executed each turn (use `inject_context` to vary context on turns 2+)
-- **No interactive input** - Cannot inject user messages between turns
-- **Only `sliding_window` strategy** - `summarize` and `truncate_middle` rejected at validation
-- **No branching** - Single linear path only
-
-### Not Yet Implemented
-
-| Feature | Status | Description |
-|---------|--------|-------------|
-| `summarize` strategy | Rejected at validation | LLM-based compression of old turns |
-| `truncate_middle` strategy | Rejected at validation | Keep first and last turns |
-| `on_error` mapping | Not implemented | Route to specific states by error type |
-| Interactive input | Not implemented | User input between turns |
-
-## Best Practices
-
-### 1. Always Set Turn Limits
-
-Prevent runaway conversations:
+### Automated Two-Phase Analysis
 
 ```yaml
-conversation:
-  max_turns: 10  # Hard limit
-  stop_condition: "inputs.response contains 'DONE'"
+name: two-phase-analysis
+version: "1.0.0"
+
+inputs:
+  - name: code
+    type: string
+    required: true
+
+states:
+  initial: initial_review
+
+  initial_review:
+    type: agent
+    provider: claude
+    system_prompt: "You are a code reviewer."
+    prompt: "Review: {{.inputs.code}}"
+    conversation: {}
+    on_success: security_review
+
+  security_review:
+    type: agent
+    provider: claude
+    prompt: "Based on the previous review, identify all security vulnerabilities."
+    conversation:
+      continue_from: initial_review
+    on_success: done
+
+  done:
+    type: terminal
 ```
 
-### 2. Use Specific Stop Keywords
+## Breaking Changes from Automated Loop Model
 
-Make stop conditions unambiguous:
+The following fields were removed. YAML parsing rejects them with actionable errors:
 
-```yaml
-# Good: Specific signal
-stop_condition: "inputs.response contains 'TASK_COMPLETE'"
+| Removed Field | Replacement |
+|---------------|-------------|
+| `max_turns` | Remove — interactive mode exits on empty line |
+| `max_context_tokens` | Remove — context window management is gone |
+| `strategy` | Remove — `sliding_window` no longer exists |
+| `stop_condition` | Remove — user drives exit interactively |
+| `inject_context` | Remove — interactive mode takes user input each turn |
 
-# Bad: Could match unintended text
-stop_condition: "inputs.response contains 'done'"
-```
+Also removed: `initial_prompt` on agent steps. Use `prompt` for the first user message.
 
-### 3. Instruct Agent About Completion
-
-Include completion signal in system prompt:
-
-```yaml
-system_prompt: |
-  Complete the task step by step.
-  Say "FINISHED" when you're done.
-```
-
-### 4. Use Fallback Turn Limits
-
-Combine keyword and turn limit:
-
-```yaml
-stop_condition: "inputs.response contains 'DONE' || inputs.turn_count >= 10"
-```
+**Migration for automated pipelines**: Replace automated-loop workflows with sequential agent steps using `conversation: {}` on the first step and `continue_from` on subsequent steps.
 
 ## Troubleshooting
 
-### "conversation manager not configured"
+### "unknown field" errors for removed fields
 
-**Problem**: Workflow fails immediately with `"conversation manager not configured"`
+**Problem**: YAML parsing fails with errors about `max_turns`, `strategy`, `stop_condition`, etc.
 
-**Cause**: `ConversationManager` was not wired into `ExecutionService` at the CLI layer. This affected all conversation features: session resume, `continue_from`, `inject_context`, and stop conditions.
+**Fix**: Remove those fields. See [Breaking Changes](#breaking-changes-from-automated-loop-model) for the full list.
 
-**Fix**: Update to a version that includes the B013 fix. After the fix, conversation errors surface as provider-level API errors (e.g., missing credentials) instead of the wiring sentinel.
+### Session not found with continue_from
 
-### Stop Condition Not Triggering
-
-**Problem**: Conversation runs to max_turns
+**Problem**: `continue_from` fails with "missing step" or "empty session"
 
 **Check**:
-1. Expression syntax uses `inputs.` prefix
-2. Keyword matches exactly (case-sensitive)
-3. Agent system prompt instructs completion signal
+1. Source step name matches exactly — validated at `awf validate`
+2. Source step has `conversation: {}` or `mode: conversation`
+3. Source step completed successfully before the resume step ran
 
-```yaml
-# Wrong
-stop_condition: "response contains 'DONE'"
+### Interactive mode hangs in CI
 
-# Correct
-stop_condition: "inputs.response contains 'DONE'"
-```
+**Problem**: Workflow blocks waiting for user input
 
-### Same Response Each Turn
+**Cause**: `mode: conversation` reads from stdin and requires a terminal.
 
-**Expected behavior**: Conversation mode executes the same prompt each turn. The response may vary due to model non-determinism, but input is identical.
-
-For different inputs each turn, use multiple agent steps instead.
-
-### Context Window Exceeded
-
-**Problem**: Old turns dropped, losing context
-
-**Solutions**:
-- Increase `max_context_tokens`
-- Reduce `max_turns`
-- Use shorter system prompt
+**Fix**: Use sequential agent steps with `continue_from` for automated pipelines.
 
 ## See Also
 
-- [Agent Steps Guide](agent-steps.md) - Single-turn agent execution
-- [Workflow Syntax Reference](workflow-syntax.md#agent-state) - Complete options
+- [Agent Steps Guide](agent-steps.md) - Single-turn and multi-step agent execution
+- [Workflow Syntax Reference](workflow-syntax.md#agent-state) - Complete agent options
 - [Interpolation Reference](interpolation.md) - Variable interpolation

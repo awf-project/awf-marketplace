@@ -349,26 +349,41 @@ deploy:
 
 ### Multi-Turn Conversation
 
+**Interactive session** (`mode: conversation`) — live user input via terminal:
+
 ```yaml
 review:
   type: agent
   provider: claude
   mode: conversation
-  system_prompt: "You are a code reviewer. Say APPROVED when done."
-  prompt: "Review: {{.inputs.code}}"
-  conversation:
-    max_turns: 10
-    stop_condition: "inputs.response contains 'APPROVED'"
-    continue_from: previous_review    # Resume session from another step
-    inject_context: |                  # Append context on turns 2+
-      Latest state: {{.states.check.Output}}
+  system_prompt: "You are a code reviewer."
+  prompt: "What would you like to review?"
   on_success: done
 ```
 
-- Same prompt executed each turn. Use `inputs.` prefix in stop conditions.
-- **Session resume**: All CLI providers persist sessions across turns via native flags.
-- **`continue_from`**: Resume a previous step's conversation (SessionID or Turns). Validated at `awf validate` time.
-- **`inject_context`**: Append interpolated context to prompts on turns 2+. Re-resolved each turn. Requires `mode: conversation`.
+- `prompt` is sent as the first user message. AWF prompts `> ` for subsequent input. Empty line exits.
+- Requires a terminal — not suitable for CI/CD pipelines.
+
+**Cross-step session tracking** — track session for downstream resume:
+
+```yaml
+initial_review:
+  type: agent
+  provider: claude
+  prompt: "Review: {{.inputs.code}}"
+  conversation: {}                  # enables session tracking
+  on_success: deep_review
+
+deep_review:
+  type: agent
+  provider: claude
+  prompt: "Focus on security issues."
+  conversation:
+    continue_from: initial_review   # resumes initial_review's session
+  on_success: done
+```
+
+- **`continue_from`**: Resume a previous step's session (SessionID or Turns). Validated at `awf validate` time.
 
 **Details**: [Conversation Mode](references/conversation-steps.md)
 

@@ -10,7 +10,7 @@ Agent steps integrate AI tools into AWF workflows. Define prompts as templates t
 - Non-interactive execution for CI/CD automation
 - **Output formatting** — strip markdown code fences and validate JSON with `output_format`
 - **External prompt files** — load prompts from `.md` files with template interpolation
-- **Conversation mode** for multi-turn interactions with automatic context management
+- **Conversation mode** for interactive user-driven sessions and cross-step session tracking
 - Multi-turn conversations via state passing (legacy)
 - Automatic JSON response parsing
 - Token usage tracking
@@ -662,29 +662,46 @@ awf run workflow --output silent
 
 ### Conversation Mode
 
-Use conversation mode for autonomous multi-turn execution:
+Three approaches to multi-turn agent work:
+
+**1. Interactive session** (`mode: conversation`) — live user input via terminal:
 
 ```yaml
 review:
   type: agent
   provider: claude
   mode: conversation
-  system_prompt: "You are a code reviewer. Say APPROVED when done."
-  prompt: "Review: {{.inputs.code}}"
-  conversation:
-    max_turns: 10
-    stop_condition: "inputs.response contains 'APPROVED'"
+  system_prompt: "You are a code reviewer."
+  prompt: "What would you like to review?"
   on_success: done
 ```
 
-**Key points:**
-- Same prompt executed each turn (not interactive back-and-forth)
-- Use `inputs.` prefix in stop conditions (`inputs.response`, `inputs.turn_count`)
-- Only `sliding_window` strategy implemented
+User types messages at the `> ` prompt. Empty line exits.
+
+**2. Session tracking** — track session for downstream resume:
+
+```yaml
+step1:
+  type: agent
+  provider: claude
+  prompt: "Initial analysis: {{.inputs.code}}"
+  conversation: {}        # enables session tracking
+  on_success: step2
+
+step2:
+  type: agent
+  provider: claude
+  prompt: "Elaborate on the security concerns."
+  conversation:
+    continue_from: step1  # resumes step1's session
+  on_success: done
+```
+
+**3. State passing** — chain agent steps via template interpolation (no session continuity):
 
 **Details:** [Conversation Mode Reference](conversation-steps.md)
 
-### State Passing (Legacy)
+### State Passing
 
 Chain agent steps with state passing:
 
