@@ -34,6 +34,8 @@ ZPM pairs a Zig MCP server with a Scryer Prolog logic engine linked in-process t
 
 ```
 src/main.zig                 MCP dispatch, lifecycle, logging to stderr
+src/tools/context.zig        engine singleton (setEngine/getEngine)
+src/tools/*.zig              MCP tool handlers; call Engine via context.getEngine()
 src/prolog/engine.zig        public Zig API; only layer MCP handlers may call
 src/prolog/ffi.zig           extern "C" declarations; no logic
 ffi/zpm-prolog-ffi/src/lib.rs  extern "C" Rust wrappers with panic suppression
@@ -41,6 +43,21 @@ ffi/zpm-prolog-ffi/src/lib.rs  extern "C" Rust wrappers with panic suppression
 ```
 
 Keep Prolog-specific concerns inside `engine.zig` and below. MCP handlers should not know that the engine is Scryer, nor that the bridge is Rust.
+
+## Engine singleton (context.zig)
+
+`src/tools/context.zig` exposes two functions:
+
+- `setEngine(engine: *Engine) void` — called once at server startup from `src/main.zig` after `Engine.init`.
+- `getEngine() *Engine` — called by each tool handler to retrieve the shared instance.
+
+**Invariants:**
+
+- `setEngine` must be called before any tool handler runs. Calling `getEngine` before `setEngine` is a programming error (the implementation asserts non-null).
+- There is exactly one engine per process. Do not call `setEngine` more than once; the previous engine would leak.
+- Thread safety: the engine is not re-entrant. MCP over STDIO is inherently single-client, so concurrent calls do not arise in practice. If concurrency is ever introduced, add external synchronization before relaxing this invariant.
+
+**Motivation:** Tool handlers are separate compilation units (`src/tools/*.zig`) and cannot import `src/main.zig`. The singleton in `context.zig` provides a dependency-injection point without requiring a global import cycle.
 
 ## Versioning and evolution
 

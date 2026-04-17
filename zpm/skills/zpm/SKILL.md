@@ -21,6 +21,9 @@ MCP client
    |  STDIO (JSON-RPC)
    v
 Zig MCP server (src/main.zig)
+   |  context.getEngine() -- shared engine singleton
+   v
+MCP tool handlers (src/tools/*.zig)
    |  Zig Engine API (src/prolog/engine.zig)
    v
 C-ABI bindings (src/prolog/ffi.zig)
@@ -32,7 +35,7 @@ Rust staticlib (ffi/zpm-prolog-ffi)
 Scryer Prolog
 ```
 
-All layers run in a single process. The Rust staticlib is linked into the Zig binary at build time; no separate daemon or IPC is involved. See `references/architecture.md` for the rationale (STDIO transport, FFI staticlib over alternatives).
+All layers run in a single process. The Rust staticlib is linked into the Zig binary at build time; no separate daemon or IPC is involved. `src/tools/context.zig` holds the engine singleton; `src/main.zig` initializes it at startup via `context.setEngine` and tool handlers retrieve it via `context.getEngine`. See `references/architecture.md` for the rationale (STDIO transport, FFI staticlib, engine singleton).
 
 ## Prerequisites
 
@@ -57,6 +60,54 @@ CI runs `cargo fmt --check` and `cargo clippy` in addition to Zig lint/test/buil
 
 See `references/build.md` for layout, linking, and troubleshooting.
 
+## MCP Tools
+
+| Tool | Write | Description |
+|------|-------|-------------|
+| `echo` | no | Echoes a message; use to test connectivity |
+| `remember_fact` | yes | Assert a Prolog fact into the knowledge base |
+| `define_rule` | yes | Assert a Prolog rule (`Head :- Body`) into the knowledge base |
+
+### remember_fact
+
+Asserts a single Prolog fact via `assertz/1`. The `fact` argument must not include a trailing period.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "remember_fact",
+    "arguments": { "fact": "human(socrates)" }
+  }
+}
+```
+
+Success response: `"Asserted: human(socrates)"`.
+
+### define_rule
+
+Asserts a Prolog rule constructed from `head` and `body` arguments. The FFI layer automatically wraps the rule in extra parentheses (`assertz((Head :- Body)).`) as required by scryer-prolog's parser.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "define_rule",
+    "arguments": { "head": "mortal(X)", "body": "human(X)" }
+  }
+}
+```
+
+Success response: `"Asserted rule: mortal(X) :- human(X)"`.
+
+The tool validates parenthesis balance in `head` and `body` before calling the engine. Invalid syntax returns `isError: true` with a detail string.
+
+Full protocol docs, all input schemas, and error response shapes: `references/mcp-tools.md`.
+
 ## Engine API
 
 The Zig `Engine` struct in `src/prolog/engine.zig` is the only supported entry point for Prolog operations. MCP tool handlers call it; direct use of `src/prolog/ffi.zig` is reserved for the engine implementation.
@@ -65,7 +116,7 @@ Operations:
 
 - `init` / `deinit` — lifecycle
 - `query` — execute a Prolog query, iterate bindings
-- `assert` — add a clause to the knowledge base
+- `assert` / `assertFact` — add a clause or fact to the knowledge base
 - `retract` — remove a matching clause
 - `loadFile` — load a `.pl` file from disk
 - `loadString` — load Prolog source from memory
@@ -101,6 +152,7 @@ Every Rust FFI entry point wraps its body in panic suppression so a Scryer panic
 
 ## References
 
+- `references/mcp-tools.md` — MCP tool protocol: input schemas, request/response examples, error shapes
 - `references/prolog-engine.md` — Engine API reference (methods, errors, ownership)
 - `references/build.md` — Build system, Rust FFI layout, CI
-- `references/architecture.md` — ADR summaries: STDIO transport, Rust FFI staticlib
+- `references/architecture.md` — ADR summaries: STDIO transport, Rust FFI staticlib, engine singleton
