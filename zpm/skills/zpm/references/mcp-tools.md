@@ -43,6 +43,8 @@ The response lists all registered tools with their input schemas.
 | `define_rule` | yes | Assert a Prolog rule (`Head :- Body`) into the knowledge base |
 | `query_logic` | no | Execute a Prolog goal; returns all variable bindings as a JSON array |
 | `trace_dependency` | no | Traverse transitive dependencies via `path/2` rules; returns reachable node names |
+| `verify_consistency` | no | Query all `integrity_violation/N` predicates; returns constraint breaches as JSON |
+| `explain_why` | no | Reconstruct the proof chain for a fact via `clause/2`; returns a nested proof tree |
 
 ## Echo
 
@@ -508,6 +510,184 @@ Traverse all nodes reachable from a start node using `path/2` rules already asse
 {
   "jsonrpc": "2.0",
   "id": 6,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "InvalidArguments",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+## verify_consistency
+
+Queries all `integrity_violation/N` predicates loaded in the knowledge base and returns every constraint breach as a structured JSON object. An empty violations array means no constraints are violated; this is not an error.
+
+Accepts an optional `domain` argument to scope the check. If omitted, all integrity violations in the knowledge base are checked. Handles null args and engine-unavailable paths explicitly.
+
+### Input Schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "domain": {
+      "type": "string",
+      "description": "Optional domain to scope the consistency check."
+    }
+  },
+  "required": []
+}
+```
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "method": "tools/call",
+  "params": {
+    "name": "verify_consistency",
+    "arguments": {}
+  }
+}
+```
+
+### Response (Success — no violations)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"violations\":[]}"
+      }
+    ]
+  }
+}
+```
+
+### Response (Success — violations found)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 8,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"violations\":[{\"predicate\":\"integrity_violation\",\"args\":[\"duplicate_id\"]}]}"
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — engine unavailable)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 9,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "EngineUnavailable",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+## explain_why
+
+Reconstructs the deduction chain for any Prolog fact by recursively querying `clause/2`. Returns a structured proof tree as nested JSON. Accepts an optional `max_depth` argument to truncate deeply recursive proofs.
+
+Returns an empty `proof` array when the fact cannot be proven (no matching clauses). Returns `isError: true` when the required `fact` argument is missing.
+
+### Input Schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "fact": {
+      "type": "string",
+      "description": "The Prolog fact or goal to explain (no trailing period)."
+    },
+    "max_depth": {
+      "type": "integer",
+      "description": "Optional maximum recursion depth for proof tree traversal."
+    }
+  },
+  "required": ["fact"]
+}
+```
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 10,
+  "method": "tools/call",
+  "params": {
+    "name": "explain_why",
+    "arguments": { "fact": "mortal(socrates)" }
+  }
+}
+```
+
+### Response (Success — proven)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 10,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"fact\":\"mortal(socrates)\",\"proof\":[{\"via\":\"mortal(X) :- human(X)\",\"premises\":[{\"fact\":\"human(socrates)\",\"proof\":[]}]}]}"
+      }
+    ]
+  }
+}
+```
+
+### Response (Success — not provable)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 11,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"fact\":\"mortal(plato)\",\"proof\":[]}"
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — missing argument)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 12,
   "result": {
     "content": [
       {

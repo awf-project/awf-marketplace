@@ -25,7 +25,7 @@
       "name": "zpm",
       "source": "./zpm",
       "description": "ZPM MCP - skills, agents, and commands",
-      "version": "0.0.4",
+      "version": "0.0.6",
       "author": {
         "name": "Alex pocky Balmes"
       },
