@@ -20,6 +20,17 @@
       },
       "homepage": "https://alex.balmes.co",
       "license": "EUPL-1.2"
+    },
+    {
+      "name": "zpm",
+      "source": "./zpm",
+      "description": "ZPM MCP - skills, agents, and commands",
+      "version": "0.0.2",
+      "author": {
+        "name": "Alex pocky Balmes"
+      },
+      "homepage": "https://alex.balmes.co",
+      "license": "EUPL-1.2"
     }
   ]
 }

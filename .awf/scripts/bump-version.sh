@@ -1,8 +1,18 @@
 #!/usr/bin/env bash
-# Read current plugin version from marketplace.json and increment patch
+# Read current version of the resolved plugin and increment patch
 set -euo pipefail
 
-CURRENT=$(jq -r '.plugins[0].version' .claude-plugin/marketplace.json)
+SKILL="{{.states.resolve_skill.Output}}"
+
+CURRENT=$(jq -r --arg s "$SKILL" \
+  '.plugins[] | select(.name==$s) | .version' \
+  .claude-plugin/marketplace.json)
+
+if [ -z "$CURRENT" ]; then
+  echo "Plugin not found in marketplace.json: $SKILL" >&2
+  exit 1
+fi
+
 MAJOR=$(echo "$CURRENT" | cut -d. -f1)
 MINOR=$(echo "$CURRENT" | cut -d. -f2)
 PATCH=$(echo "$CURRENT" | cut -d. -f3)
