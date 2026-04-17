@@ -67,6 +67,8 @@ See `references/build.md` for layout, linking, and troubleshooting.
 | `echo` | no | Echoes a message; use to test connectivity |
 | `remember_fact` | yes | Assert a Prolog fact into the knowledge base |
 | `define_rule` | yes | Assert a Prolog rule (`Head :- Body`) into the knowledge base |
+| `query_logic` | no | Execute a Prolog goal; returns all variable bindings as a JSON array |
+| `trace_dependency` | no | Traverse transitive dependencies via `path/2` rules; returns reachable node names |
 
 ### remember_fact
 
@@ -105,6 +107,48 @@ Asserts a Prolog rule constructed from `head` and `body` arguments. The FFI laye
 Success response: `"Asserted rule: mortal(X) :- human(X)"`.
 
 The tool validates parenthesis balance in `head` and `body` before calling the engine. Invalid syntax returns `isError: true` with a detail string.
+
+### query_logic
+
+Executes an arbitrary Prolog goal against the current knowledge base and returns all solutions as a JSON array of variable-binding objects. An empty array means the goal has no solutions; this is not an error.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "tools/call",
+  "params": {
+    "name": "query_logic",
+    "arguments": { "goal": "mortal(X)" }
+  }
+}
+```
+
+Success response: `"[{\"X\":\"socrates\"}]"` (JSON array). Empty result: `"[]"`.
+
+- Do not include a trailing `.` in `goal`.
+- Read-only and idempotent — does not modify the knowledge base.
+
+### trace_dependency
+
+Traverses all nodes reachable from a start node by querying `path(Start, X)` against rules in the knowledge base. Returns a JSON array of dependency name strings.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 6,
+  "method": "tools/call",
+  "params": {
+    "name": "trace_dependency",
+    "arguments": { "start": "a" }
+  }
+}
+```
+
+Success response: `"[\"b\",\"c\"]"`. Empty graph: `"[]"`.
+
+- `path/2` facts or rules must be asserted before calling this tool (e.g. via `remember_fact` with `"fact": "path(a,b)"`).
+- Read-only and idempotent.
 
 Full protocol docs, all input schemas, and error response shapes: `references/mcp-tools.md`.
 
