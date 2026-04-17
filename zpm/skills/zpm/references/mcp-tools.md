@@ -41,6 +41,8 @@ The response lists all registered tools with their input schemas.
 | `echo` | no | Connectivity test; echoes a message |
 | `remember_fact` | yes | Assert a Prolog fact into the knowledge base |
 | `define_rule` | yes | Assert a Prolog rule (`Head :- Body`) into the knowledge base |
+| `query_logic` | no | Execute a Prolog goal; returns all variable bindings as a JSON array |
+| `trace_dependency` | no | Traverse transitive dependencies via `path/2` rules; returns reachable node names |
 
 ## Echo
 
@@ -311,14 +313,221 @@ Assert a Prolog rule (`Head :- Body`) into the knowledge base via `assertz/1`. T
 }
 ```
 
+## query_logic
+
+Execute an arbitrary Prolog goal against the in-process engine. Returns all solutions as a JSON array of variable-binding objects. Read-only and idempotent; does not modify the knowledge base.
+
+**Annotations**: read-only, idempotent, non-destructive.
+
+### Input Schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "goal": {
+      "type": "string",
+      "description": "A Prolog goal to execute, without trailing period (e.g. \"mortal(X)\")"
+    }
+  },
+  "required": ["goal"]
+}
+```
+
+- `goal` must be non-null and non-empty.
+- Do not include a trailing `.`.
+- The goal is executed against the current knowledge base state.
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "tools/call",
+  "params": {
+    "name": "query_logic",
+    "arguments": {
+      "goal": "mortal(X)"
+    }
+  }
+}
+```
+
+### Response (Success — solutions found)
+
+Each object in the array maps variable names to their bound values.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[{\"X\":\"socrates\"}]"
+      }
+    ]
+  }
+}
+```
+
+### Response (Success — no solutions)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[]"
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — missing argument)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "InvalidArguments",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — engine unavailable)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "ExecutionFailed",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+## trace_dependency
+
+Traverse all nodes reachable from a start node using `path/2` rules already asserted in the knowledge base. Returns a JSON array of dependency names (strings). Read-only and idempotent.
+
+**Annotations**: read-only, idempotent, non-destructive.
+
+`path/2` rules must be present in the knowledge base before calling this tool. Assert them with `define_rule` (e.g. `path(a, b)`, `path(b, c)`) or load them from a file via the engine API. The tool queries `path(Start, X)` and collects all solutions for `X`.
+
+### Input Schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "start": {
+      "type": "string",
+      "description": "The start node atom (e.g. \"a\")"
+    }
+  },
+  "required": ["start"]
+}
+```
+
+- `start` must be non-null and non-empty.
+- `path/2` rules must be loaded before calling; an empty graph returns `[]`, not an error.
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 6,
+  "method": "tools/call",
+  "params": {
+    "name": "trace_dependency",
+    "arguments": {
+      "start": "a"
+    }
+  }
+}
+```
+
+### Response (Success — dependencies found)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 6,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[\"b\",\"c\"]"
+      }
+    ]
+  }
+}
+```
+
+### Response (Success — no dependencies / empty graph)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 6,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[]"
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — missing argument)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 6,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "InvalidArguments",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
 ## End-to-End Example
 
-Assert a fact and a rule, then query via the Prolog engine:
+Assert facts and rules, then query and trace dependencies:
 
 ```bash
 # 1. Initialize session (client handles this automatically)
 
-# 2. Assert a fact
+# 2. Assert facts
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"remember_fact","arguments":{"fact":"human(socrates)"}}}' \
   | ./zpm-server
 
@@ -326,8 +535,21 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"remember_f
 echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"define_rule","arguments":{"head":"mortal(X)","body":"human(X)"}}}' \
   | ./zpm-server
 
-# 4. Query (via engine.query, not yet exposed as a tool in this release)
-# mortal(socrates) is now provable
+# 4. Query — returns all bindings for mortal(X)
+echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"query_logic","arguments":{"goal":"mortal(X)"}}}' \
+  | ./zpm-server
+# => [{"X":"socrates"}]
+
+# 5. Assert path/2 facts for dependency tracing
+echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"remember_fact","arguments":{"fact":"path(a,b)"}}}' \
+  | ./zpm-server
+echo '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"remember_fact","arguments":{"fact":"path(b,c)"}}}' \
+  | ./zpm-server
+
+# 6. Trace dependencies from "a"
+echo '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"trace_dependency","arguments":{"start":"a"}}}' \
+  | ./zpm-server
+# => ["b","c"]
 ```
 
 ## Error Response Shape
