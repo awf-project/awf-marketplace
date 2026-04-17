@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Create or checkout the update branch based on update type and PR number
+# Create or checkout the update branch based on skill, update type, and PR number
 set -euo pipefail
+
+SKILL="{{.states.resolve_skill.Output}}"
 
 case "{{.inputs.update_type}}" in
   bugfix)   PREFIX="fix" ;;
@@ -9,7 +11,7 @@ case "{{.inputs.update_type}}" in
   *)        PREFIX="feature" ;;
 esac
 
-BRANCH="${PREFIX}/awf-skill-pr-{{.inputs.pull_request}}"
+BRANCH="${PREFIX}/${SKILL}-skill-pr-{{.inputs.pull_request}}"
 
 CURRENT=$(git branch --show-current)
 if [ "$CURRENT" = "$BRANCH" ]; then

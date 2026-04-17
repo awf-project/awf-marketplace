@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
-# Update plugins.version and metadata.version in marketplace.json
+# Update the resolved plugin's version in marketplace.json
+# Does NOT touch .metadata.version — plugins bump independently.
 set -euo pipefail
 
+SKILL="{{.states.resolve_skill.Output}}"
 NEW_VERSION="{{.states.read_and_bump_version.Output}}"
-jq --arg v "$NEW_VERSION" '.plugins[0].version = $v | .metadata.version = $v' \
+
+jq --arg s "$SKILL" --arg v "$NEW_VERSION" \
+  '(.plugins[] | select(.name==$s)).version = $v' \
   .claude-plugin/marketplace.json > .claude-plugin/marketplace.json.tmp
 mv .claude-plugin/marketplace.json.tmp .claude-plugin/marketplace.json
-echo "Updated to version $NEW_VERSION"
+echo "Updated ${SKILL} to version ${NEW_VERSION}"

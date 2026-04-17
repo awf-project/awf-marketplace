@@ -1,8 +1,9 @@
 # .awf/workflows/update-skill.yaml
-# Workflow to update the AWF skill with auto version bump
+# Workflow to update a skill based on an upstream PR, for any skill declared
+# in .awf/scripts/skill-map.json.
 name: update-skill
-version: "2.0.0"
-description: Update the AWF skill based on a PR from awf-project/cli
+version: "2.1.0"
+description: Update a skill in this marketplace based on an upstream PR
 
 inputs:
   - name: update_type
@@ -12,40 +13,52 @@ inputs:
     validation:
       enum: [feature, bugfix, breaking, docs]
 
+  - name: repository
+    type: string
+    description: Upstream repository uri (must be mapped in skill-map.json)
+    required: true
+
   - name: pull_request
     type: string
-    description: PR number from github.com/awf-project/cli
+    description: PR number from given repository
     required: true
     validation:
       pattern: "^[0-9]+$"
 
 states:
-  initial: fetch_pr_content
+  initial: resolve_skill
+
+  resolve_skill:
+    type: step
+    description: Resolve target skill from repository {{.inputs.repository}}
+    script_file: "{{.awf.scripts_dir}}/resolve-skill.sh"
+    on_success: fetch_pr_content
+    on_failure: {message: "Unknown repository {{.inputs.repository}}. Add it to .awf/scripts/skill-map.json."}
 
   fetch_pr_content:
     type: step
-    description: Fetch PR content from awf-project/cli
+    description: Fetch PR content from {{.inputs.repository}}
     command: |
       gh pr view {{.inputs.pull_request}} \
-        --repo awf-project/cli \
+        --repo {{.inputs.repository}} \
         --json title,body,files \
         --jq '"# " + .title + "\n\n" + .body + "\n\n## Files changed\n" + ([.files[].path] | join("\n"))'
     on_success: read_and_bump_version
-    on_failure: {message: "Failed to fetch PR #{{.inputs.pull_request}} from awf-project/cli"}
+    on_failure: {message: "Failed to fetch PR #{{.inputs.pull_request}} from {{.inputs.repository}}"}
 
   read_and_bump_version:
     type: step
     description: Read current plugin version and increment patch
     script_file: "{{.awf.scripts_dir}}/bump-version.sh"
     on_success: update_marketplace_version
-    on_failure: {message: "Failed to read or bump version from marketplace.json"}
+    on_failure: {message: "Failed to read or bump version for skill {{.states.resolve_skill.Output}}"}
 
   update_marketplace_version:
     type: step
-    description: Update plugins.version in marketplace.json
+    description: Update plugin version in marketplace.json
     script_file: "{{.awf.scripts_dir}}/update-marketplace.sh"
     on_success: create_branch
-    on_failure: {message: "Failed to update marketplace.json to {{.states.read_and_bump_version.Output}}"}
+    on_failure: {message: "Failed to update marketplace.json for {{.states.resolve_skill.Output}} to {{.states.read_and_bump_version.Output}}"}
 
   create_branch:
     type: step
@@ -53,7 +66,7 @@ states:
     script_file: "{{.awf.scripts_dir}}/create-branch.sh"
     timeout: 30s
     on_success: execute_claude
-    on_failure: {message: "Failed to create branch for PR #{{.inputs.pull_request}}"}
+    on_failure: {message: "Failed to create branch for {{.states.resolve_skill.Output}} PR #{{.inputs.pull_request}}"}
 
   execute_claude:
     type: agent
@@ -66,7 +79,7 @@ states:
       dangerously_skip_permissions: true
     timeout: 600
     on_success: commit_and_pr
-    on_failure: {message: "Claude agent failed to update skill documentation"}
+    on_failure: {message: "Claude agent failed to update {{.states.resolve_skill.Output}} skill documentation"}
 
   commit_and_pr:
     type: call_workflow
@@ -80,4 +93,4 @@ states:
   done:
     type: terminal
     status: success
-    message: "Skill updated to version {{.states.read_and_bump_version.Output}} based on PR #{{.inputs.pull_request}}"
+    message: "Skill {{.states.resolve_skill.Output}} updated to version {{.states.read_and_bump_version.Output}} based on PR #{{.inputs.pull_request}}"

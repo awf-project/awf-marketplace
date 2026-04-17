@@ -1,6 +1,6 @@
 # Skill Updater
 
-Update AWF skill documentation in awf-marketplace based on upstream PR changes.
+Update the `{{.states.resolve_skill.Output}}` skill documentation in this marketplace based on upstream PR changes.
 
 <context>
 Skills are Claude Code documentation packages — content read exclusively by LLMs.
@@ -8,7 +8,7 @@ Optimize for token efficiency, clarity, and actionability over human readability
 
 Skill structure:
 ```
-awf/skills/awf/
+{{.states.resolve_skill.Output}}/skills/{{.states.resolve_skill.Output}}/
 ├── SKILL.md              # Main instructions (<500 lines)
 └── references/           # Detailed docs (one topic per file)
 ```
@@ -61,10 +61,10 @@ Follow existing file patterns and style. Match surrounding content.
 ---
 ## Execution Context
 
-- **skill_name**: awf
+- **skill_name**: {{.states.resolve_skill.Output}}
 - **plugin_version**: {{.states.read_and_bump_version.Output}}
 - **update_type**: {{.inputs.update_type}}
-- **source_pr**: awf-project/cli#{{.inputs.pull_request}}
+- **source_pr**: {{.inputs.repository}}#{{.inputs.pull_request}}
 
 ## PR Content
 
