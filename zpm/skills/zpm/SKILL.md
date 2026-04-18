@@ -74,6 +74,8 @@ See `references/build.md` for layout, linking, and troubleshooting.
 | `get_knowledge_schema` | no | Introspect the knowledge base; returns all user-defined predicates with arity and clause type |
 | `forget_fact` | yes | Retract the first matching fact via `retract/1`; single-retract deterministic semantics |
 | `clear_context` | yes | Retract all facts matching a category pattern via `retractall/1`; always succeeds |
+| `update_fact` | yes | Atomic retract+assert; replaces `old_fact` with `new_fact`; returns `ExecutionFailed` if old fact not found |
+| `upsert_fact` | yes | Match by functor+first argument; replace existing fact or insert if absent |
 
 ### remember_fact
 
@@ -267,6 +269,50 @@ Success response: `"Cleared: human(_)"`.
 - `category` is a Prolog term pattern (e.g. `human(_)` removes all `human/1` facts)
 - Never returns an error for non-existent predicates
 - Use `forget_fact` when single-retract semantics are required
+
+### update_fact
+
+Atomically retracts `old_fact` and asserts `new_fact` in a single operation. Returns `ExecutionFailed` if `old_fact` is not found — the knowledge base is not modified.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 12,
+  "method": "tools/call",
+  "params": {
+    "name": "update_fact",
+    "arguments": { "old_fact": "human(socrates)", "new_fact": "human(plato)" }
+  }
+}
+```
+
+Success response: `"Updated: human(socrates) -> human(plato)"`.
+
+- Do not include a trailing `.` in either argument
+- Returns `ExecutionFailed` without modifying the knowledge base when `old_fact` is absent
+- Use `upsert_fact` when insert-or-replace semantics are required
+
+### upsert_fact
+
+Matches by functor and first argument, retracts all matching facts via `retractall/1`, then asserts the new fact. Always succeeds — inserts if no match exists.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 13,
+  "method": "tools/call",
+  "params": {
+    "name": "upsert_fact",
+    "arguments": { "fact": "age(socrates, 70)" }
+  }
+}
+```
+
+Success response: `"Upserted: age(socrates, 70)"`.
+
+- Do not include a trailing `.` in `fact`
+- Matches on functor + first argument; calling twice with same functor+first-arg leaves exactly one fact
+- Use `update_fact` when atomic replace with existence check is required
 
 Full protocol docs, all input schemas, and error response shapes: `references/mcp-tools.md`.
 

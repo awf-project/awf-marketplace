@@ -48,6 +48,8 @@ The response lists all registered tools with their input schemas.
 | `get_knowledge_schema` | no | Introspect the knowledge base; returns all user-defined predicates with arity and clause type |
 | `forget_fact` | yes | Retract the first matching fact from the knowledge base; single-retract semantics |
 | `clear_context` | yes | Retract all facts matching a category pattern; always succeeds (ISO `retractall` semantics) |
+| `update_fact` | yes | Atomic retract+assert; replaces `old_fact` with `new_fact`; returns `ExecutionFailed` if old fact absent |
+| `upsert_fact` | yes | Match by functor+first argument, retract all matches, assert new fact; always succeeds |
 
 ## Echo
 
@@ -967,6 +969,175 @@ Always returns success per ISO `retractall/1` semantics:
 {
   "jsonrpc": "2.0",
   "id": 15,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "InvalidArguments",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+## update_fact
+
+Atomically retracts `old_fact` and asserts `new_fact`. Returns `ExecutionFailed` without modifying the knowledge base when `old_fact` is not found.
+
+### Input Schema
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `old_fact` | string | yes | Prolog fact to retract (no trailing `.`) |
+| `new_fact` | string | yes | Prolog fact to assert in its place (no trailing `.`) |
+
+- Both arguments must be non-null and non-empty.
+- Functor and arity of `old_fact` and `new_fact` may differ.
+- The operation is atomic: either both retract and assert succeed, or neither takes effect.
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 16,
+  "method": "tools/call",
+  "params": {
+    "name": "update_fact",
+    "arguments": {
+      "old_fact": "human(socrates)",
+      "new_fact": "human(plato)"
+    }
+  }
+}
+```
+
+### Response (Success)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 16,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Updated: human(socrates) -> human(plato)"
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — old fact not found)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 16,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "ExecutionFailed",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — missing argument)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 16,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "InvalidArguments",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+## upsert_fact
+
+Matches by functor and first argument via `retractall/1`, then asserts the new fact via `assertz/1`. Always succeeds — inserts if no match exists, replaces if one or more matches exist.
+
+### Input Schema
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `fact` | string | yes | Prolog fact to upsert (no trailing `.`) |
+
+- Argument must be non-null and non-empty.
+- The match key is functor + first argument; all facts sharing that key are removed before assertion.
+- Calling twice with the same functor+first-arg leaves exactly one fact in the knowledge base.
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 17,
+  "method": "tools/call",
+  "params": {
+    "name": "upsert_fact",
+    "arguments": {
+      "fact": "age(socrates, 70)"
+    }
+  }
+}
+```
+
+### Response (Success — replaced)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 17,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Upserted: age(socrates, 70)"
+      }
+    ]
+  }
+}
+```
+
+### Response (Success — inserted, no prior match)
+
+Same shape as the replace response; the tool does not distinguish insert from replace in the success text:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 17,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Upserted: age(socrates, 70)"
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — missing argument)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 17,
   "result": {
     "content": [
       {
