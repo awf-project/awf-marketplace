@@ -61,6 +61,29 @@ CI runs `cargo fmt --check` and `cargo clippy` in addition to Zig lint/test/buil
 
 See `references/build.md` for layout, linking, and troubleshooting.
 
+## Running the server
+
+The MCP server is started with the `serve` subcommand. Running the binary without arguments does not start the server — it prints help and exits.
+
+```sh
+zpm serve
+```
+
+MCP client configuration must pass `serve` as the argument:
+
+```json
+{
+  "mcpServers": {
+    "zpm": {
+      "command": "/path/to/zpm",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+Other flags: `--help`/`-h` (exits 0), `--version`/`-v` (exits 0). Unknown subcommands exit 1 on stderr. Full CLI reference: `references/cli.md`.
+
 ## MCP Tools
 
 | Tool | Write | Description |
@@ -588,6 +611,7 @@ Every Rust FFI entry point wraps its body in panic suppression so a Scryer panic
 
 ## References
 
+- `references/cli.md` — CLI subcommands, flags, exit codes, MCP client configuration
 - `references/mcp-tools.md` — MCP tool protocol: input schemas, request/response examples, error shapes
 - `references/prolog-engine.md` — Engine API reference (methods, errors, ownership)
 - `references/build.md` — Build system, Rust FFI layout, CI
