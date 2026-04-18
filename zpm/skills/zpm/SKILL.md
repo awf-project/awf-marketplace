@@ -76,6 +76,12 @@ See `references/build.md` for layout, linking, and troubleshooting.
 | `clear_context` | yes | Retract all facts matching a category pattern via `retractall/1`; always succeeds |
 | `update_fact` | yes | Atomic retract+assert; replaces `old_fact` with `new_fact`; returns `ExecutionFailed` if old fact not found |
 | `upsert_fact` | yes | Match by functor+first argument; replace existing fact or insert if absent |
+| `assume_fact` | yes | Assert a fact under a named assumption; stores justification metadata in the knowledge base |
+| `get_belief_status` | no | Query whether a belief is supported and list the assumptions that justify it |
+| `get_justification` | no | List all facts currently supported by a given named assumption |
+| `list_assumptions` | no | Enumerate all active assumptions and their associated facts |
+| `retract_assumption` | yes | Retract a single named assumption and cascade removal to all dependent facts |
+| `retract_assumptions` | yes | Bulk-retract all assumptions matching a glob-style pattern and their dependent facts |
 
 ### remember_fact
 
@@ -313,6 +319,132 @@ Success response: `"Upserted: age(socrates, 70)"`.
 - Do not include a trailing `.` in `fact`
 - Matches on functor + first argument; calling twice with same functor+first-arg leaves exactly one fact
 - Use `update_fact` when atomic replace with existence check is required
+
+### assume_fact
+
+Asserts a fact under a named assumption and records justification metadata in the knowledge base. Use to make defeasible assertions that can be retracted as a unit.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 14,
+  "method": "tools/call",
+  "params": {
+    "name": "assume_fact",
+    "arguments": { "assumption": "hypothesis_1", "fact": "flies(tweety)" }
+  }
+}
+```
+
+Success response: `"Assumed: flies(tweety) under hypothesis_1"`.
+
+- Both `assumption` and `fact` are required; omitting either returns `InvalidArguments`
+- Do not include a trailing `.` in `fact`
+
+### get_belief_status
+
+Queries whether a belief is currently supported and returns the set of assumptions that justify it.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 15,
+  "method": "tools/call",
+  "params": {
+    "name": "get_belief_status",
+    "arguments": { "belief": "flies(tweety)" }
+  }
+}
+```
+
+Success response: JSON object with `supported` boolean and `assumptions` array.
+
+- `belief` is required; omitting returns `InvalidArguments`
+- Returns `{"supported": false, "assumptions": []}` when no assumption justifies the belief
+
+### get_justification
+
+Lists all facts currently supported by a given named assumption.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 16,
+  "method": "tools/call",
+  "params": {
+    "name": "get_justification",
+    "arguments": { "assumption": "hypothesis_1" }
+  }
+}
+```
+
+Success response: JSON array of fact strings supported by the assumption.
+
+- `assumption` is required; omitting returns `InvalidArguments`
+- Returns an empty array when no facts are under that assumption
+
+### list_assumptions
+
+Enumerates all active assumptions and the facts each one supports.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 17,
+  "method": "tools/call",
+  "params": {
+    "name": "list_assumptions",
+    "arguments": {}
+  }
+}
+```
+
+Success response: JSON array of objects, each with `assumption` (string) and `facts` (array of strings).
+
+- No arguments required; pass an empty object
+- Returns an empty array when no assumptions are active
+
+### retract_assumption
+
+Retracts a single named assumption and propagates removal to all facts asserted under it.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 18,
+  "method": "tools/call",
+  "params": {
+    "name": "retract_assumption",
+    "arguments": { "assumption": "hypothesis_1" }
+  }
+}
+```
+
+Success response: `"Retracted assumption: hypothesis_1"`.
+
+- `assumption` is required; omitting returns `InvalidArguments`
+- Returns `ExecutionFailed` if the named assumption does not exist
+
+### retract_assumptions
+
+Bulk-retracts all assumptions whose names match a glob-style pattern and removes all dependent facts.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 19,
+  "method": "tools/call",
+  "params": {
+    "name": "retract_assumptions",
+    "arguments": { "pattern": "hypothesis_*" }
+  }
+}
+```
+
+Success response: `"Retracted N assumptions matching: hypothesis_*"`.
+
+- `pattern` is required; omitting returns `InvalidArguments`
+- `*` matches any sequence of characters within an assumption name; succeeds with count 0 when none match
 
 Full protocol docs, all input schemas, and error response shapes: `references/mcp-tools.md`.
 

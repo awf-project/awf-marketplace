@@ -50,6 +50,12 @@ The response lists all registered tools with their input schemas.
 | `clear_context` | yes | Retract all facts matching a category pattern; always succeeds (ISO `retractall` semantics) |
 | `update_fact` | yes | Atomic retract+assert; replaces `old_fact` with `new_fact`; returns `ExecutionFailed` if old fact absent |
 | `upsert_fact` | yes | Match by functor+first argument, retract all matches, assert new fact; always succeeds |
+| `assume_fact` | yes | Assert a fact under a named assumption; stores justification metadata for TMS tracking |
+| `get_belief_status` | no | Query whether a belief is currently supported and which assumptions justify it |
+| `get_justification` | no | List all facts currently supported by a given named assumption |
+| `list_assumptions` | no | Enumerate all active assumptions and the facts each one supports |
+| `retract_assumption` | yes | Retract a single named assumption and propagate removal to all dependent facts |
+| `retract_assumptions` | yes | Bulk-retract all assumptions matching a glob-style pattern and their dependent facts |
 
 ## Echo
 
@@ -1138,6 +1144,445 @@ Same shape as the replace response; the tool does not distinguish insert from re
 {
   "jsonrpc": "2.0",
   "id": 17,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "InvalidArguments",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+## assume_fact
+
+Assert a fact under a named assumption with justification tracking. The assumption name and the asserted fact are stored as Prolog metadata, enabling belief propagation and grouped retraction.
+
+### Input Schema
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `assumption` | string | yes | Name of the assumption group (e.g. `"hypothesis_1"`) |
+| `fact` | string | yes | Prolog fact to assert (no trailing `.`) |
+
+- Both arguments must be non-null and non-empty.
+- `assumption` is a user-defined label; it need not be a valid Prolog term.
+- Asserting the same fact under two different assumptions creates two justification records.
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 18,
+  "method": "tools/call",
+  "params": {
+    "name": "assume_fact",
+    "arguments": { "assumption": "hypothesis_1", "fact": "flies(tweety)" }
+  }
+}
+```
+
+### Response (Success)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 18,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Assumed: flies(tweety) under hypothesis_1"
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — missing argument)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 18,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "InvalidArguments",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+## get_belief_status
+
+Query whether a belief is currently supported and which assumptions justify it.
+
+### Input Schema
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `belief` | string | yes | Prolog fact to query (no trailing `.`) |
+
+- `belief` must be non-null and non-empty.
+- Returns supported state based on current justification records; retracting an assumption may change the result.
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 19,
+  "method": "tools/call",
+  "params": {
+    "name": "get_belief_status",
+    "arguments": { "belief": "flies(tweety)" }
+  }
+}
+```
+
+### Response (Success — belief supported)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 19,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"supported\":true,\"assumptions\":[\"hypothesis_1\"]}"
+      }
+    ]
+  }
+}
+```
+
+### Response (Success — belief not supported)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 19,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"supported\":false,\"assumptions\":[]}"
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — missing argument)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 19,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "InvalidArguments",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+## get_justification
+
+List all facts currently supported by a given named assumption.
+
+### Input Schema
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `assumption` | string | yes | Name of the assumption to query |
+
+- `assumption` must be non-null and non-empty.
+- Returns an empty array when no facts are currently under the named assumption.
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 20,
+  "method": "tools/call",
+  "params": {
+    "name": "get_justification",
+    "arguments": { "assumption": "hypothesis_1" }
+  }
+}
+```
+
+### Response (Success — facts found)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 20,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[\"flies(tweety)\",\"mortal(tweety)\"]"
+      }
+    ]
+  }
+}
+```
+
+### Response (Success — no facts under assumption)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 20,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[]"
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — missing argument)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 20,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "InvalidArguments",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+## list_assumptions
+
+Enumerate all active assumptions and the facts each one supports.
+
+### Input Schema
+
+No required arguments. Pass an empty arguments object.
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 21,
+  "method": "tools/call",
+  "params": {
+    "name": "list_assumptions",
+    "arguments": {}
+  }
+}
+```
+
+### Response (Success — assumptions found)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 21,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[{\"assumption\":\"hypothesis_1\",\"facts\":[\"flies(tweety)\"]},{\"assumption\":\"default_rules\",\"facts\":[\"mortal(X)\"]}]"
+      }
+    ]
+  }
+}
+```
+
+### Response (Success — no active assumptions)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 21,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[]"
+      }
+    ]
+  }
+}
+```
+
+## retract_assumption
+
+Retract a single named assumption and propagate removal to all facts that were asserted under it.
+
+### Input Schema
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `assumption` | string | yes | Name of the assumption to retract |
+
+- `assumption` must be non-null and non-empty.
+- Returns `ExecutionFailed` when the named assumption does not exist.
+- All dependent facts are removed atomically.
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 22,
+  "method": "tools/call",
+  "params": {
+    "name": "retract_assumption",
+    "arguments": { "assumption": "hypothesis_1" }
+  }
+}
+```
+
+### Response (Success)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 22,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Retracted assumption: hypothesis_1"
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — assumption not found)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 22,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "ExecutionFailed",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — missing argument)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 22,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "InvalidArguments",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+## retract_assumptions
+
+Bulk-retract all assumptions whose names match a glob-style pattern and remove all their dependent facts.
+
+### Input Schema
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `pattern` | string | yes | Glob pattern to match assumption names (e.g. `"hypothesis_*"`) |
+
+- `pattern` must be non-null and non-empty.
+- `*` matches any sequence of characters within an assumption name.
+- Succeeds with count 0 when no assumptions match; never errors on empty matches.
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 23,
+  "method": "tools/call",
+  "params": {
+    "name": "retract_assumptions",
+    "arguments": { "pattern": "hypothesis_*" }
+  }
+}
+```
+
+### Response (Success — assumptions matched)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 23,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Retracted 2 assumptions matching: hypothesis_*"
+      }
+    ]
+  }
+}
+```
+
+### Response (Success — no assumptions matched)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 23,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Retracted 0 assumptions matching: hypothesis_*"
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — missing argument)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 23,
   "result": {
     "content": [
       {
