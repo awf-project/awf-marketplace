@@ -56,6 +56,12 @@ The response lists all registered tools with their input schemas.
 | `list_assumptions` | no | Enumerate all active assumptions and the facts each one supports |
 | `retract_assumption` | yes | Retract a single named assumption and propagate removal to all dependent facts |
 | `retract_assumptions` | yes | Bulk-retract all assumptions matching a glob-style pattern and their dependent facts |
+| `save_snapshot` | yes | Create a named point-in-time snapshot of the knowledge base |
+| `restore_snapshot` | yes | Restore from a named snapshot and replay subsequent journal entries |
+| `list_snapshots` | no | List all available snapshots with metadata |
+| `get_persistence_status` | no | Query journal size, last snapshot name, and operational mode (durable / degraded) |
+
+All write tools (`remember_fact`, `forget_fact`, `update_fact`, `upsert_fact`, `assume_fact`, `define_rule`, `clear_context`, `retract_assumption`, `retract_assumptions`) automatically journal mutations through the WAL. When the persistence layer fails to initialise, the server runs in degraded mode: writes still execute against the in-memory engine but are not durable. Use `get_persistence_status` to inspect operational mode at runtime.
 
 ## Echo
 
@@ -1589,6 +1595,281 @@ Bulk-retract all assumptions whose names match a glob-style pattern and remove a
         "type": "text",
         "text": "InvalidArguments",
         "isError": true
+      }
+    ]
+  }
+}
+```
+
+## save_snapshot
+
+Create a named point-in-time snapshot of the entire knowledge base. The snapshot becomes the new replay base on the next process startup; subsequent WAL entries are layered on top of it during recovery.
+
+### Input Schema
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | yes | Snapshot identifier (must be unique or will overwrite an existing snapshot of the same name) |
+
+- `name` must be non-null and non-empty.
+- Returns `ExecutionFailed` when the persistence layer is in degraded mode.
+- Overwrites any existing snapshot with the same name without warning.
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 24,
+  "method": "tools/call",
+  "params": {
+    "name": "save_snapshot",
+    "arguments": { "name": "before_migration" }
+  }
+}
+```
+
+### Response (Success)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 24,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Saved snapshot: before_migration"
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — degraded mode)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 24,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "ExecutionFailed",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — missing argument)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 24,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "InvalidArguments",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+## restore_snapshot
+
+Restore the knowledge base from a named snapshot and replay any WAL entries written after that snapshot. Destructive: the current knowledge base is replaced in full.
+
+### Input Schema
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | yes | Name of the snapshot to restore |
+
+- `name` must be non-null and non-empty.
+- Returns `ExecutionFailed` when the named snapshot does not exist.
+- Replaces the in-memory knowledge base entirely; non-snapshotted, non-journalled state is lost.
+- WAL replay continues from the snapshot's sequence number, so post-snapshot writes are preserved.
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 25,
+  "method": "tools/call",
+  "params": {
+    "name": "restore_snapshot",
+    "arguments": { "name": "before_migration" }
+  }
+}
+```
+
+### Response (Success)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 25,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Restored snapshot: before_migration"
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — snapshot not found)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 25,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "ExecutionFailed",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — missing argument)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 25,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "InvalidArguments",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+## list_snapshots
+
+Enumerate all snapshots known to the persistence layer with their metadata. Read-only.
+
+### Input Schema
+
+No arguments. Pass an empty object `{}`.
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 26,
+  "method": "tools/call",
+  "params": {
+    "name": "list_snapshots",
+    "arguments": {}
+  }
+}
+```
+
+### Response (Success — snapshots found)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 26,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[{\"name\":\"before_migration\",\"sequence\":42,\"created_at\":\"2026-04-18T10:14:22Z\"}]"
+      }
+    ]
+  }
+}
+```
+
+### Response (Success — no snapshots)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 26,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[]"
+      }
+    ]
+  }
+}
+```
+
+## get_persistence_status
+
+Report the operational state of the persistence layer. Use to confirm durability before relying on WAL recovery, or to diagnose why a `save_snapshot` returned `ExecutionFailed`.
+
+### Input Schema
+
+No arguments. Pass an empty object `{}`.
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 27,
+  "method": "tools/call",
+  "params": {
+    "name": "get_persistence_status",
+    "arguments": {}
+  }
+}
+```
+
+### Response (Success — durable)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 27,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"mode\":\"durable\",\"journal_entries\":128,\"last_snapshot\":\"before_migration\",\"last_sequence\":170}"
+      }
+    ]
+  }
+}
+```
+
+### Response (Success — degraded)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 27,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"mode\":\"degraded\",\"journal_entries\":0,\"last_snapshot\":null,\"last_sequence\":0}"
       }
     ]
   }

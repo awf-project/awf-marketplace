@@ -4,6 +4,7 @@ ZPM pairs a Zig MCP server with a Scryer Prolog logic engine linked in-process t
 
 - `docs/ADR/0001-mcp-server-with-stdio-transport.md`
 - `docs/ADR/0002-scryer-prolog-via-rust-ffi-staticlib.md`
+- `docs/ADR/0003-knowledge-base-persistence-via-wal-and-snapshots.md`
 
 `docs/ADR/README.md` is the authoritative index. The upstream ADR text is the source of truth; this page summarizes the load-bearing conclusions for skill consumers.
 
@@ -30,19 +31,39 @@ ZPM pairs a Zig MCP server with a Scryer Prolog logic engine linked in-process t
 - The FFI surface is intentionally narrow (init/deinit, query, assert, retract, loadFile, loadString). Expanding it is an explicit FFI design change, not an incidental addition.
 - Panics inside Scryer must not unwind across the C ABI. `ffi/zpm-prolog-ffi/src/lib.rs` wraps every entry point in panic suppression; this is a correctness invariant, not a stylistic choice.
 
+## ADR 0003: Knowledge base persistence via WAL and snapshots
+
+**Decision.** The knowledge base is made durable through a write-ahead log (WAL) plus named snapshots. Every mutation is appended to the WAL as an opaque Prolog term before the engine returns to the client; recovery replays the WAL on top of the latest snapshot. Snapshot creation and restoration are exposed as MCP tools, so AI agents drive checkpointing explicitly.
+
+Rejected alternatives include serialising the full knowledge base on every write (too costly), relying solely on snapshots (data loss between snapshots), and embedding an external KV store (extra dependency, second source of truth).
+
+**Consequences for skill users:**
+
+- Facts and rules survive process restart without client re-loading. ADR 0001's "engine state does not survive a restart" is now scoped to the in-memory case only; the durable path is the default.
+- If WAL or snapshot I/O fails at startup, `PersistenceManager` falls back to **degraded mode**: writes still execute against the in-memory engine, but nothing is journalled. Use `get_persistence_status` to confirm `mode == "durable"` before relying on durability.
+- WAL replay is mutation-ordered and append-only. Do not edit the WAL file by hand; truncate via a `save_snapshot` followed by WAL roll-over instead.
+- Snapshot restoration is destructive: `restore_snapshot` replaces the current knowledge base in full and then replays WAL entries written after that snapshot was taken.
+- All write tools (`remember_fact`, `forget_fact`, `update_fact`, `upsert_fact`, `assume_fact`, `define_rule`, `clear_context`, `retract_assumption`, `retract_assumptions`) journal automatically — handlers do not need to call the persistence layer themselves.
+
 ## Layer responsibilities
 
 ```
-src/main.zig                 MCP dispatch, lifecycle, logging to stderr
-src/tools/context.zig        engine singleton (setEngine/getEngine)
-src/tools/*.zig              MCP tool handlers; call Engine via context.getEngine()
+src/main.zig                 MCP dispatch, lifecycle, logging to stderr;
+                             initialises PersistenceManager and Engine
+src/tools/context.zig        engine + persistence-manager singleton
+src/tools/*.zig              MCP tool handlers; writes go via Engine and
+                             are journalled through the persistence manager
+src/persistence/manager.zig  lifecycle, degraded-mode detection, shared state
+src/persistence/wal.zig      append-only journal; replay from a sequence number
+src/persistence/snapshot.zig snapshot serialisation and restoration
+src/tools/term_utils.zig     shared Prolog term parsing for tools + persistence
 src/prolog/engine.zig        public Zig API; only layer MCP handlers may call
 src/prolog/ffi.zig           extern "C" declarations; no logic
 ffi/zpm-prolog-ffi/src/lib.rs  extern "C" Rust wrappers with panic suppression
   -> scryer-prolog crate     actual Prolog machine
 ```
 
-Keep Prolog-specific concerns inside `engine.zig` and below. MCP handlers should not know that the engine is Scryer, nor that the bridge is Rust.
+Keep Prolog-specific concerns inside `engine.zig` and below. MCP handlers should not know that the engine is Scryer, nor that the bridge is Rust. The persistence layer treats Prolog terms as opaque payloads — it never inspects them.
 
 ## Engine singleton (context.zig)
 
@@ -58,6 +79,8 @@ Keep Prolog-specific concerns inside `engine.zig` and below. MCP handlers should
 - Thread safety: the engine is not re-entrant. MCP over STDIO is inherently single-client, so concurrent calls do not arise in practice. If concurrency is ever introduced, add external synchronization before relaxing this invariant.
 
 **Motivation:** Tool handlers are separate compilation units (`src/tools/*.zig`) and cannot import `src/main.zig`. The singleton in `context.zig` provides a dependency-injection point without requiring a global import cycle.
+
+**Persistence manager handle.** `context.zig` also carries a reference to the `PersistenceManager` instance. Write-path handlers retrieve it alongside the engine to journal each mutation. The same single-process / single-instance invariants apply: set once at startup, never re-assigned, not safe for concurrent use.
 
 ## Versioning and evolution
 
