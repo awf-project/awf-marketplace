@@ -69,6 +69,8 @@ See `references/build.md` for layout, linking, and troubleshooting.
 | `define_rule` | yes | Assert a Prolog rule (`Head :- Body`) into the knowledge base |
 | `query_logic` | no | Execute a Prolog goal; returns all variable bindings as a JSON array |
 | `trace_dependency` | no | Traverse transitive dependencies via `path/2` rules; returns reachable node names |
+| `verify_consistency` | no | Query `integrity_violation/N` predicates; returns all violations as JSON |
+| `explain_why` | no | Reconstruct proof chain for a fact via `clause/2`; returns a nested proof tree |
 
 ### remember_fact
 
@@ -148,6 +150,49 @@ Traverses all nodes reachable from a start node by querying `path(Start, X)` aga
 Success response: `"[\"b\",\"c\"]"`. Empty graph: `"[]"`.
 
 - `path/2` facts or rules must be asserted before calling this tool (e.g. via `remember_fact` with `"fact": "path(a,b)"`).
+- Read-only and idempotent.
+
+### verify_consistency
+
+Queries all `integrity_violation/N` predicates and returns every breach as a JSON object. Returns `{"violations":[]}` when no violations exist (not an error). Accepts an optional `domain` argument to scope the check.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "method": "tools/call",
+  "params": {
+    "name": "verify_consistency",
+    "arguments": {}
+  }
+}
+```
+
+Success response: `"{\"violations\":[]}"` (no violations) or `"{\"violations\":[{...}]}"` (breaches found).
+
+- Read-only and idempotent.
+- Pass `"domain": "my_domain"` to restrict to violations in a specific domain scope.
+
+### explain_why
+
+Reconstructs the deduction chain for any Prolog fact by recursively querying `clause/2`. Returns a structured proof tree as nested JSON. An empty `proof` array means the fact cannot be proven.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 8,
+  "method": "tools/call",
+  "params": {
+    "name": "explain_why",
+    "arguments": { "fact": "mortal(socrates)" }
+  }
+}
+```
+
+Success response: `"{\"fact\":\"mortal(socrates)\",\"proof\":[{\"via\":\"mortal(X) :- human(X)\",\"premises\":[...]}]}"`.
+
+- Do not include a trailing `.` in `fact`.
+- Pass `"max_depth": N` to limit recursion depth for deep proof trees.
 - Read-only and idempotent.
 
 Full protocol docs, all input schemas, and error response shapes: `references/mcp-tools.md`.
