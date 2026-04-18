@@ -97,28 +97,28 @@ Other flags: `--help`/`-h` (exits 0), `--version`/`-v` (exits 0). Unknown subcom
 
 | Tool | Write | Description |
 |------|-------|-------------|
-| `echo` | no | Echoes a message; use to test connectivity |
-| `remember_fact` | yes | Assert a Prolog fact into the knowledge base |
-| `define_rule` | yes | Assert a Prolog rule (`Head :- Body`) into the knowledge base |
-| `query_logic` | no | Execute a Prolog goal; returns all variable bindings as a JSON array |
-| `trace_dependency` | no | Traverse transitive dependencies via `path/2` rules; returns reachable node names |
-| `verify_consistency` | no | Query `integrity_violation/N` predicates; returns all violations as JSON |
-| `explain_why` | no | Reconstruct proof chain for a fact via `clause/2`; returns a nested proof tree |
-| `get_knowledge_schema` | no | Introspect the knowledge base; returns all user-defined predicates with arity and clause type |
-| `forget_fact` | yes | Retract the first matching fact via `retract/1`; single-retract deterministic semantics |
-| `clear_context` | yes | Retract all facts matching a category pattern via `retractall/1`; always succeeds |
-| `update_fact` | yes | Atomic retract+assert; replaces `old_fact` with `new_fact`; returns `ExecutionFailed` if old fact not found |
-| `upsert_fact` | yes | Match by functor+first argument; replace existing fact or insert if absent |
-| `assume_fact` | yes | Assert a fact under a named assumption; stores justification metadata in the knowledge base |
-| `get_belief_status` | no | Query whether a belief is supported and list the assumptions that justify it |
-| `get_justification` | no | List all facts currently supported by a given named assumption |
-| `list_assumptions` | no | Enumerate all active assumptions and their associated facts |
-| `retract_assumption` | yes | Retract a single named assumption and cascade removal to all dependent facts |
-| `retract_assumptions` | yes | Bulk-retract all assumptions matching a glob-style pattern and their dependent facts |
-| `save_snapshot` | yes | Create a named point-in-time snapshot of the knowledge base |
-| `restore_snapshot` | yes | Restore from a named snapshot and replay subsequent journal entries |
-| `list_snapshots` | no | List all available snapshots with metadata |
-| `get_persistence_status` | no | Query journal size, last snapshot name, and operational mode (durable / degraded) |
+| `mcp__zpm__echo` | no | Echoes a message; use to test connectivity |
+| `mcp__zpm__remember_fact` | yes | Assert a Prolog fact into the knowledge base |
+| `mcp__zpm__define_rule` | yes | Assert a Prolog rule (`Head :- Body`) into the knowledge base |
+| `mcp__zpm__mcp__zpm__query_logic` | no | Execute a Prolog goal; returns all variable bindings as a JSON array |
+| `mcp__zpm__trace_dependency` | no | Traverse transitive dependencies via `path/2` rules; returns reachable node names |
+| `mcp__zpm__verify_consistency` | no | Query `integrity_violation/N` predicates; returns all violations as JSON |
+| `mcp__zpm__explain_why` | no | Reconstruct proof chain for a fact via `clause/2`; returns a nested proof tree |
+| `mcp__zpm__get_knowledge_schema` | no | Introspect the knowledge base; returns all user-defined predicates with arity and clause type |
+| `mcp__zpm__forget_fact` | yes | Retract the first matching fact via `retract/1`; single-retract deterministic semantics |
+| `mcp__zpm__clear_context` | yes | Retract all facts matching a category pattern via `retractall/1`; always succeeds |
+| `mcp__zpm__update_fact` | yes | Atomic retract+assert; replaces `old_fact` with `new_fact`; returns `ExecutionFailed` if old fact not found |
+| `mcp__zpm__upsert_fact` | yes | Match by functor+first argument; replace existing fact or insert if absent |
+| `mcp__zpm__assume_fact` | yes | Assert a fact under a named assumption; stores justification metadata in the knowledge base |
+| `mcp__zpm__get_belief_status` | no | Query whether a belief is supported and list the assumptions that justify it |
+| `mcp__zpm__get_justification` | no | List all facts currently supported by a given named assumption |
+| `mcp__zpm__list_assumptions` | no | Enumerate all active assumptions and their associated facts |
+| `mcp__zpm__retract_assumption` | yes | Retract a single named assumption and cascade removal to all dependent facts |
+| `mcp__zpm__retract_assumptions` | yes | Bulk-retract all assumptions matching a glob-style pattern and their dependent facts |
+| `mcp__zpm__save_snapshot` | yes | Create a named point-in-time snapshot of the knowledge base |
+| `mcp__zpm__restore_snapshot` | yes | Restore from a named snapshot and replay subsequent journal entries |
+| `mcp__zpm__list_snapshots` | no | List all available snapshots with metadata |
+| `mcp__zpm__get_persistence_status` | no | Query journal size, last snapshot name, and operational mode (durable / degraded) |
 
 All write tools journal mutations through a write-ahead log (WAL); the knowledge base is recovered on next startup by replaying the WAL on top of the latest snapshot. If the persistence layer fails to initialise, the server runs in degraded (in-memory only) mode — writes still succeed but are not durable. See `references/architecture.md` for the WAL + snapshot design.
 

@@ -1,11 +1,10 @@
 ---
-name: awf
+name: awf-knowledge
 description: |
   AWF (AI Workflow CLI) - Go CLI for orchestrating AI agents via YAML workflows.
   Use when: (1) Creating workflows, (2) Understanding AWF syntax,
   (3) Debugging workflow issues, (4) Using AWF CLI commands,
   (5) Developing features for AWF project.
-allowed-tools: Read, Glob, Grep, Bash(awf:*)
 argument-hint: "[topic]"
 ---
 

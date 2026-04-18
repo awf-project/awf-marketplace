@@ -1,0 +1,24 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "The ZPM Prolog MCP server is available. Run mcp__zpm__get_persistence_status to check health, then get_knowledge_schema to see what's already in the knowledge base..."
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Before ending, consider if any important discoveries should be persisted in the ZPM knowledge base..."
+          }
+        ]
+      }
+    ]
+  }
+}

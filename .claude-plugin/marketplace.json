@@ -7,14 +7,14 @@
   "metadata": {
     "description": "AWF plugin for Claude Code",
     "homepage": "https://alex.balmes.co",
-    "version": "0.6.44"
+    "version": "0.7.0"
   },
   "plugins": [
     {
       "name": "awf",
       "source": "./awf",
       "description": "AWF CLI - skills, agents, and commands",
-      "version": "0.6.44",
+      "version": "0.6.45",
       "author": {
         "name": "Alex pocky Balmes"
       },
@@ -24,8 +24,8 @@
     {
       "name": "zpm",
       "source": "./zpm",
-      "description": "ZPM MCP - skills, agents, and commands",
-      "version": "0.0.14",
+      "description": "ZPM MCP - skills, agents, commands and hooks",
+      "version": "0.0.16",
       "author": {
         "name": "Alex pocky Balmes"
       },

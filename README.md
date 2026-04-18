@@ -1,6 +1,6 @@
 # AWF Marketplace
 
-Claude Code plugin marketplace for AWF [CLI](https://github.com/awf-project/cli).
+Claude Code plugin marketplace for AWF [CLI](https://github.com/awf-project/cli and [ZPM](https://github.com/awf-project/ZPM).
 
 ## Installation
 
@@ -12,7 +12,8 @@ Claude Code plugin marketplace for AWF [CLI](https://github.com/awf-project/cli)
 
 | Plugin | Description |
 |--------|-------------|
-| `awf` | AWF - skills, agents, and commands |
+| `awf` | AWF CLI - skills, agents, and commands |
+| `zpm` | ZPM - skills, agents, hooks and commands |
 
 ## Author
 
@@ -20,6 +21,7 @@ Alex "pocky" Balmes
 
 - [alex.balmes.co](https://alex.balmes.co)
 - [vanoix.com](https://vanoix.com)
+- [akawaka.fr](https://akawaka.fr)
 
 ## License
 

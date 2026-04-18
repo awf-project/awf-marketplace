@@ -8,7 +8,7 @@ Optimize for token efficiency, clarity, and actionability over human readability
 
 Skill structure:
 ```
-{{.states.resolve_skill.Output}}/skills/{{.states.resolve_skill.Output}}/
+{{.states.resolve_skill.Output}}/skills/{{.states.resolve_skill.Output}}-knowledge/
 ├── SKILL.md              # Main instructions (<500 lines)
 └── references/           # Detailed docs (one topic per file)
 ```
