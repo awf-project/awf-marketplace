@@ -9,6 +9,7 @@ ZPM is an MCP server written in Zig that embeds a Scryer Prolog logic engine thr
 
 ## When to use
 
+- Initialize a `.zpm/` project directory for per-project knowledge bases
 - Build or run the ZPM MCP server
 - Execute Prolog operations from an MCP client (Claude Code, Cursor, etc.)
 - Extend the Prolog engine API or its Rust FFI bridge
@@ -36,7 +37,7 @@ Rust staticlib (ffi/zpm-prolog-ffi)
 Scryer Prolog
 ```
 
-All layers run in a single process. The Rust staticlib is linked into the Zig binary at build time; no separate daemon or IPC is involved. `src/tools/context.zig` holds the engine singleton; `src/main.zig` initializes it at startup via `context.setEngine` and tool handlers retrieve it via `context.getEngine`. See `references/architecture.md` for the rationale (STDIO transport, FFI staticlib, engine singleton).
+All layers run in a single process. The Rust staticlib is linked into the Zig binary at build time; no separate daemon or IPC is involved. `src/tools/context.zig` holds the engine singleton; `src/main.zig` initializes it at startup via `context.setEngine` and tool handlers retrieve it via `context.getEngine`. Project discovery (`src/project.zig`) locates `.zpm/` before engine init so persistence paths (`kb/`, `data/`) are known. See `references/architecture.md` for the rationale (STDIO transport, FFI staticlib, engine singleton, project layout).
 
 ## Prerequisites
 
@@ -65,11 +66,19 @@ See `references/build.md` for layout, linking, and troubleshooting.
 
 The MCP server is started with the `serve` subcommand. Running the binary without arguments does not start the server — it prints help and exits.
 
+**`zpm serve` requires a `.zpm/` project directory.** Initialize one once per project:
+
 ```sh
-zpm serve
+cd /path/to/project
+zpm init       # creates .zpm/kb/, .zpm/data/, .zpm/.gitignore
+zpm serve      # discovers .zpm/ by walking up from cwd
 ```
 
-MCP client configuration must pass `serve` as the argument:
+On startup, `zpm serve` auto-loads every `*.pl` file from `.zpm/kb/` into the engine and initialises persistence with dual paths: WAL journal in `.zpm/data/`, snapshots in `.zpm/kb/`. `.zpm/kb/` is intended for version control (share Prolog source with the team); `.zpm/data/` is ephemeral and gitignored.
+
+If no `.zpm/` is found in the directory ancestry the server exits 1 with `error: no project directory found`. If `.zpm/data/` is not writable the server enters **degraded mode** (in-memory only); verify with `get_persistence_status`.
+
+MCP client configuration must pass `serve` as the argument; the client's working directory at spawn time is the discovery root:
 
 ```json
 {
@@ -609,10 +618,26 @@ Every Rust FFI entry point wraps its body in panic suppression so a Scryer panic
 
 `tests/fixtures/family.pl` is the canonical fixture for engine tests. Reuse it when adding scenarios instead of inlining ad-hoc clauses.
 
+## Project layout (`.zpm/`)
+
+Each ZPM project has its own `.zpm/` directory, created by `zpm init`:
+
+```
+.zpm/
+  kb/          # Versionable: *.pl sources + snapshots (auto-loaded on serve)
+  data/        # Ephemeral: WAL journal, locks (gitignored)
+  .gitignore   # Contains `data/`
+```
+
+- Drop `*.pl` files into `.zpm/kb/` to have them loaded automatically on every `zpm serve`.
+- Snapshots written by `save_snapshot` land in `.zpm/kb/` and replay alongside the WAL in `.zpm/data/` on the next start.
+- Each project is isolated: different `.zpm/` directories hold independent knowledge bases, so multiple `zpm serve` processes can run in parallel without cross-contamination.
+- Discovery walks up from cwd and stops at the filesystem boundary (does not cross mount points).
+
 ## References
 
-- `references/cli.md` — CLI subcommands, flags, exit codes, MCP client configuration
+- `references/cli.md` — CLI subcommands (`init`, `serve`), flags, exit codes, `.zpm/` discovery, MCP client configuration
 - `references/mcp-tools.md` — MCP tool protocol: input schemas, request/response examples, error shapes
 - `references/prolog-engine.md` — Engine API reference (methods, errors, ownership)
 - `references/build.md` — Build system, Rust FFI layout, CI
-- `references/architecture.md` — ADR summaries: STDIO transport, Rust FFI staticlib, engine singleton, WAL + snapshot persistence
+- `references/architecture.md` — ADR summaries: STDIO transport, Rust FFI staticlib, engine singleton, WAL + snapshot persistence, project discovery
