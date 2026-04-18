@@ -25,6 +25,7 @@ Zig MCP server (src/main.zig)
    v
 MCP tool handlers (src/tools/*.zig)
    |  Zig Engine API (src/prolog/engine.zig)
+   |  + WAL journal (src/persistence/*.zig) on writes
    v
 C-ABI bindings (src/prolog/ffi.zig)
    |  extern "C"
@@ -82,6 +83,12 @@ See `references/build.md` for layout, linking, and troubleshooting.
 | `list_assumptions` | no | Enumerate all active assumptions and their associated facts |
 | `retract_assumption` | yes | Retract a single named assumption and cascade removal to all dependent facts |
 | `retract_assumptions` | yes | Bulk-retract all assumptions matching a glob-style pattern and their dependent facts |
+| `save_snapshot` | yes | Create a named point-in-time snapshot of the knowledge base |
+| `restore_snapshot` | yes | Restore from a named snapshot and replay subsequent journal entries |
+| `list_snapshots` | no | List all available snapshots with metadata |
+| `get_persistence_status` | no | Query journal size, last snapshot name, and operational mode (durable / degraded) |
+
+All write tools journal mutations through a write-ahead log (WAL); the knowledge base is recovered on next startup by replaying the WAL on top of the latest snapshot. If the persistence layer fails to initialise, the server runs in degraded (in-memory only) mode — writes still succeed but are not durable. See `references/architecture.md` for the WAL + snapshot design.
 
 ### remember_fact
 
@@ -446,6 +453,94 @@ Success response: `"Retracted N assumptions matching: hypothesis_*"`.
 - `pattern` is required; omitting returns `InvalidArguments`
 - `*` matches any sequence of characters within an assumption name; succeeds with count 0 when none match
 
+### save_snapshot
+
+Creates a named point-in-time snapshot of the knowledge base by serialising every clause via Prolog introspection. The snapshot becomes the new replay base; subsequent WAL entries layer on top of it during recovery.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 20,
+  "method": "tools/call",
+  "params": {
+    "name": "save_snapshot",
+    "arguments": { "name": "before_migration" }
+  }
+}
+```
+
+Success response: `"Saved snapshot: before_migration"`.
+
+- `name` is required; omitting returns `InvalidArguments`
+- Overwrites any existing snapshot with the same name
+- Returns `ExecutionFailed` when running in degraded mode (persistence unavailable)
+
+### restore_snapshot
+
+Restores the knowledge base from a named snapshot, then replays any WAL entries written after the snapshot was taken. Use to roll back to a known checkpoint or recover from a corrupted state.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 21,
+  "method": "tools/call",
+  "params": {
+    "name": "restore_snapshot",
+    "arguments": { "name": "before_migration" }
+  }
+}
+```
+
+Success response: `"Restored snapshot: before_migration"`.
+
+- `name` is required; omitting returns `InvalidArguments`
+- Returns `ExecutionFailed` when the named snapshot does not exist
+- Replaces current knowledge base entirely; non-snapshotted state is lost
+
+### list_snapshots
+
+Enumerates all available snapshots with their metadata (name, sequence number at which the snapshot was taken, creation timestamp).
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 22,
+  "method": "tools/call",
+  "params": {
+    "name": "list_snapshots",
+    "arguments": {}
+  }
+}
+```
+
+Success response: JSON array of objects, each with `name`, `sequence`, and `created_at`.
+
+- No arguments required; pass an empty object
+- Returns an empty array when no snapshots exist
+- Read-only and idempotent
+
+### get_persistence_status
+
+Reports the operational state of the persistence layer: durable mode versus degraded (in-memory only) mode, current journal size, and the name of the most recent snapshot.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 23,
+  "method": "tools/call",
+  "params": {
+    "name": "get_persistence_status",
+    "arguments": {}
+  }
+}
+```
+
+Success response: JSON object with `mode` (`"durable"` or `"degraded"`), `journal_entries`, `last_snapshot`, and `last_sequence`.
+
+- No arguments required; pass an empty object
+- Read-only and idempotent
+- Use to verify durability before relying on WAL recovery
+
 Full protocol docs, all input schemas, and error response shapes: `references/mcp-tools.md`.
 
 ## Engine API
@@ -496,4 +591,4 @@ Every Rust FFI entry point wraps its body in panic suppression so a Scryer panic
 - `references/mcp-tools.md` — MCP tool protocol: input schemas, request/response examples, error shapes
 - `references/prolog-engine.md` — Engine API reference (methods, errors, ownership)
 - `references/build.md` — Build system, Rust FFI layout, CI
-- `references/architecture.md` — ADR summaries: STDIO transport, Rust FFI staticlib, engine singleton
+- `references/architecture.md` — ADR summaries: STDIO transport, Rust FFI staticlib, engine singleton, WAL + snapshot persistence
