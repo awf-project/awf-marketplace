@@ -33,27 +33,43 @@ ZPM pairs a Zig MCP server with a Scryer Prolog logic engine linked in-process t
 
 ## ADR 0003: Knowledge base persistence via WAL and snapshots
 
-**Decision.** The knowledge base is made durable through a write-ahead log (WAL) plus named snapshots. Every mutation is appended to the WAL as an opaque Prolog term before the engine returns to the client; recovery replays the WAL on top of the latest snapshot. Snapshot creation and restoration are exposed as MCP tools, so AI agents drive checkpointing explicitly.
+**Decision.** The knowledge base is made durable through a write-ahead log (WAL) plus named snapshots, scoped to a per-project `.zpm/` directory. Every mutation is appended to the WAL as an opaque Prolog term before the engine returns to the client; recovery replays the WAL on top of the latest snapshot. Snapshot creation and restoration are exposed as MCP tools, so AI agents drive checkpointing explicitly.
 
-Rejected alternatives include serialising the full knowledge base on every write (too costly), relying solely on snapshots (data loss between snapshots), and embedding an external KV store (extra dependency, second source of truth).
+Rejected alternatives include serialising the full knowledge base on every write (too costly), relying solely on snapshots (data loss between snapshots), embedding an external KV store (extra dependency, second source of truth), and a global per-user knowledge base (forces isolation bugs and blocks team-shared knowledge).
 
 **Consequences for skill users:**
 
+- Persistence is **project-scoped**. Each `.zpm/` directory is a self-contained knowledge base; switching projects switches state.
+- `PersistenceManager.init` takes **two paths**: `data_dir` (WAL) and `snapshot_dir_path` (snapshots + auto-loaded `*.pl`). They map to `.zpm/data/` and `.zpm/kb/` respectively. The separation lets `kb/` be committed to version control while `data/` stays ephemeral.
 - Facts and rules survive process restart without client re-loading. ADR 0001's "engine state does not survive a restart" is now scoped to the in-memory case only; the durable path is the default.
-- If WAL or snapshot I/O fails at startup, `PersistenceManager` falls back to **degraded mode**: writes still execute against the in-memory engine, but nothing is journalled. Use `get_persistence_status` to confirm `mode == "durable"` before relying on durability.
+- If WAL or snapshot I/O fails at startup (missing or non-writable `.zpm/data/`), `PersistenceManager` falls back to **degraded mode**: writes still execute against the in-memory engine, but nothing is journalled. Use `get_persistence_status` to confirm `mode == "durable"` before relying on durability.
 - WAL replay is mutation-ordered and append-only. Do not edit the WAL file by hand; truncate via a `save_snapshot` followed by WAL roll-over instead.
 - Snapshot restoration is destructive: `restore_snapshot` replaces the current knowledge base in full and then replays WAL entries written after that snapshot was taken.
 - All write tools (`remember_fact`, `forget_fact`, `update_fact`, `upsert_fact`, `assume_fact`, `define_rule`, `clear_context`, `retract_assumption`, `retract_assumptions`) journal automatically — handlers do not need to call the persistence layer themselves.
+
+## Project discovery (`src/project.zig`)
+
+`zpm serve` resolves its project root before touching the engine:
+
+- `discover(allocator, cwd)` walks up from `cwd`, stopping at a directory that contains `.zpm/`. The walk is bounded to the starting filesystem device; it will not cross mount points into a sibling project.
+- Missing `.zpm/` → `ProjectError.NotFound` → the server exits 1 with a hint to run `zpm init`.
+- `initProject(cwd)` creates `.zpm/`, `.zpm/kb/`, `.zpm/data/`, and `.zpm/.gitignore` (contents: `data/`). It returns `ProjectError.AlreadyInitialized` if `.zpm/` already exists — the CLI treats this as a soft success (exit 0, idempotent).
+- `loadKnowledgeBase(allocator, kb_dir, engine)` iterates `.zpm/kb/`, loading every file ending in `.pl` via `engine.loadFile`. Individual load failures are logged to stderr; the server keeps loading the remaining files.
+
+**Ordering at startup:** discover → `PersistenceManager.init(data_dir, kb_dir)` → `Engine.init` → `loadKnowledgeBase(kb_dir)` → `PersistenceManager.restore(engine)` (snapshot + WAL replay) → MCP dispatch loop.
 
 ## Layer responsibilities
 
 ```
 src/main.zig                 MCP dispatch, lifecycle, logging to stderr;
-                             initialises PersistenceManager and Engine
+                             runs project discovery, initialises
+                             PersistenceManager and Engine
+src/project.zig              .zpm/ discovery, init, *.pl auto-load
 src/tools/context.zig        engine + persistence-manager singleton
 src/tools/*.zig              MCP tool handlers; writes go via Engine and
                              are journalled through the persistence manager
-src/persistence/manager.zig  lifecycle, degraded-mode detection, shared state
+src/persistence/manager.zig  lifecycle, degraded-mode detection, dual-path
+                             (data_dir for WAL, snapshot_dir_path for snapshots)
 src/persistence/wal.zig      append-only journal; replay from a sequence number
 src/persistence/snapshot.zig snapshot serialisation and restoration
 src/tools/term_utils.zig     shared Prolog term parsing for tools + persistence
