@@ -53,7 +53,7 @@ Makefile                # top-level targets
 | `test` | `zig build test` | Zig unit tests, including inline engine tests |
 | `ffi-test` | `tests/build_ffi_test.sh` | smoke-test that the staticlib compiles |
 | `functional-test-engine` | `tests/functional_prolog_engine_test.sh` | run engine scenarios end-to-end |
-| `functional-test` | `tests/functional_mcp_server_test.sh` | run MCP tool scenarios end-to-end |
+| `functional-test` | `tests/functional_mcp_server_test.sh` | run MCP tool scenarios end-to-end (invokes `zpm serve`) |
 | `roundtrip` | `examples/roundtrip.zig` | execute the full-stack demo |
 
 The `ffi-build` step in `build.zig` links the staticlib into the final Zig binary. The staticlib produces an `engine.o` (or equivalent archive) that Zig consumes during linking; do not commit these artifacts.

@@ -18,6 +18,12 @@ After initialization, the server advertises:
 
 ## Lifecycle
 
+Start the server with the `serve` subcommand — running the binary without arguments does not start the MCP server:
+
+```sh
+zpm serve
+```
+
 1. Client sends `initialize` with protocol version and client info
 2. Server responds with `InitializeResult` (server info + capabilities)
 3. Client sends `notifications/initialized`
@@ -1885,26 +1891,26 @@ Assert facts and rules, then query and trace dependencies:
 
 # 2. Assert facts
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"remember_fact","arguments":{"fact":"human(socrates)"}}}' \
-  | ./zpm-server
+  | ./zpm serve
 
 # 3. Define a rule
 echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"define_rule","arguments":{"head":"mortal(X)","body":"human(X)"}}}' \
-  | ./zpm-server
+  | ./zpm serve
 
 # 4. Query — returns all bindings for mortal(X)
 echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"query_logic","arguments":{"goal":"mortal(X)"}}}' \
-  | ./zpm-server
+  | ./zpm serve
 # => [{"X":"socrates"}]
 
 # 5. Assert path/2 facts for dependency tracing
 echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"remember_fact","arguments":{"fact":"path(a,b)"}}}' \
-  | ./zpm-server
+  | ./zpm serve
 echo '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"remember_fact","arguments":{"fact":"path(b,c)"}}}' \
-  | ./zpm-server
+  | ./zpm serve
 
 # 6. Trace dependencies from "a"
 echo '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"trace_dependency","arguments":{"start":"a"}}}' \
-  | ./zpm-server
+  | ./zpm serve
 # => ["b","c"]
 ```
 
