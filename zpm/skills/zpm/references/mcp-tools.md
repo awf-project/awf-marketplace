@@ -45,6 +45,7 @@ The response lists all registered tools with their input schemas.
 | `trace_dependency` | no | Traverse transitive dependencies via `path/2` rules; returns reachable node names |
 | `verify_consistency` | no | Query all `integrity_violation/N` predicates; returns constraint breaches as JSON |
 | `explain_why` | no | Reconstruct the proof chain for a fact via `clause/2`; returns a nested proof tree |
+| `get_knowledge_schema` | no | Introspect the knowledge base; returns all user-defined predicates with arity and clause type |
 
 ## Echo
 
@@ -693,6 +694,91 @@ Returns an empty `proof` array when the fact cannot be proven (no matching claus
       {
         "type": "text",
         "text": "InvalidArguments",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+## get_knowledge_schema
+
+Introspects the knowledge base by querying `current_predicate/1`. For each predicate, counts fact and rule clauses via `clause/2` to determine whether the predicate is defined by facts only, rules only, or both. Scryer-Prolog built-ins and predicates with unsafe atom names are filtered from results.
+
+### Input Schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "domain": {
+      "type": ["string", "null"],
+      "description": "Optional prefix to filter predicate names. Null returns all user-defined predicates."
+    }
+  },
+  "required": []
+}
+```
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 13,
+  "method": "tools/call",
+  "params": {
+    "name": "get_knowledge_schema",
+    "arguments": {}
+  }
+}
+```
+
+### Response (Success — predicates found)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 13,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"predicates\":[{\"name\":\"human\",\"arity\":1,\"type\":\"fact\"},{\"name\":\"mortal\",\"arity\":1,\"type\":\"rule\"},{\"name\":\"path\",\"arity\":2,\"type\":\"both\"}],\"total\":3}"
+      }
+    ]
+  }
+}
+```
+
+### Response (Success — empty knowledge base)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 13,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"predicates\":[],\"total\":0}"
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — engine unavailable)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 13,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "EngineUnavailable",
         "isError": true
       }
     ]

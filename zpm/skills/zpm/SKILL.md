@@ -197,6 +197,30 @@ Success response: `"{\"fact\":\"mortal(socrates)\",\"proof\":[{\"via\":\"mortal(
 
 Full protocol docs, all input schemas, and error response shapes: `references/mcp-tools.md`.
 
+### get_knowledge_schema
+
+Introspects the knowledge base by querying `current_predicate/1` and classifying each predicate via `clause/2`. Returns all user-defined predicates with their arity and clause type (`fact`, `rule`, or `both`). Built-ins and unsafe atom names are filtered out.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 9,
+  "method": "tools/call",
+  "params": {
+    "name": "get_knowledge_schema",
+    "arguments": {}
+  }
+}
+```
+
+Success response: `"{\"predicates\":[{\"name\":\"human\",\"arity\":1,\"type\":\"fact\"},{\"name\":\"mortal\",\"arity\":1,\"type\":\"rule\"}],\"total\":2}"`.
+
+- Pass `"domain": "string"` to scope results to a specific predicate name prefix.
+- Returns `{"predicates":[],"total":0}` when the knowledge base is empty.
+- Read-only and idempotent.
+
+Full protocol docs, all input schemas, and error response shapes: `references/mcp-tools.md`.
+
 ## Engine API
 
 The Zig `Engine` struct in `src/prolog/engine.zig` is the only supported entry point for Prolog operations. MCP tool handlers call it; direct use of `src/prolog/ffi.zig` is reserved for the engine implementation.
