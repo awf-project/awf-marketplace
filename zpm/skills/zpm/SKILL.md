@@ -71,6 +71,9 @@ See `references/build.md` for layout, linking, and troubleshooting.
 | `trace_dependency` | no | Traverse transitive dependencies via `path/2` rules; returns reachable node names |
 | `verify_consistency` | no | Query `integrity_violation/N` predicates; returns all violations as JSON |
 | `explain_why` | no | Reconstruct proof chain for a fact via `clause/2`; returns a nested proof tree |
+| `get_knowledge_schema` | no | Introspect the knowledge base; returns all user-defined predicates with arity and clause type |
+| `forget_fact` | yes | Retract the first matching fact via `retract/1`; single-retract deterministic semantics |
+| `clear_context` | yes | Retract all facts matching a category pattern via `retractall/1`; always succeeds |
 
 ### remember_fact
 
@@ -221,6 +224,52 @@ Success response: `"{\"predicates\":[{\"name\":\"human\",\"arity\":1,\"type\":\"
 
 Full protocol docs, all input schemas, and error response shapes: `references/mcp-tools.md`.
 
+### forget_fact
+
+Retracts the first matching fact from the knowledge base using `retract/1` wrapped in `once/1` for deterministic single-retract semantics. Returns `ExecutionFailed` when no matching fact exists.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 10,
+  "method": "tools/call",
+  "params": {
+    "name": "forget_fact",
+    "arguments": { "fact": "human(socrates)" }
+  }
+}
+```
+
+Success response: `"Retracted: human(socrates)"`.
+
+- Do not include a trailing `.` in `fact`
+- Only the first matching clause is removed; duplicate facts require multiple calls
+- Returns `ExecutionFailed` when no matching fact exists
+
+### clear_context
+
+Retracts all facts matching a category pattern via `retractall/1`. Always succeeds per ISO Prolog semantics, even when no facts match the pattern.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 11,
+  "method": "tools/call",
+  "params": {
+    "name": "clear_context",
+    "arguments": { "category": "human(_)" }
+  }
+}
+```
+
+Success response: `"Cleared: human(_)"`.
+
+- `category` is a Prolog term pattern (e.g. `human(_)` removes all `human/1` facts)
+- Never returns an error for non-existent predicates
+- Use `forget_fact` when single-retract semantics are required
+
+Full protocol docs, all input schemas, and error response shapes: `references/mcp-tools.md`.
+
 ## Engine API
 
 The Zig `Engine` struct in `src/prolog/engine.zig` is the only supported entry point for Prolog operations. MCP tool handlers call it; direct use of `src/prolog/ffi.zig` is reserved for the engine implementation.
@@ -230,7 +279,8 @@ Operations:
 - `init` / `deinit` — lifecycle
 - `query` — execute a Prolog query, iterate bindings
 - `assert` / `assertFact` — add a clause or fact to the knowledge base
-- `retract` — remove a matching clause
+- `retractFact` — remove the first matching clause (single-retract via `once/1`)
+- `retractAllFacts` — remove all matching clauses (bulk retract, always succeeds)
 - `loadFile` — load a `.pl` file from disk
 - `loadString` — load Prolog source from memory
 

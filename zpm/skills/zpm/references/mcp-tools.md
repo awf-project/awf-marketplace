@@ -46,6 +46,8 @@ The response lists all registered tools with their input schemas.
 | `verify_consistency` | no | Query all `integrity_violation/N` predicates; returns constraint breaches as JSON |
 | `explain_why` | no | Reconstruct the proof chain for a fact via `clause/2`; returns a nested proof tree |
 | `get_knowledge_schema` | no | Introspect the knowledge base; returns all user-defined predicates with arity and clause type |
+| `forget_fact` | yes | Retract the first matching fact from the knowledge base; single-retract semantics |
+| `clear_context` | yes | Retract all facts matching a category pattern; always succeeds (ISO `retractall` semantics) |
 
 ## Echo
 
@@ -779,6 +781,197 @@ Introspects the knowledge base by querying `current_predicate/1`. For each predi
       {
         "type": "text",
         "text": "EngineUnavailable",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+## forget_fact
+
+Retract the first fact in the knowledge base that unifies with the given pattern, using `retract/1` wrapped in `once/1` for deterministic single-retract semantics. Returns `ExecutionFailed` when no matching fact exists. Does not remove rules (clauses with a body).
+
+**Annotations**: not read-only, not idempotent, destructive.
+
+### Input Schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "fact": {
+      "type": "string",
+      "description": "A Prolog fact to retract, without trailing period (e.g. \"human(socrates)\")"
+    }
+  },
+  "required": ["fact"]
+}
+```
+
+- `fact` must be non-null and non-empty.
+- Do not include a trailing `.`.
+- Only the first matching clause is removed. Call multiple times to remove duplicates.
+- Use `clear_context` for bulk removal of all facts matching a predicate pattern.
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 14,
+  "method": "tools/call",
+  "params": {
+    "name": "forget_fact",
+    "arguments": {
+      "fact": "human(socrates)"
+    }
+  }
+}
+```
+
+### Response (Success)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 14,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Retracted: human(socrates)"
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — fact not found)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 14,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "ExecutionFailed",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — missing argument)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 14,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "InvalidArguments",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+## clear_context
+
+Retract all facts in the knowledge base that unify with the given category pattern, using `retractall/1`. Always succeeds per ISO Prolog semantics, even when the pattern matches no clauses.
+
+**Annotations**: not read-only, not idempotent, destructive.
+
+### Input Schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "category": {
+      "type": "string",
+      "description": "A Prolog term pattern for bulk retraction (e.g. \"human(_)\" removes all human/1 facts)"
+    }
+  },
+  "required": ["category"]
+}
+```
+
+- `category` must be non-null and non-empty.
+- Use wildcard arguments (`_`) to match any term: `human(_)` retracts all `human/1` facts.
+- Never fails — returns success even when no facts match the pattern.
+- Use `forget_fact` when single-retract (first-match, deterministic) semantics are required.
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 15,
+  "method": "tools/call",
+  "params": {
+    "name": "clear_context",
+    "arguments": {
+      "category": "human(_)"
+    }
+  }
+}
+```
+
+### Response (Success — facts cleared)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 15,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Cleared: human(_)"
+      }
+    ]
+  }
+}
+```
+
+### Response (Success — no matching facts)
+
+Always returns success per ISO `retractall/1` semantics:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 15,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Cleared: unknown_predicate(_)"
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — missing argument)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 15,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "InvalidArguments",
         "isError": true
       }
     ]
