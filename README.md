@@ -1,6 +1,6 @@
 # AWF Marketplace
 
-Claude Code plugin marketplace for AWF [CLI](https://github.com/awf-project/cli and [ZPM](https://github.com/awf-project/ZPM).
+Claude Code plugin marketplace for AWF CLI https://github.com/awf-project/cli and [ZPM](https://github.com/awf-project/ZPM).
 
 ## Installation
 

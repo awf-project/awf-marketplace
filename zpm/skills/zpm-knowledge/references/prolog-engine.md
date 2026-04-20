@@ -1,13 +1,13 @@
 # Prolog Engine API
 
-The `Engine` type in `src/prolog/engine.zig` is the public interface for all Prolog operations. It wraps the low-level C-ABI bindings in `src/prolog/ffi.zig`, which in turn call into the Rust staticlib (`ffi/zpm-prolog-ffi`). Consumers (MCP tool handlers, examples, tests) must go through `Engine` — never call `ffi.zig` directly from handler code.
+The `Engine` type in `src/prolog/engine.zig` is the public interface for all Prolog operations. It wraps the low-level C-ABI bindings in `src/prolog/ffi.zig`, which in turn call into the Trealla Prolog C library (git submodule). Consumers (MCP tool handlers, examples, tests) must go through `Engine` — never call `ffi.zig` directly from handler code.
 
 Full signatures, parameter types, and exact error sets live in the source. This file describes the contract and the ownership rules that are not obvious from signatures alone.
 
 ## Lifecycle
 
-- `Engine.init(allocator)` — construct a new engine instance. Each engine owns an independent Scryer machine; instances do not share knowledge bases.
-- `engine.deinit()` — release the engine and any Rust-side resources. Required; skipping `deinit` leaks the underlying Scryer machine.
+- `Engine.init(allocator)` — construct a new engine instance. Each engine owns an independent Trealla interpreter; instances do not share knowledge bases.
+- `engine.deinit()` — release the engine and any C-side resources. Required; skipping `deinit` leaks the underlying Trealla interpreter.
 
 Typical pattern:
 
@@ -16,7 +16,7 @@ var engine = try prolog.Engine.init(allocator);
 defer engine.deinit();
 ```
 
-Do not call engine methods after `deinit`. Do not share a single `Engine` across threads unless you add external synchronization — the Scryer machine is not re-entrant.
+Do not call engine methods after `deinit`. Do not share a single `Engine` across threads unless you add external synchronization — the Trealla interpreter is not re-entrant.
 
 ## Operations
 
@@ -25,10 +25,10 @@ Do not call engine methods after `deinit`. Do not share a single `Engine` across
 Execute a Prolog query and return an iterator over solutions.
 
 - Input: goal as a Prolog source string (e.g. `"parent(alice, X)."`).
-- Output: a result handle that yields variable bindings per solution.
-- Semantics: equivalent to posing the goal at the Scryer top-level. Failure (no solutions) is not an error.
+- Output: a result handle that yields variable bindings per solution. Bindings are returned as JSON, parsed by `src/prolog/capture.zig`.
+- Semantics: equivalent to posing the goal at the Trealla top-level. Failure (no solutions) is not an error.
 
-Always consume or release the result handle. Leaking it leaves Scryer state pinned.
+Always consume or release the result handle. Leaking it leaves engine state pinned.
 
 ### `assert(clause)`
 
@@ -62,15 +62,15 @@ Load Prolog source from an in-memory buffer.
 
 ## Error handling
 
-All methods return Zig error unions. Callers must either handle or propagate them — there is no panic fallback at the Zig layer. On the Rust side, every FFI entry point is wrapped in panic suppression: a Scryer panic is translated into an error return rather than unwinding across the C ABI. See `ffi/zpm-prolog-ffi/src/lib.rs`.
+All methods return Zig error unions. Callers must either handle or propagate them — there is no panic fallback at the Zig layer. The C FFI surface in `src/prolog/ffi.zig` maps Trealla return codes to Zig errors; engine failures do not unwind across the C ABI.
 
-When extending the FFI, preserve this pattern. An uncaught Rust panic that escapes into Zig is undefined behavior.
+When extending the FFI, preserve this error-return pattern. Errors must be surfaced as Zig error values, not panics or undefined behavior.
 
 ## Ownership and allocator rules
 
 - Strings passed into `Engine` methods (goals, clauses, paths, sources) are borrowed for the duration of the call. The caller owns the backing storage.
 - Result handles returned by `query` own Rust-side state and must be explicitly released (`deinit` on the result type).
-- The allocator passed to `Engine.init` is used for Zig-side bookkeeping; the Rust staticlib manages its own allocations internally.
+- The allocator passed to `Engine.init` is used for Zig-side bookkeeping; the Trealla C library manages its own allocations internally.
 
 ## Testing patterns
 
@@ -81,3 +81,5 @@ When extending the FFI, preserve this pattern. An uncaught Rust panic that escap
 ## Worked example
 
 `examples/roundtrip.zig` demonstrates the full path: init engine, assert a fact, query with a free variable, print the binding. Run it with `make roundtrip`. Expected output contains a line of the form `X = bob`.
+
+The `src/prolog/capture.zig` module handles stdout redirection so Trealla's query output is intercepted and parsed as JSON before being returned to the caller. This is transparent to `Engine` callers — the JSON parsing is an implementation detail of the query path.

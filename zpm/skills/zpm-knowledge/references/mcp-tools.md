@@ -67,7 +67,7 @@ The response lists all registered tools with their input schemas.
 | `list_snapshots` | no | List all available snapshots with metadata |
 | `get_persistence_status` | no | Query journal size, last snapshot name, and operational mode (durable / degraded) |
 
-All write tools (`remember_fact`, `forget_fact`, `update_fact`, `upsert_fact`, `assume_fact`, `define_rule`, `clear_context`, `retract_assumption`, `retract_assumptions`) automatically journal mutations through the WAL. When the persistence layer fails to initialise, the server runs in degraded mode: writes still execute against the in-memory engine but are not durable. Use `get_persistence_status` to inspect operational mode at runtime.
+All write tools (`remember_fact`, `forget_fact`, `update_fact`, `upsert_fact`, `assume_fact`, `define_rule`, `clear_context`, `retract_assumption`, `retract_assumptions`) automatically journal mutations through the WAL using two-phase commit: the WAL entry is written and fsynced before the engine mutation executes. The WAL uses JSON Lines format with no per-entry size limits. When the persistence layer fails to initialise, the server runs in degraded mode: writes still execute against the in-memory engine but are not durable. Use `get_persistence_status` to inspect operational mode at runtime.
 
 ## Echo
 
@@ -239,11 +239,9 @@ If the Prolog engine rejects the term (syntax error, etc.):
 
 ## define_rule
 
-Assert a Prolog rule (`Head :- Body`) into the knowledge base via `assertz/1`. The tool constructs the rule from the two arguments and handles the scryer-prolog `assertz` parenthesization requirement automatically.
+Assert a Prolog rule (`Head :- Body`) into the knowledge base via `assertz/1`. The tool constructs the rule from the two arguments and wraps it as `assertz((Head :- Body)).` before passing it to the engine.
 
 **Annotations**: not read-only, not idempotent, not non-destructive.
-
-**FFI note**: scryer-prolog requires that a rule passed to `assertz/1` be wrapped in an extra set of parentheses: `assertz((Head :- Body)).`. The Rust FFI layer (`ffi/zpm-prolog-ffi/src/lib.rs`) detects `:-` in the clause string and performs this wrapping automatically. Callers do not need to add extra parentheses.
 
 ### Input Schema
 
@@ -725,7 +723,7 @@ Returns an empty `proof` array when the fact cannot be proven (no matching claus
 
 ## get_knowledge_schema
 
-Introspects the knowledge base by querying `current_predicate/1`. For each predicate, counts fact and rule clauses via `clause/2` to determine whether the predicate is defined by facts only, rules only, or both. Scryer-Prolog built-ins and predicates with unsafe atom names are filtered from results.
+Introspects the knowledge base by querying `current_predicate/1`. For each predicate, counts fact and rule clauses via `clause/2` to determine whether the predicate is defined by facts only, rules only, or both. Built-ins and predicates with unsafe atom names are filtered from results.
 
 ### Input Schema
 
@@ -1690,7 +1688,7 @@ Create a named point-in-time snapshot of the entire knowledge base. The snapshot
 
 ## restore_snapshot
 
-Restore the knowledge base from a named snapshot and replay any WAL entries written after that snapshot. Destructive: the current knowledge base is replaced in full.
+Restore the knowledge base from a named snapshot and replay any WAL entries written after that snapshot. Destructive: the current knowledge base is wiped before the snapshot is loaded (`resetUserKnowledge` semantics), then WAL entries are replayed on top. This prevents duplicate facts from accumulating.
 
 ### Input Schema
 
@@ -1700,7 +1698,7 @@ Restore the knowledge base from a named snapshot and replay any WAL entries writ
 
 - `name` must be non-null and non-empty.
 - Returns `ExecutionFailed` when the named snapshot does not exist.
-- Replaces the in-memory knowledge base entirely; non-snapshotted, non-journalled state is lost.
+- Wipes the in-memory knowledge base before loading the snapshot; non-snapshotted, non-journalled state is lost.
 - WAL replay continues from the snapshot's sequence number, so post-snapshot writes are preserved.
 
 ### Request
