@@ -1,10 +1,11 @@
 # Architecture
 
-ZPM pairs a Zig MCP server with a Scryer Prolog logic engine linked in-process through a Rust FFI staticlib. Two architectural decisions shape everything else and are recorded as ADRs:
+ZPM pairs a Zig MCP server with a Trealla Prolog logic engine linked in-process through a C FFI git submodule. Three architectural decisions shape everything else and are recorded as ADRs:
 
 - `docs/ADR/0001-mcp-server-with-stdio-transport.md`
-- `docs/ADR/0002-scryer-prolog-via-rust-ffi-staticlib.md`
+- `docs/ADR/0002-scryer-prolog-via-rust-ffi-staticlib.md` (superseded by ADR 0004)
 - `docs/ADR/0003-knowledge-base-persistence-via-wal-and-snapshots.md`
+- `docs/ADR/0004-trealla-prolog-via-c-ffi-replacing-scryer.md`
 
 `docs/ADR/README.md` is the authoritative index. The upstream ADR text is the source of truth; this page summarizes the load-bearing conclusions for skill consumers.
 
@@ -19,17 +20,17 @@ ZPM pairs a Zig MCP server with a Scryer Prolog logic engine linked in-process t
 - Multi-tenant usage requires one server process per client. Do not add shared in-process state.
 - Logs must go to `stderr` only. Anything on `stdout` is MCP protocol framing and will corrupt the channel.
 
-## ADR 0002: Scryer Prolog via Rust FFI staticlib
+## ADR 0004: Trealla Prolog via C FFI (supersedes ADR 0002)
 
-**Decision.** The Prolog engine is Scryer, embedded through a Rust `staticlib` crate linked into the Zig binary at build time. Rejected alternatives include spawning a Prolog subprocess, linking a C-based Prolog (SWI) directly, and reimplementing Prolog in Zig.
+**Decision.** The Prolog engine is Trealla Prolog, embedded through a C FFI git submodule compiled alongside the Zig binary. ADR 0002 (Scryer via Rust staticlib) is superseded. Rejected alternatives include keeping Scryer (Rust toolchain overhead), spawning a subprocess, and SWI-Prolog.
 
 **Consequences for skill users:**
 
-- A Rust toolchain is a hard build requirement. See `build.md`.
+- No Rust toolchain required. A pure Zig + C build is sufficient. See `build.md`.
 - There is one process, one address space; no IPC overhead per query.
-- Scryer's capabilities are the engine's capabilities. Features absent from Scryer are absent from ZPM unless added upstream or worked around in Rust.
+- Trealla's capabilities are the engine's capabilities. Features absent from Trealla are absent from ZPM unless worked around at the Zig layer.
 - The FFI surface is intentionally narrow (init/deinit, query, assert, retract, loadFile, loadString). Expanding it is an explicit FFI design change, not an incidental addition.
-- Panics inside Scryer must not unwind across the C ABI. `ffi/zpm-prolog-ffi/src/lib.rs` wraps every entry point in panic suppression; this is a correctness invariant, not a stylistic choice.
+- Query results are captured via stdout redirection and parsed as JSON (`src/prolog/capture.zig`). This is an implementation detail; it does not change the MCP tool interface.
 
 ## ADR 0003: Knowledge base persistence via WAL and snapshots
 
@@ -43,9 +44,12 @@ Rejected alternatives include serialising the full knowledge base on every write
 - `PersistenceManager.init` takes **two paths**: `data_dir` (WAL) and `snapshot_dir_path` (snapshots + auto-loaded `*.pl`). They map to `.zpm/data/` and `.zpm/kb/` respectively. The separation lets `kb/` be committed to version control while `data/` stays ephemeral.
 - Facts and rules survive process restart without client re-loading. ADR 0001's "engine state does not survive a restart" is now scoped to the in-memory case only; the durable path is the default.
 - If WAL or snapshot I/O fails at startup (missing or non-writable `.zpm/data/`), `PersistenceManager` falls back to **degraded mode**: writes still execute against the in-memory engine, but nothing is journalled. Use `get_persistence_status` to confirm `mode == "durable"` before relying on durability.
+- **WAL and snapshot format**: both use JSON Lines. Each write is fsynced to disk. There are no size limits per clause or per journal file.
 - WAL replay is mutation-ordered and append-only. Do not edit the WAL file by hand; truncate via a `save_snapshot` followed by WAL roll-over instead.
-- Snapshot restoration is destructive: `restore_snapshot` replaces the current knowledge base in full and then replays WAL entries written after that snapshot was taken.
+- **Snapshot restoration** uses wipe-before-reload semantics: `restore_snapshot` calls `resetUserKnowledge` to clear the engine before loading the snapshot, then replays WAL entries written after that snapshot was taken. This prevents duplicate facts from accumulating during restore.
+- **Breaking persistence format**: if upgrading from a version that used the previous text-based WAL/snapshot format, delete `.zpm/data/` before starting the server. Old data is not compatible with the JSON Lines format.
 - All write tools (`remember_fact`, `forget_fact`, `update_fact`, `upsert_fact`, `assume_fact`, `define_rule`, `clear_context`, `retract_assumption`, `retract_assumptions`) journal automatically — handlers do not need to call the persistence layer themselves.
+- All mutation tools use two-phase commit: the WAL entry is written and fsynced before the engine mutation executes.
 
 ## Project discovery (`src/project.zig`)
 
@@ -70,16 +74,18 @@ src/tools/*.zig              MCP tool handlers; writes go via Engine and
                              are journalled through the persistence manager
 src/persistence/manager.zig  lifecycle, degraded-mode detection, dual-path
                              (data_dir for WAL, snapshot_dir_path for snapshots)
-src/persistence/wal.zig      append-only journal; replay from a sequence number
-src/persistence/snapshot.zig snapshot serialisation and restoration
+src/persistence/wal.zig      append-only journal (JSON Lines, fsync per write);
+                             replay from a sequence number
+src/persistence/snapshot.zig snapshot serialisation and restoration (JSON Lines);
+                             restore uses resetUserKnowledge (wipe-before-reload)
 src/tools/term_utils.zig     shared Prolog term parsing for tools + persistence
 src/prolog/engine.zig        public Zig API; only layer MCP handlers may call
-src/prolog/ffi.zig           extern "C" declarations; no logic
-ffi/zpm-prolog-ffi/src/lib.rs  extern "C" Rust wrappers with panic suppression
-  -> scryer-prolog crate     actual Prolog machine
+src/prolog/ffi.zig           extern "C" declarations matching Trealla exports
+src/prolog/capture.zig       stdout redirection and JSON output parsing for queries
+  -> trealla-prolog submodule  actual Prolog machine (C library)
 ```
 
-Keep Prolog-specific concerns inside `engine.zig` and below. MCP handlers should not know that the engine is Scryer, nor that the bridge is Rust. The persistence layer treats Prolog terms as opaque payloads — it never inspects them.
+Keep Prolog-specific concerns inside `engine.zig` and below. MCP handlers should not know which Prolog implementation backs the engine. The persistence layer treats Prolog terms as opaque payloads — it never inspects them.
 
 ## Engine singleton (context.zig)
 
@@ -100,9 +106,9 @@ Keep Prolog-specific concerns inside `engine.zig` and below. MCP handlers should
 
 ## Versioning and evolution
 
-- Changes to `extern "C"` signatures in `src/prolog/ffi.zig` or `ffi/zpm-prolog-ffi/src/lib.rs` are ABI changes. Both sides must be updated and the binary rebuilt; there is no dynamic loading.
+- Changes to `extern "C"` signatures in `src/prolog/ffi.zig` are ABI changes. Both the Zig declarations and the Trealla submodule bindings must be updated and the binary rebuilt; there is no dynamic loading.
 - New Prolog operations should be added as new `Engine` methods rather than by exposing `ffi.zig` calls to MCP handlers.
-- Scryer upgrades flow through `ffi/zpm-prolog-ffi/Cargo.toml`. Lock file churn in `Cargo.lock` is expected and committed.
+- Trealla upgrades flow through the git submodule reference. Run `git submodule update --init` after pulling to synchronize.
 
 ## Further reading
 
