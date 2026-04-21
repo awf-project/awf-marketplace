@@ -12,6 +12,7 @@ ZPM is an MCP server written in Zig that embeds a Trealla Prolog logic engine th
 - Initialize a `.zpm/` project directory for per-project knowledge bases
 - Build or run the ZPM MCP server
 - Execute Prolog operations from an MCP client (Claude Code, Cursor, etc.)
+- Script knowledge-base operations from the shell without an MCP client (`zpm <tool-name>`)
 - Extend the Prolog engine API or its C FFI bridge
 - Diagnose build, link, or runtime issues involving the Trealla submodule
 
@@ -50,9 +51,9 @@ Initialize the Trealla submodule before building: `git submodule update --init`.
 | Target | Purpose |
 |--------|---------|
 | `make build` | Build the full binary (Trealla submodule compiled as part of this step) |
-| `make test` | Run Zig unit tests (includes inline engine tests) |
-| `make functional-test-engine` | End-to-end engine tests (`tests/functional_prolog_engine_test.sh`) |
-| `make roundtrip` | Run `examples/roundtrip.zig` (assert + query demo) |
+| `make test` | Run Zig unit tests (includes inline engine tests and arg_mapper/output modules) |
+| `make functional-test-engine` | End-to-end Prolog engine tests (`tests/functional_prolog_engine_test.sh`) |
+| `make functional-test` | End-to-end tool subcommand tests (`tests/functional_mcp_server_test.sh`, 252 assertions) |
 
 CI runs Zig lint/test/build after initializing the submodule. No Rust steps are present.
 
@@ -87,6 +88,14 @@ MCP client configuration must pass `serve` as the argument; the client's working
 }
 ```
 
+All 22 MCP tools are also available as direct CLI subcommands — no MCP client required:
+
+```sh
+zpm remember-fact "task_status(f017,done)"
+zpm query-logic "task_status(X,done)" --format json | jq '.[0].X'
+zpm get-persistence-status --format json
+```
+
 Other flags: `--help`/`-h` (exits 0), `--version`/`-v` (exits 0). Unknown subcommands exit 1 on stderr. Full CLI reference: `references/cli.md`.
 
 ## MCP Tools
@@ -96,7 +105,7 @@ Other flags: `--help`/`-h` (exits 0), `--version`/`-v` (exits 0). Unknown subcom
 | `mcp__zpm__echo` | no | Echoes a message; use to test connectivity |
 | `mcp__zpm__remember_fact` | yes | Assert a Prolog fact into the knowledge base |
 | `mcp__zpm__define_rule` | yes | Assert a Prolog rule (`Head :- Body`) into the knowledge base |
-| `mcp__zpm__mcp__zpm__query_logic` | no | Execute a Prolog goal; returns all variable bindings as a JSON array |
+| `mcp__zpm__query_logic` | no | Execute a Prolog goal; returns all variable bindings as a JSON array |
 | `mcp__zpm__trace_dependency` | no | Traverse transitive dependencies via `path/2` rules; returns reachable node names |
 | `mcp__zpm__verify_consistency` | no | Query `integrity_violation/N` predicates; returns all violations as JSON |
 | `mcp__zpm__explain_why` | no | Reconstruct proof chain for a fact via `clause/2`; returns a nested proof tree |
@@ -163,7 +172,7 @@ pub fn main() !void {
 }
 ```
 
-The `examples/roundtrip.zig` program demonstrates the full stack end-to-end and is runnable via `make roundtrip`.
+The `make functional-test` target runs end-to-end assertions against all tool subcommands and is the canonical integration check.
 
 ## FFI error handling
 
@@ -191,7 +200,7 @@ Each ZPM project has its own `.zpm/` directory, created by `zpm init`:
 
 ## References
 
-- `references/cli.md` — CLI subcommands (`init`, `serve`), flags, exit codes, `.zpm/` discovery, MCP client configuration
+- `references/cli.md` — CLI subcommands (`init`, `serve`, all 22 tool subcommands), `--format` flag, exit codes, `.zpm/` discovery, MCP client configuration, concurrency warning
 - `references/mcp-tools.md` — MCP tool protocol: input schemas, request/response examples, error shapes
 - `references/prolog-engine.md` — Engine API reference (methods, errors, ownership)
 - `references/build.md` — Build system, Trealla submodule, C FFI layout, CI

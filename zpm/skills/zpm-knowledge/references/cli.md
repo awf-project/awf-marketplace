@@ -1,6 +1,6 @@
 # CLI Reference
 
-ZPM exposes a structured command-line interface via the `zig-cli` library. Running the binary without arguments or with `--help` prints usage and exits 0; unknown subcommands and flags exit 1 on stderr.
+ZPM exposes a structured command-line interface. Running the binary without arguments or with `--help` prints usage and exits 0; unknown subcommands and flags exit 1 on stderr.
 
 ## Subcommands
 
@@ -8,6 +8,7 @@ ZPM exposes a structured command-line interface via the `zig-cli` library. Runni
 |------------|-------------|
 | `init` | Initialize a `.zpm/` project directory in the current working directory |
 | `serve` | Start the MCP server (STDIO transport). Requires a discoverable `.zpm/` project. |
+| `<tool-name> [args]` | Invoke any of the 22 MCP tools directly from the shell. See [Tool subcommands](#tool-subcommands). |
 
 ## Flags
 
@@ -15,6 +16,7 @@ ZPM exposes a structured command-line interface via the `zig-cli` library. Runni
 |------|-------|-------------|-----------|
 | `--help` | `-h` | Print usage text and exit | 0 |
 | `--version` | `-v` | Print version string and exit | 0 |
+| `--format` | | Output format for tool subcommands: `text` (default) or `json` | — |
 
 ## Usage
 
@@ -25,6 +27,10 @@ zpm init
 # Start the MCP server (walks up from cwd to find .zpm/)
 zpm serve
 
+# Invoke a tool directly (no MCP client required)
+zpm remember-fact "task_status(f017,done)"
+zpm query-logic "task_status(X,done)" --format json | jq '.[0].X'
+
 # Print version and exit
 zpm --version
 zpm -v
@@ -34,6 +40,78 @@ zpm --help
 zpm -h
 zpm
 ```
+
+## Tool subcommands
+
+All 22 MCP tools are available as first-class CLI subcommands. Tool names use kebab-case (e.g. `remember-fact`, `query-logic`). The knowledge base is loaded from the nearest `.zpm/` directory before any tool executes.
+
+### Argument convention
+
+- **First required field** → positional argument (no flag prefix)
+- **Remaining fields** → `--kebab-case` flags
+
+```sh
+# First required field is positional; additional fields are flags
+zpm remember-fact "parent(alice,bob)"
+zpm query-logic "parent(alice,X)"
+zpm save-snapshot --name "before-refactor"
+zpm restore-snapshot "before-refactor"
+zpm forget-fact "parent(alice,bob)"
+zpm assume-fact "urgent(task1)" --assumption "sprint-3"
+```
+
+### `--format` flag
+
+| Value | Behaviour |
+|-------|-----------|
+| `text` (default) | Human-readable output on stdout |
+| `json` | Machine-readable JSON on stdout; suitable for `jq` pipelines |
+
+```sh
+zpm query-logic "task_status(X,done)" --format json | jq '.[0].X'
+zpm list-snapshots --format json | jq '.[].name'
+zpm get-persistence-status --format json | jq '.mode'
+```
+
+### Exit codes
+
+| Code | Condition |
+|------|-----------|
+| 0 | Tool executed successfully |
+| 1 | Tool error, missing required argument, or no `.zpm/` found |
+
+Errors are written to stderr; stdout receives only the tool result.
+
+### All 22 tool subcommands
+
+| Subcommand | Write | Description |
+|------------|-------|-------------|
+| `echo` | no | Test connectivity |
+| `remember-fact` | yes | Assert a Prolog fact |
+| `define-rule` | yes | Assert a Prolog rule (`Head :- Body`) |
+| `query-logic` | no | Execute a Prolog goal; returns variable bindings |
+| `trace-dependency` | no | Traverse transitive dependencies via `path/2` |
+| `verify-consistency` | no | Query `integrity_violation/N` predicates |
+| `explain-why` | no | Reconstruct proof chain via `clause/2` |
+| `get-knowledge-schema` | no | Introspect all user-defined predicates |
+| `forget-fact` | yes | Retract the first matching fact |
+| `clear-context` | yes | Retract all facts matching a category pattern |
+| `update-fact` | yes | Atomic retract+assert (`old_fact` → `new_fact`) |
+| `upsert-fact` | yes | Replace existing fact by functor+first arg or insert |
+| `assume-fact` | yes | Assert a fact under a named assumption |
+| `get-belief-status` | no | Query whether a belief is supported |
+| `get-justification` | no | List facts supported by a given assumption |
+| `list-assumptions` | no | Enumerate all active assumptions |
+| `retract-assumption` | yes | Remove one assumption and cascade to dependent facts |
+| `retract-assumptions` | yes | Bulk-remove assumptions matching a glob pattern |
+| `save-snapshot` | yes | Create a named knowledge-base snapshot |
+| `restore-snapshot` | yes | Restore from a named snapshot |
+| `list-snapshots` | no | List available snapshots with metadata |
+| `get-persistence-status` | no | Report journal size, last snapshot, and mode |
+
+### Concurrency warning
+
+Tool subcommands share the same WAL journal and knowledge base as a running `zpm serve` process. Do not invoke tool subcommands concurrently with a live server against the same `.zpm/` directory — concurrent writes will corrupt the journal.
 
 ## `init` subcommand
 
@@ -69,8 +147,8 @@ Failure modes:
 
 | Code | Condition |
 |------|-----------|
-| 0 | Normal exit: server STDIO EOF, successful `init`, `--help`, or `--version` |
-| 1 | Unknown subcommand, unrecognised flag, `init` filesystem error, or `serve` with no `.zpm/` in ancestry |
+| 0 | Normal exit: server STDIO EOF, successful `init`, `--help`, `--version`, or successful tool subcommand |
+| 1 | Unknown subcommand, unrecognised flag, `init` filesystem error, `serve` with no `.zpm/` in ancestry, or tool subcommand error |
 
 ## MCP client configuration
 
