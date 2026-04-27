@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "zpm": {
-      "command": "~/.local/bin/zpm",
+      "command": "zpm",
       "args": ["serve"]
     }
   }
