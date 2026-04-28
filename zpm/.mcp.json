@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "zpm": {
-      "command": "/home/pocky/Sites/awf-project/zpm/zig-out/bin/zpm",
+      "command": "~/.local/bin/zpm",
       "args": ["serve"]
     }
   }
