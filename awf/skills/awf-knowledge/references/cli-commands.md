@@ -118,6 +118,8 @@ Place a file at `.awf/prompts/<pack>/override.md` to override any pack-embedded 
 | `--breakpoint, -b` | Pause at specific steps |
 | `--skip-plugins` | Skip loading and executing plugins |
 | `--validator-timeout` | Timeout for validator plugins (e.g. `30s`) |
+| `--otel-exporter` | OTLP gRPC endpoint for distributed tracing (overrides `telemetry.exporter` in config) |
+| `--otel-service-name` | Service name for traces (overrides `telemetry.service_name` in config) |
 
 ### Output Mode (`--output`)
 

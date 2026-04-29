@@ -449,6 +449,26 @@ Plugins declaring `validators` capability run at `awf validate` and `awf run` ti
 
 **Details**: [Plugins Reference](references/plugins.md)
 
+### Distributed Tracing
+
+Enable OpenTelemetry tracing to export spans to Jaeger, Grafana Tempo, Honeycomb, or Datadog:
+
+```yaml
+# .awf/config.yaml
+telemetry:
+  exporter: "localhost:4317"   # OTLP gRPC endpoint
+  service_name: "my-service"
+```
+
+```bash
+# Override per-run
+awf run my-workflow --otel-exporter=localhost:4317 --otel-service-name=my-service
+```
+
+Tracing is opt-in. When no exporter is configured, there is zero overhead. Each run emits a `workflow.run` root span with child spans for steps, agent calls (with provider/model/token attributes), parallel blocks, and loop iterations.
+
+**Details**: [Distributed Tracing Reference](references/tracing.md)
+
 ## Resources
 
 **Getting Started**
@@ -465,6 +485,7 @@ Plugins declaring `validators` capability run at `awf validate` and `awf run` ti
 
 **Reference**
 - [references/audit-trail.md](references/audit-trail.md) - Structured JSONL audit trail
+- [references/tracing.md](references/tracing.md) - Distributed tracing (OpenTelemetry)
 - [references/interpolation.md](references/interpolation.md) - Variable substitution
 - [references/interactive-inputs.md](references/interactive-inputs.md) - Auto-prompting for missing inputs
 - [references/agent-steps.md](references/agent-steps.md) - AI agent integration
