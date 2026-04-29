@@ -8,6 +8,8 @@ ZPM exposes a structured command-line interface. Running the binary without argu
 |------------|-------------|
 | `init` | Initialize a `.zpm/` project directory in the current working directory |
 | `serve` | Start the MCP server (STDIO transport). Requires a discoverable `.zpm/` project. |
+| `upgrade` | Upgrade the ZPM binary to the latest release |
+| `version` | Print version string and exit 0 |
 | `<tool-name> [args]` | Invoke any of the 22 MCP tools directly from the shell. See [Tool subcommands](#tool-subcommands). |
 
 ## Flags
@@ -15,7 +17,6 @@ ZPM exposes a structured command-line interface. Running the binary without argu
 | Flag | Short | Description | Exit code |
 |------|-------|-------------|-----------|
 | `--help` | `-h` | Print usage text and exit | 0 |
-| `--version` | `-v` | Print version string and exit | 0 |
 | `--format` | | Output format for tool subcommands: `text` (default) or `json` | — |
 
 ## Usage
@@ -32,8 +33,7 @@ zpm remember-fact "task_status(f017,done)"
 zpm query-logic "task_status(X,done)" --format json | jq '.[0].X'
 
 # Print version and exit
-zpm --version
-zpm -v
+zpm version
 
 # Print help and exit (also the default when no arguments are given)
 zpm --help
@@ -147,7 +147,7 @@ Failure modes:
 
 | Code | Condition |
 |------|-----------|
-| 0 | Normal exit: server STDIO EOF, successful `init`, `--help`, `--version`, or successful tool subcommand |
+| 0 | Normal exit: server STDIO EOF, successful `init`, `version`, `upgrade`, `--help`, or successful tool subcommand |
 | 1 | Unknown subcommand, unrecognised flag, `init` filesystem error, `serve` with no `.zpm/` in ancestry, or tool subcommand error |
 
 ## MCP client configuration
