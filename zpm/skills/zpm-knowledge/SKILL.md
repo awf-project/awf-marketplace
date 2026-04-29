@@ -53,7 +53,7 @@ Initialize the Trealla submodule before building: `git submodule update --init`.
 | `make build` | Build the full binary (Trealla submodule compiled as part of this step) |
 | `make test` | Run Zig unit tests (includes inline engine tests and arg_mapper/output modules) |
 | `make functional-test-engine` | End-to-end Prolog engine tests (`tests/functional_prolog_engine_test.sh`) |
-| `make functional-test` | End-to-end tool subcommand tests (`tests/functional_mcp_server_test.sh`, 252 assertions) |
+| `make functional-test` | End-to-end tests covering argv contract, MCP tool subcommands, and upgrade flow (`tests/functional_cli_test.sh`, `tests/functional_mcp_server_test.sh`, `tests/functional_upgrade_test.sh`) |
 
 CI runs Zig lint/test/build after initializing the submodule. No Rust steps are present.
 
@@ -96,7 +96,7 @@ zpm query-logic "task_status(X,done)" --format json | jq '.[0].X'
 zpm get-persistence-status --format json
 ```
 
-Other flags: `--help`/`-h` (exits 0), `--version`/`-v` (exits 0). Unknown subcommands exit 1 on stderr. Full CLI reference: `references/cli.md`.
+Other subcommands: `version` (exits 0), `upgrade`. `--help`/`-h` exits 0. Unknown subcommands exit 1 on stderr. Full CLI reference: `references/cli.md`.
 
 ## MCP Tools
 
