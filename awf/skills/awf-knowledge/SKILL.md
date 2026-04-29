@@ -301,7 +301,7 @@ process:
 
 - `output_format: json` — strips markdown code fences, validates JSON, stores in `{{.states.step.JSON.field}}`
 - `output_format: text` — strips markdown code fences only, stores cleaned text in `{{.states.step.Output}}`
-- Omitted — Claude provider still extracts clean text from its NDJSON stream before storing in `{{.states.step.Output}}`
+- Omitted — CLI providers (Claude, Gemini, OpenCode) unconditionally extract clean text from the NDJSON stream before storing in `{{.states.step.Output}}`
 - Invalid JSON with `output_format: json` fails the step with descriptive error (first 200 chars shown)
 - Domain validation rejects unknown `output_format` values at `awf validate` time
 - `output_format` also controls terminal display with `--output streaming`/`buffered`: `text`/omitted filters NDJSON to plain text; `json` passes raw NDJSON through. `{{.states.step.DisplayOutput}}` is not a valid template variable — use `{{.states.step.Output}}`.

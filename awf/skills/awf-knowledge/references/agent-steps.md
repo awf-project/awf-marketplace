@@ -63,7 +63,7 @@ analyze:
 
 > `temperature` and `max_tokens` are **not forwarded** to the Claude CLI.
 
-> AWF always passes `--output-format stream-json --verbose` to the Claude CLI. The NDJSON stream is parsed internally: when `output_format` is set, the extracted text goes through the format pipeline (fence stripping, JSON validation); when `output_format` is omitted, clean text is extracted transparently before storing in `states.X.output`. Malformed or absent NDJSON gracefully results in a nil `Response` (no error returned).
+> AWF always passes `--output-format stream-json --verbose` to the Claude CLI. Text extraction from the NDJSON stream is unconditional: regardless of `output_format`, clean text is always extracted before any downstream processing. When `output_format: json` is set, `result.Response` is additionally populated with the parsed result event. This means `output_format: json` works correctly even when lifecycle hooks (e.g. claude-mem, superpowers, zpm SessionStart events) inject extra NDJSON events ahead of the result. Malformed or absent NDJSON gracefully results in a nil `Response` (no error returned).
 
 ### Codex (OpenAI)
 
@@ -111,7 +111,7 @@ summarize:
 
 > `temperature` and `max_tokens` are **not forwarded** to the Gemini CLI.
 
-> When `output_format: json` is set, AWF passes `--output-format stream-json` to the Gemini CLI to enable streaming JSON output capture.
+> When `output_format: json` is set, AWF passes `--output-format stream-json` to the Gemini CLI to enable streaming JSON output capture. Text extraction from the NDJSON stream is unconditional: clean text is always extracted regardless of `output_format`, so `output_format: json` works correctly even when lifecycle hooks inject extra NDJSON events (e.g. SessionStart) ahead of the result.
 
 ### OpenCode
 
@@ -131,7 +131,7 @@ refactor:
 |--------|------|-------------|
 | `model` | string | Model identifier (passed as `--model` flag) |
 
-> OpenCode format mapping: `output_format: text` or `default` maps to `--format default`; all other values (including when `output_format` is omitted) map to `--format json`. `temperature` and `max_tokens` are not forwarded.
+> OpenCode format mapping: `output_format: text` or `default` maps to `--format default`; all other values (including when `output_format` is omitted) map to `--format json`. `temperature` and `max_tokens` are not forwarded. Text extraction from the NDJSON stream is unconditional: clean text is always extracted regardless of `output_format`, so `output_format: json` works correctly even when lifecycle hooks inject extra NDJSON events (e.g. SessionStart) ahead of the result.
 
 ### OpenAI-Compatible Provider
 
@@ -575,7 +575,7 @@ save_code:
 
 #### No Format (Default)
 
-Omit `output_format` for backward compatibility. Raw agent output is stored unchanged.
+Omit `output_format` for backward compatibility. For CLI providers (Claude, Gemini, OpenCode), clean text is still extracted from the NDJSON stream — the output stored in `{{.states.step_name.Output}}` is plain text, not raw NDJSON. For the `openai_compatible` provider, the API response text is returned directly.
 
 ### Error Handling
 
@@ -599,6 +599,12 @@ handle_json_error:
 **Error message includes:**
 - Clear indication of JSON validation failure
 - First 200 characters of the malformed output (for debugging)
+
+### Lifecycle Hook Compatibility
+
+CLI providers (Claude, Gemini, OpenCode) extract clean text from the NDJSON stream unconditionally before passing output to `applyOutputFormat`. This means `output_format: json` works correctly even when tools that inject lifecycle events into the NDJSON stream (e.g. claude-mem, superpowers, zpm SessionStart hooks) are active. Previously, these extra events caused an `invalid JSON: invalid character '{' after top-level value` error because the raw multi-document stream was passed directly to JSON validation.
+
+If you see this error on an older AWF binary, upgrade AWF. No workflow YAML changes are required.
 
 ## Streaming Output Display
 
