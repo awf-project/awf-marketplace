@@ -304,7 +304,7 @@ process:
 - Omitted — Claude provider still extracts clean text from its NDJSON stream before storing in `{{.states.step.Output}}`
 - Invalid JSON with `output_format: json` fails the step with descriptive error (first 200 chars shown)
 - Domain validation rejects unknown `output_format` values at `awf validate` time
-- `output_format` also controls terminal display with `--output streaming`/`buffered`: `text`/omitted filters NDJSON to plain text; `json` passes raw NDJSON through. `{{.states.step.DisplayOutput}}` is not a valid template variable — use `{{.states.step.Output}}`.
+- `output_format` also controls terminal display with `--output streaming`/`buffered`: `text`/omitted filters NDJSON to plain text; `json` passes raw NDJSON through. Add `--verbose` to show `[tool: Name(Arg)]` markers for tool-use events (`json` format ignores verbose). `{{.states.step.DisplayOutput}}` is not a valid template variable — use `{{.states.step.Output}}`.
 
 **Details**: [Agent Steps - Output Formatting](references/agent-steps.md) | [Agent Steps - Streaming Output Display](references/agent-steps.md#streaming-output-display)
 

@@ -616,14 +616,33 @@ This cap applies per concurrent agent step. In a `parallel` state with N agent s
 
 ### Display Matrix
 
-| `output_format` | `--output streaming` / `buffered` | `--output silent` |
-|-----------------|-----------------------------------|-------------------|
-| `text` or omitted | Filters NDJSON to plain text | No terminal output |
-| `json` | Passes raw NDJSON through | No terminal output |
+| `output_format` | `--output streaming` / `buffered` | `--output streaming --verbose` | `--output silent` |
+|-----------------|-----------------------------------|---------------------------------|-------------------|
+| `text` or omitted | Filters NDJSON to plain text | Plain text + `[tool: Name(Arg)]` markers | No terminal output |
+| `json` | Passes raw NDJSON through | Passes raw NDJSON through (verbose ignored) | No terminal output |
+
+### Tool-Use Markers (Verbose Mode)
+
+Add `--verbose` to surface tool-use activity interleaved with agent text output:
+
+```bash
+awf run workflow --output streaming --verbose
+```
+
+When `--verbose` is active and `output_format` is `text` or omitted, each tool invocation emits a marker:
+
+```
+[tool: Name(Arg)]
+```
+
+- Tool arguments are truncated to 40 characters.
+- All 5 providers (Claude, Codex, Gemini, OpenCode, OpenAI-Compatible) emit markers through the same pipeline.
+- `output_format: json` bypasses event parsing entirely — raw NDJSON passes through unchanged and `--verbose` has no effect.
 
 ### Behavior Details
 
 - **`text` or omitted** — AWF extracts readable text from the NDJSON stream and writes it to the terminal as the agent responds. `cloneAndInjectOutputFormat` normalizes `output_format` omitted → `text` internally so the display pipeline always receives an explicit format.
+- **`text` or omitted + `--verbose`** — Same as above, with `[tool: Name(Arg)]` markers inserted for each tool invocation.
 - **`json`** — Raw NDJSON is forwarded directly to the terminal. Use this when you need to inspect the wire format or pipe agent output to another tool.
 - **`silent` mode** — No terminal display regardless of `output_format`. Post-processing still runs, and `{{.states.step.Output}}` is still populated.
 
@@ -663,6 +682,9 @@ awf run workflow --output streaming
 
 # Shows filtered plain text on terminal
 awf run workflow --output streaming   # with output_format: text or omitted
+
+# Shows filtered plain text + [tool: Name(Arg)] markers
+awf run workflow --output streaming --verbose   # with output_format: text or omitted
 
 # No terminal output, post-processing still runs
 awf run workflow --output silent
