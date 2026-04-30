@@ -381,15 +381,23 @@ awf history [flags]
 | `--limit, -n` | Max entries (default: 20) |
 | `--stats` | Statistics only |
 
+Execution IDs are displayed in full (36-character UUIDs) and workflow names are never truncated. Columns auto-size to fit the content. Copy an ID directly from the output to use with `awf status` or `awf resume`.
+
 ```bash
 # Recent
 awf history
+# ID                                    WORKFLOW  STATUS   STARTED              DURATION
+# 550e8400-e29b-41d4-a716-446655440000  deploy    success  2025-12-01 10:05:00  4.2s
+# 3f9a1c2d-0e4b-47f8-b123-9d8e7c6b5a4f  deploy    failed   2025-11-30 18:42:11  1.1s
 
 # Filter
 awf history -w deploy -s failed --since 2025-12-01
 
 # Stats
 awf history --stats
+
+# Use a full ID from history output directly
+awf status 550e8400-e29b-41d4-a716-446655440000
 ```
 
 ## awf config
