@@ -604,6 +604,16 @@ handle_json_error:
 
 When running with `--output streaming` or `--output buffered`, AWF filters agent NDJSON responses to human-readable text instead of displaying raw wire format. The `output_format` field controls both post-processing behavior and terminal display routing.
 
+### Per-Line Buffer Cap
+
+AWF's stream filter buffers each output line up to **10 MB** before processing. When a single line exceeds 10 MB:
+
+- The line is dumped raw to output without filtering
+- A structured warning is emitted via the logger
+- Stream processing continues normally (no abort or step failure)
+
+This cap applies per concurrent agent step. In a `parallel` state with N agent steps, peak memory from the stream filter is N × 10 MB.
+
 ### Display Matrix
 
 | `output_format` | `--output streaming` / `buffered` | `--output silent` |
@@ -784,6 +794,8 @@ aggregate:
     echo "Performance: {{.states.performance.Output}}"
   on_success: done
 ```
+
+**Memory model:** Each concurrent agent step holds up to 10 MB in its stream filter line buffer. A parallel state with N agent steps uses up to N × 10 MB of peak memory from stream filtering alone.
 
 ## Debugging
 
