@@ -32,6 +32,7 @@
 | `awf completion <shell>` | Generate autocompletion |
 | `awf upgrade` | Self-update the AWF binary from GitHub Releases |
 | `awf upgrade --check` | Check for a newer version without installing |
+| `awf tui` | Launch interactive full-screen terminal dashboard |
 
 ## Global Flags
 
@@ -651,6 +652,84 @@ workflows:
 | `max_cli_version` | no | Maximum AWF CLI version supported |
 | `plugins` | no | Plugin dependencies (installation warnings only) |
 | `workflows` | yes | List of workflow YAML files included in the pack |
+
+## awf tui
+
+Launch interactive full-screen terminal dashboard.
+
+```bash
+awf tui
+```
+
+Requires an interactive terminal. Not usable in pipes or CI/CD environments.
+
+### Tabs
+
+| Tab | Key | Description |
+|-----|-----|-------------|
+| Workflows | `1` | Browse, filter, launch, and validate workflows |
+| Monitoring | `2` | Live execution tree with step status and log viewport |
+| History | `3` | Past executions filterable by name, status, or date |
+| Agent Conversations | `4` | Agent turn-by-turn conversation view |
+| External Logs | `5` | Live tail of Claude Code JSONL session files |
+
+### Keyboard Shortcuts
+
+**Global:**
+
+| Key | Action |
+|-----|--------|
+| `1`–`5` | Switch tab |
+| `q` / `ctrl+c` | Quit and restore terminal |
+| `/` | Focus filter input |
+| `esc` | Clear filter / cancel |
+| `tab` | Move between panels |
+| `↑` / `↓` | Navigate list |
+| `k` / `j` | Navigate list (vi keys) |
+| `pgup` / `pgdn` | Scroll viewport |
+
+**Workflows tab:**
+
+| Key | Action |
+|-----|--------|
+| `enter` | Launch selected workflow (collects missing inputs interactively) |
+| `v` | Validate selected workflow |
+
+**Monitoring tab:**
+
+Switches automatically when a workflow is launched from the Workflows tab.
+
+Step status icons displayed in the execution tree:
+
+| Icon | Meaning |
+|------|---------|
+| `⏳` | pending |
+| `▶` | running |
+| `✓` | success |
+| `✗` | failed |
+| `⊘` | skipped |
+
+Failed steps are auto-selected in the tree. Live log viewport auto-scrolls while a step runs.
+
+**History tab:**
+
+| Key | Action |
+|-----|--------|
+| `enter` | Open detail view showing full execution tree |
+| `/` | Filter by name, status, or date |
+
+### Common Workflows
+
+```bash
+# 1. Launch TUI
+awf tui
+
+# 2. On Workflows tab: navigate to workflow, press enter, fill inputs
+# 3. TUI switches to Monitoring tab automatically
+# 4. Press 3 to review history; press enter on any row for full detail
+```
+
+**Details**: [TUI Reference](tui.md)
 
 ## awf completion
 
