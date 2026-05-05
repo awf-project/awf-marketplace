@@ -102,7 +102,7 @@ awf run hello --input name=Claude
 | Type | Use |
 |------|-----|
 | `step` | Execute command (inline or from script file) |
-| `agent` | Invoke AI agent (Claude, Codex, Gemini, OpenCode, OpenAI-Compatible) |
+| `agent` | Invoke AI agent (Claude, Codex, Gemini, OpenCode, OpenAI-Compatible, GitHub Copilot) |
 | `parallel` | Run concurrent steps |
 | `terminal` | End workflow |
 | `for_each` | Iterate over list (supports transitions) |
@@ -132,14 +132,10 @@ command: echo "{{.states.analyze.JSON.severity}}"
 # Environment
 command: echo "{{.env.HOME}}"
 
-# AWF system directories (XDG-compliant)
+# AWF system directories (XDG-compliant, local-before-global resolution)
 command: echo "{{.awf.config_dir}}"    # ~/.config/awf
-command: echo "{{.awf.prompts_dir}}"   # prompts dir: 2-tier local→global; 3-tier inside pack (user override → pack embedded → global XDG)
-command: echo "{{.awf.scripts_dir}}"   # scripts dir: same 2-tier/3-tier resolution as prompts_dir
 prompt_file: "{{.awf.prompts_dir}}/analyze.md"   # checks <workflow_dir>/prompts/ first
 script_file: "{{.awf.scripts_dir}}/deploy.sh"    # checks <workflow_dir>/scripts/ first
-# Local-before-global applies to command:, dir:, script_file:, prompt_file:
-command: "{{.awf.scripts_dir}}/deploy.sh --env prod"  # resolves local first
 
 # Loop context (PascalCase)
 command: echo "{{.loop.Index1}}/{{.loop.Length}}"
@@ -243,9 +239,7 @@ done:
 analyze:
   type: agent
   provider: claude
-  prompt: |
-    Review this code for issues:
-    {{.inputs.code}}
+  prompt: "Review this code for issues: {{.inputs.code}}"
   options:
     model: claude-sonnet-4-20250514
   timeout: 120                        # seconds or Go duration: "2m", "1m30s"
@@ -277,9 +271,28 @@ analyze:
 - Native multi-turn conversation support via `mode: conversation`
 - Accurate token tracking from API `usage` fields
 - Structured HTTP error mapping: 401 (auth), 429 (rate limit), 5xx (server)
-- `temperature` and `max_completion_tokens` only supported by `openai_compatible` — CLI providers (`claude`, `codex`, `gemini`, `opencode`) do not forward these options
+- `temperature` and `max_completion_tokens` are not forwarded to CLI providers
 
 **Details**: [Agent Steps - OpenAI-Compatible Provider](references/agent-steps.md#openai-compatible-provider)
+
+### GitHub Copilot Agent
+
+```yaml
+analyze:
+  type: agent
+  provider: github_copilot
+  prompt: "Review: {{.inputs.code}}"
+  options:
+    mode: autopilot    # interactive | plan | autopilot
+    effort: high       # low | medium | high
+    allowed_tools: [read_file, run_command]
+  on_success: process
+```
+
+- Requires `copilot` CLI installed and authenticated
+- `mode` and `effort` are enum-validated; multi-turn uses `--resume=<session-id>`
+
+**Details**: [Agent Steps - GitHub Copilot](references/agent-steps.md#github-copilot)
 
 ### Output Formatting for Agent Steps
 
@@ -297,12 +310,10 @@ process:
   on_success: done
 ```
 
-- `output_format: json` — strips markdown code fences, validates JSON, stores in `{{.states.step.JSON.field}}`
-- `output_format: text` — strips markdown code fences only, stores cleaned text in `{{.states.step.Output}}`
-- Omitted — Claude provider still extracts clean text from its NDJSON stream before storing in `{{.states.step.Output}}`
-- Invalid JSON with `output_format: json` fails the step with descriptive error (first 200 chars shown)
-- Domain validation rejects unknown `output_format` values at `awf validate` time
-- `output_format` also controls terminal display with `--output streaming`/`buffered`: `text`/omitted filters NDJSON to plain text; `json` passes raw NDJSON through. Add `--verbose` to show `[tool: Name(Arg)]` markers for tool-use events (`json` format ignores verbose). `{{.states.step.DisplayOutput}}` is not a valid template variable — use `{{.states.step.Output}}`.
+- `output_format: json` — strips markdown fences, validates JSON, stores in `{{.states.step.JSON.field}}`
+- `output_format: text` — strips fences only, stores cleaned text in `{{.states.step.Output}}`; omitted behaves like `text`
+- Invalid JSON fails the step with a descriptive error; unknown values rejected at `awf validate` time
+- With `--output streaming --verbose`, adds `[tool: Name(Arg)]` markers; `json` bypasses filtering
 
 **Details**: [Agent Steps - Output Formatting](references/agent-steps.md) | [Agent Steps - Streaming Output Display](references/agent-steps.md#streaming-output-display)
 
@@ -317,11 +328,9 @@ analyze:
   on_success: done
 ```
 
-- `prompt_file` loads prompt from external `.md` file with full template interpolation
-- Paths resolve relative to workflow directory, support absolute, `~/`, and `{{.awf.*}}` variables
-- **Local-before-global resolution**: `{{.awf.prompts_dir}}/file.md` checks `<workflow_dir>/prompts/file.md` first, then falls back to global XDG path. Same resolution applies when `{{.awf.prompts_dir}}` is used in `command:` or `dir:` fields.
-- 1MB size limit on prompt files
-- Template helpers available: `split`, `join`, `readFile`, `trimSpace`
+- `prompt_file` loads prompt from external `.md` file with full template interpolation; 1MB size limit; mutually exclusive with `prompt`
+- **Local-before-global**: `{{.awf.prompts_dir}}/file.md` checks `<workflow_dir>/prompts/` first, then global XDG fallback
+- Template helpers: `split`, `join`, `readFile`, `trimSpace`
 
 **Details**: [Agent Steps - External Prompt Files](references/agent-steps.md)
 
@@ -335,12 +344,9 @@ deploy:
   on_success: verify
 ```
 
-- `script_file` loads script from external file with full template interpolation
-- **Shebang support**: scripts with a shebang (`#!/usr/bin/env python3`, `#!/bin/bash`) are executed directly via the kernel interpreter; scripts without a shebang fall back to `$SHELL -c`
-- Paths resolve relative to workflow directory, support absolute, `~/`, and `{{.awf.scripts_dir}}` variables
-- **Local-before-global resolution**: `{{.awf.scripts_dir}}/deploy.sh` checks `<workflow_dir>/scripts/deploy.sh` first, then falls back to global XDG path. Same resolution applies when `{{.awf.scripts_dir}}` is used in `command:` or `dir:` fields.
-- 1MB size limit on script files
-- Mutually exclusive with `command` on the same step
+- `script_file` loads script from external file with full template interpolation; 1MB size limit; mutually exclusive with `command`
+- **Shebang support**: shebang scripts execute via kernel interpreter; no-shebang scripts fall back to `$SHELL -c`
+- **Local-before-global**: `{{.awf.scripts_dir}}/deploy.sh` checks `<workflow_dir>/scripts/` first, then global XDG fallback
 
 **Details**: [Workflow Syntax - External Script Files](references/workflow-syntax.md#external-script-files)
 
@@ -449,8 +455,6 @@ Plugins declaring `validators` capability run at `awf validate` and `awf run` ti
 
 ### Distributed Tracing
 
-Enable OpenTelemetry tracing to export spans to Jaeger, Grafana Tempo, Honeycomb, or Datadog:
-
 ```yaml
 # .awf/config.yaml
 telemetry:
@@ -458,12 +462,7 @@ telemetry:
   service_name: "my-service"
 ```
 
-```bash
-# Override per-run
-awf run my-workflow --otel-exporter=localhost:4317 --otel-service-name=my-service
-```
-
-Tracing is opt-in. When no exporter is configured, there is zero overhead. Each run emits a `workflow.run` root span with child spans for steps, agent calls (with provider/model/token attributes), parallel blocks, and loop iterations.
+Opt-in OpenTelemetry tracing — exports spans to Jaeger, Grafana Tempo, Honeycomb, or Datadog. Zero overhead when not configured. Each run emits a `workflow.run` root span with child spans per step, agent call, parallel block, and loop. Override per-run with `--otel-exporter` and `--otel-service-name`.
 
 **Details**: [Distributed Tracing Reference](references/tracing.md)
 
