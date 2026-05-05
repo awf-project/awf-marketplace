@@ -122,7 +122,7 @@ states:
 |--------|------|----------|---------|-------------|
 | `type` | string | Yes | - | Must be `agent` |
 | `mode` | string | No | `single` | Set to `conversation` for interactive terminal session |
-| `provider` | string | Yes | - | Agent provider: `claude`, `codex`, `gemini`, `opencode`, `openai_compatible` |
+| `provider` | string | Yes | - | Agent provider: `claude`, `codex`, `gemini`, `opencode`, `openai_compatible`, `github_copilot` |
 | `system_prompt` | string | No | - | System message preserved across turns |
 | `prompt` | string | Yes | - | First user message sent to agent |
 | `options` | map | No | - | Provider-specific options |
@@ -191,6 +191,7 @@ CLI providers persist sessions across turns. `SessionID` is extracted from provi
 - **Gemini**: `--resume <session_id>` flag; `session_id` from `type: "init"` NDJSON event
 - **OpenCode**: `-s <sessionID>` flag; `sessionID` from `type: "step_start"` NDJSON event; falls back to `-c` when extraction fails but prior turns exist
 - **openai_compatible**: Resumes via Turns list (HTTP-level multi-turn history)
+- **github_copilot**: `--resume=<session-id>` flag; session ID from JSONL stream
 
 ## Accessing Conversation State
 
