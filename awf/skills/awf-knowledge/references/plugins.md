@@ -175,8 +175,25 @@ config:
 | `name` | Yes | Plugin identifier (see naming rules below) |
 | `version` | Yes | Non-empty version string |
 | `awf_version` | Yes | AWF version constraint |
-| `capabilities` | Yes | `operations`, `step_types`, `validators` |
+| `capabilities` | Yes | `operations`, `step_types`, `validators`, `events` |
 | `config` | No | Configuration schema |
+| `events` | No | Event subscription/emission patterns (requires `events` capability) |
+
+**`events` capability block:**
+
+```yaml
+name: awf-plugin-event-logger
+capabilities:
+  - events
+events:
+  subscribe:
+    - "workflow.*"
+    - "step.*"
+  emit:
+    - "my-plugin.custom_event"
+```
+
+See [Plugin Events Reference](plugin-events.md) for full documentation.
 
 ## Manifest Validation (v0.5.40)
 
@@ -203,6 +220,7 @@ Only these capabilities are allowed:
 - `operations` - Custom workflow operations
 - `step_types` - Custom workflow step type definitions
 - `validators` - Workflow validation rules enforced during `awf validate`
+- `events` - Inter-plugin event subscription and emission via the EventBus
 
 Unknown capabilities are rejected.
 
@@ -277,11 +295,12 @@ awf plugin list --operations         # List operations (triggers full gRPC init 
 **Example output:**
 
 ```
-NAME               TYPE      VERSION  STATUS   ENABLED  CAPABILITIES  SOURCE
-github             builtin   v0.4.0   builtin  yes      operations
-http               builtin   v0.4.0   builtin  yes      operations
-notify             builtin   v0.4.0   builtin  yes      operations
-awf-plugin-slack   external  1.0.0    running  yes      operations    myorg/awf-plugin-slack
+NAME                       TYPE      VERSION  STATUS   ENABLED  CAPABILITIES  SOURCE
+github                     builtin   v0.4.0   builtin  yes      operations
+http                       builtin   v0.4.0   builtin  yes      operations
+notify                     builtin   v0.4.0   builtin  yes      operations
+awf-plugin-slack           external  1.0.0    running  yes      operations    myorg/awf-plugin-slack
+awf-plugin-event-logger    external  1.0.0    running  yes      events        myorg/awf-plugin-event-logger
 ```
 
 ### Enabling and Disabling
@@ -360,6 +379,8 @@ func main() { sdk.Serve(&MyPlugin{}) }
 ```
 
 The `Handshake` config is exported from `sdk` as the single source of truth shared by both the host and all plugins — do not define your own handshake.
+
+`BasePlugin` provides a no-op `HandleEvent` default — plugins that do not subscribe to events require no changes when the event system is active.
 
 See `examples/plugins/awf-plugin-echo/` for a minimal working plugin with `echo` and `reverse` operations.
 
@@ -526,6 +547,16 @@ func main() { sdk.Serve(&DatabasePlugin{}) }
 AWF validates step type names at `awf validate` time: unknown `{plugin-id}.{step-type}` references produce an error unless `--skip-plugins` is passed.
 
 See `examples/plugins/awf-plugin-database/` for a complete example.
+
+---
+
+## Plugin Events
+
+Plugins can subscribe to workflow lifecycle events (`workflow.started`, `workflow.completed`, `workflow.failed`, `step.started`, `step.completed`, `step.failed`, `step.retrying`) and emit custom events to other plugins. The AWF host delivers events over gRPC via the `EventBus` without any polling.
+
+Declare the `events` capability in `plugin.yaml` and implement `HandleEvent` in your plugin struct. Existing plugins without this capability are unaffected.
+
+**Details**: [Plugin Events Reference](plugin-events.md)
 
 ---
 

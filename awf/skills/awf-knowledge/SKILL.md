@@ -478,6 +478,7 @@ Opt-in OpenTelemetry tracing — exports spans to Jaeger, Grafana Tempo, Honeyco
 - [references/tui.md](references/tui.md) - Terminal dashboard (five-tab interactive UI)
 - [references/configuration.md](references/configuration.md) - Project configuration
 - [references/plugins.md](references/plugins.md) - Plugin system & SDK
+- [references/plugin-events.md](references/plugin-events.md) - Inter-plugin event system
 - [references/templates.md](references/templates.md) - Workflow templates
 - [references/examples.md](references/examples.md) - Real-world examples
 
