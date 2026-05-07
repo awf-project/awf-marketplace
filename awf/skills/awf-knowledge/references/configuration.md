@@ -23,6 +23,26 @@ inputs:
 | Float | `ratio: 3.14` |
 | Boolean | `enabled: true` |
 
+## Telemetry Configuration
+
+Configure OpenTelemetry distributed tracing under the `telemetry:` key:
+
+```yaml
+# .awf/config.yaml
+telemetry:
+  exporter: "localhost:4317"   # OTLP gRPC endpoint
+  service_name: "my-service"   # defaults to project name
+```
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `exporter` | string | OTLP gRPC endpoint (`host:port`). Tracing is disabled when absent. |
+| `service_name` | string | Service name reported in traces. Defaults to the AWF project name. |
+
+Per-run overrides are available via `--otel-exporter` and `--otel-service-name` flags on `awf run`. CLI flags take precedence over config values.
+
+**Details**: [Distributed Tracing Reference](tracing.md)
+
 ## Plugin Configuration
 
 Configure built-in and external plugins under the `plugins:` key:
@@ -226,3 +246,4 @@ Secret inputs (keys matching `SECRET_*`, `API_KEY*`, `PASSWORD*`, `TOKEN*`) are 
 3. **Comments** - Document settings with YAML comments
 4. **Loop memory** - Set `max_results` for loops with 1000+ iterations
 5. **Large outputs** - Use `stream_to_file: true` for steps producing MB+ outputs
+6. **Tracing** - Set `telemetry.exporter` in config for persistent trace collection; use `--otel-exporter` for one-off debugging sessions
