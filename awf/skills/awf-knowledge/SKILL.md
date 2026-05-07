@@ -72,9 +72,7 @@ awf run hello --input name=Claude
 | Command | Description |
 |---------|-------------|
 | `awf init` | Initialize AWF in directory (workflows, prompts, scripts) |
-| `awf run <workflow>` | Execute workflow |
-| `awf run <pack>/<workflow>` | Execute workflow from installed pack |
-| `awf run <workflow> --help` | Show workflow inputs |
+| `awf run <workflow>` | Execute workflow (`<pack>/<workflow>` for packs; `--help` for inputs) |
 | `awf validate <workflow>` | Check syntax |
 | `awf diagram <workflow>` | Generate visualization |
 | `awf list` | List workflows (local + pack workflows with `pack/workflow` prefix) |
@@ -90,12 +88,12 @@ awf run hello --input name=Claude
 | `awf workflow install <owner/repo>` | Install workflow pack from GitHub Releases into XDG data dir |
 | `awf workflow list` | List installed workflow packs with name, version, source, and workflows |
 | `awf workflow info <name>` | Show pack manifest details, plugin status, and embedded README |
-| `awf workflow update <name>` | Update installed workflow pack to latest release |
-| `awf workflow update --all` | Update all installed workflow packs |
+| `awf workflow update [--all] <name>` | Update workflow pack(s) to latest release |
 | `awf workflow search <query>` | Search GitHub for AWF workflow packs |
 | `awf workflow remove <name>` | Remove installed workflow pack |
 | `awf upgrade` | Self-update the AWF binary from GitHub Releases |
 | `awf upgrade --check` | Check for a newer version without installing |
+| `awf tui` | Launch interactive full-screen terminal dashboard |
 
 **Details**: [CLI Commands Reference](references/cli-commands.md)
 
@@ -478,6 +476,7 @@ Tracing is opt-in. When no exporter is configured, there is zero overhead. Each 
 **User Guide**
 - [references/workflow-syntax.md](references/workflow-syntax.md) - Complete YAML syntax
 - [references/cli-commands.md](references/cli-commands.md) - All CLI commands and flags
+- [references/tui.md](references/tui.md) - Terminal dashboard (five-tab interactive UI)
 - [references/configuration.md](references/configuration.md) - Project configuration
 - [references/plugins.md](references/plugins.md) - Plugin system & SDK
 - [references/templates.md](references/templates.md) - Workflow templates
