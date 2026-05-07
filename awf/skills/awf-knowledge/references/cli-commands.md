@@ -37,7 +37,7 @@
 
 | Flag | Description |
 |------|-------------|
-| `--verbose, -v` | Verbose output |
+| `--verbose, -v` | Verbose output; with `--output streaming`/`buffered` and agent steps, adds `[tool: Name(Arg)]` markers (no effect when `output_format: json`) |
 | `--quiet, -q` | Suppress non-error output |
 | `--no-color` | Disable colors |
 | `--format, -f` | Output format: text, json, table, quiet |
@@ -139,6 +139,8 @@ The `output_format` field on an agent step controls what appears on the terminal
 | `json` | Raw NDJSON passed through |
 
 `--output silent` suppresses agent output regardless of `output_format`. Template interpolation (e.g. `{{.states.step.Output}}`) is unaffected by the output mode — `state.Output` always contains the full agent response.
+
+**`--verbose` with agent steps:** When combined with `--output streaming` or `buffered`, adds `[tool: Name(Arg)]` markers interleaved with filtered text output. Has no effect when `output_format: json` (NDJSON passes through unchanged). Tool arguments are truncated to 40 characters. Applies to all 5 providers: Claude, Codex, Gemini, OpenCode, OpenAI-Compatible.
 
 **Details**: [Agent Steps - Streaming Output Display](agent-steps.md#streaming-output-display)
 
