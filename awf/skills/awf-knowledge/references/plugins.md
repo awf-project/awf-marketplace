@@ -323,6 +323,33 @@ awf validate my-workflow
 # Run 'awf plugin enable notify' to enable it
 ```
 
+## Plugin Security
+
+AWF enforces three security controls on all external plugins. These are automatic; no plugin author action is required.
+
+### AutoMTLS
+
+All gRPC communication between the AWF host and plugin subprocesses uses mutual TLS automatically. Certificates are negotiated at startup via go-plugin's built-in AutoMTLS mechanism. No configuration is needed — the channel is always encrypted and mutually authenticated.
+
+### Binary Integrity Verification
+
+`awf plugin install` computes a SHA-256 checksum of the plugin binary and stores it in `storage/plugins.json`. Before each plugin process starts, AWF recomputes the checksum and compares it to the stored value. A mismatch aborts execution with error code `EXECUTION.PLUGIN.CHECKSUM_MISMATCH` (exit code 3).
+
+```bash
+# After tampering with plugin binary:
+awf run my-workflow
+# Error: plugin 'awf-plugin-slack' binary checksum mismatch (EXECUTION.PLUGIN.CHECKSUM_MISMATCH)
+# Run 'awf plugin verify --update awf-plugin-slack' to recompute checksum after intentional replacement
+```
+
+Use `awf plugin verify --update <name>` to recompute the stored checksum after an intentional binary replacement, or `awf plugin install --force` to reinstall cleanly from the source repository.
+
+### Log Forwarding
+
+Plugin subprocess logs and stdout/stderr are forwarded to AWF's structured logger via `HCLogAdapter`. Sensitive field values (passwords, tokens, secrets) are masked automatically before forwarding. Plugin log output appears in AWF's standard log output and is not written separately.
+
+---
+
 ## Using in Workflows
 
 Operation names follow the format `{plugin-id}.{operation}`. Built-in providers use short names (`github`, `notify`, `http`); external plugins use their full plugin ID as prefix:
@@ -570,3 +597,4 @@ Declare the `events` capability in `plugin.yaml` and implement `HandleEvent` in 
 | Connection timeout (5s) | Plugin binary failed to start; check binary path and permissions |
 | Operation not found | Use namespaced form `{plugin-id}.{operation}` in workflow step |
 | Handshake mismatch | Rebuild plugin with same SDK version as AWF host |
+| `EXECUTION.PLUGIN.CHECKSUM_MISMATCH` | Binary was modified after install; run `awf plugin verify --update <name>` to recompute, or reinstall with `awf plugin install --force` |

@@ -20,6 +20,7 @@
 | `awf plugin update <name>` | Update installed plugin to latest release |
 | `awf plugin remove <name>` | Remove installed plugin |
 | `awf plugin search <query>` | Search GitHub for AWF plugins |
+| `awf plugin verify [name]` | Verify plugin binary integrity (checksum) |
 | `awf plugin enable <name>` | Enable a plugin |
 | `awf plugin disable <name>` | Disable a plugin |
 | `awf workflow install <owner/repo>` | Install workflow pack from GitHub Releases |
@@ -434,6 +435,9 @@ awf plugin install <owner/repo>          # Install plugin from GitHub Releases
 awf plugin update <name>                 # Update installed plugin to latest release
 awf plugin remove <name>                 # Remove installed plugin
 awf plugin search <query>                # Search GitHub for AWF plugins
+awf plugin verify                        # Verify checksums for all installed plugins
+awf plugin verify <name>                 # Verify checksum for a specific plugin
+awf plugin verify <name> --update        # Recompute and store checksum
 awf plugin enable <plugin-name>          # Enable a plugin
 awf plugin disable <plugin-name>         # Disable a plugin
 ```
@@ -504,6 +508,37 @@ Downloads the platform-matched binary from GitHub Releases, verifies SHA-256 che
 ### awf plugin update
 
 Fetches the latest release from the stored `SOURCE` repository and atomically replaces the binary. Requires the plugin to have been installed via `awf plugin install`.
+
+### awf plugin verify
+
+Verify SHA-256 checksum integrity of installed plugin binaries.
+
+```bash
+awf plugin verify                        # verify all installed plugins
+awf plugin verify <name>                 # verify a specific plugin
+awf plugin verify <name> --update        # recompute and persist checksum
+```
+
+| Flag | Description |
+|------|-------------|
+| `--update` | Recompute and store the checksum for the named plugin |
+
+Output shows a status table with one row per plugin:
+
+```
+NAME                 STATUS
+awf-plugin-slack     PASS
+awf-plugin-database  FAIL
+awf-plugin-echo      MISSING
+```
+
+| Status | Meaning |
+|--------|---------|
+| `PASS` | Stored checksum matches current binary |
+| `FAIL` | Binary has changed since install |
+| `MISSING` | No stored checksum (plugin installed before integrity verification was added) |
+
+Use `--update` after an intentional binary replacement (e.g. a manual local build) to record the new checksum without reinstalling. For a clean reinstall from the source repository, use `awf plugin install --force`.
 
 ## awf workflow
 
