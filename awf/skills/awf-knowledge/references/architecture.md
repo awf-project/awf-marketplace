@@ -283,6 +283,12 @@ type AuditTrailWriter interface {
     Write(ctx context.Context, event *workflow.AuditEvent) error
     Close() error
 }
+
+// EventPublisher delivers DomainEvents to the EventBus (F090)
+type EventPublisher interface {
+    Publish(ctx context.Context, event pluginmodel.DomainEvent) error
+    Close() error
+}
 ```
 
 ## Application Layer
@@ -293,7 +299,7 @@ Orchestrates use cases using domain and ports.
 
 **Services:**
 - `WorkflowService` - Loading, validation, listing
-- `ExecutionService` - Execution engine with loop pattern detection helpers and optional audit trail
+- `ExecutionService` - Execution engine with loop pattern detection helpers and optional audit trail; emits 7 lifecycle events via `EventPublisher` (injected via `WithEventPublisher`, F090)
 - `ConversationManager` - Multi-turn conversation coordination with state helpers
 - `InteractiveExecutor` - Step-by-step execution with extracted result handlers
 - `ParallelExecutor` - Concurrent step coordination with branch helpers
@@ -317,6 +323,7 @@ Implements domain ports with concrete tech.
 - `github/` - Built-in GitHub plugin with 9 declarative operations, auth detection, batch execution (v0.5.41)
 - `notify/` - Built-in notification plugin with 4 backends (desktop, ntfy, slack, webhook), dynamic backend registration (v0.5.43)
 - `plugin/` - RPC plugin registry + CompositeOperationProvider that multiplexes GitHub and Notify providers (v0.5.43)
+- `pluginmgr/` - `EventBus` (glob-pattern fan-out, 256-event buffered channels per plugin, depth-3 cycle detection), gRPC `EventService` adapter, `RPCPluginManager` with `SetEventBus()` (F090)
 
 ## Key Patterns
 
@@ -339,6 +346,11 @@ func (s *ExecutionService) SetConversationManager(mgr *ConversationManager)
 
 // AuditTrailWriter injected via setter (optional dependency, v0.6.7)
 func (s *ExecutionService) SetAuditTrailWriter(writer ports.AuditTrailWriter)
+
+// EventPublisher injected via setup option (optional, F090)
+service := NewExecutionService(repo, store, executor,
+    WithEventPublisher(eventBus),
+)
 ```
 
 ### Validator Injection via Function Type (v0.5.33)

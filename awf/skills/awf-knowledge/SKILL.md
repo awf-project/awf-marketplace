@@ -81,6 +81,7 @@ awf run hello --input name=Claude
 | `awf config show` | Display project config |
 | `awf plugin list` | List plugins (built-in + external, with TYPE and SOURCE columns) |
 | `awf plugin list --operations` | List operations per plugin (triggers gRPC init for external plugins) |
+| `awf plugin verify [name]` | Verify plugin binary integrity (checksum) |
 | `awf plugin install <owner/repo>` | Install plugin from GitHub Releases |
 | `awf plugin update <name>` | Update installed plugin to latest release |
 | `awf plugin remove <name>` | Remove installed plugin |
@@ -478,6 +479,7 @@ Opt-in OpenTelemetry tracing — exports spans to Jaeger, Grafana Tempo, Honeyco
 - [references/tui.md](references/tui.md) - Terminal dashboard (five-tab interactive UI)
 - [references/configuration.md](references/configuration.md) - Project configuration
 - [references/plugins.md](references/plugins.md) - Plugin system & SDK
+- [references/plugin-events.md](references/plugin-events.md) - Inter-plugin event system
 - [references/templates.md](references/templates.md) - Workflow templates
 - [references/examples.md](references/examples.md) - Real-world examples
 

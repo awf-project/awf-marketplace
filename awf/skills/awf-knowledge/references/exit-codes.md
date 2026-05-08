@@ -42,6 +42,7 @@ awf validate my-workflow
 - Command timed out
 - Retry attempts exhausted
 - Operation from disabled plugin invoked at run time
+- Plugin binary checksum mismatch (`EXECUTION.PLUGIN.CHECKSUM_MISMATCH`)
 
 ```bash
 awf run deploy
@@ -50,6 +51,9 @@ awf run deploy
 awf run my-workflow
 # Error: step 'notify_team' uses plugin 'notify' which is disabled
 # Run 'awf plugin enable notify' to enable it
+
+awf run my-workflow
+# Error: plugin 'awf-plugin-slack' binary checksum mismatch (EXECUTION.PLUGIN.CHECKSUM_MISMATCH)
 ```
 
 ## Exit Code 4: System Error

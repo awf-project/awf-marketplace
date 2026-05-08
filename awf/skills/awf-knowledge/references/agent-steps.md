@@ -193,6 +193,66 @@ deep_review:
 
 > `temperature` and `max_tokens` are **not forwarded** to the Copilot CLI.
 
+### GitHub Copilot
+
+```yaml
+analyze:
+  type: agent
+  provider: github_copilot
+  prompt: "Code review: {{.inputs.file_content}}"
+  options:
+    model: claude-sonnet-4-5        # Optional: model to use
+    mode: autopilot                  # interactive | plan | autopilot
+    effort: high                     # low | medium | high
+    allowed_tools:
+      - read_file
+      - run_command
+    denied_tools: []                 # Optional: tools to deny
+    allow_all: false                 # Optional: allow all tools
+  timeout: 120
+  on_success: next
+```
+
+**GitHub Copilot Options:**
+| Option | Type | Description |
+|--------|------|-------------|
+| `model` | string | Model to use |
+| `mode` | string | Execution mode: `interactive`, `plan`, or `autopilot` — enum-validated at `awf validate` time |
+| `effort` | string | Effort level: `low`, `medium`, or `high` — enum-validated at `awf validate` time |
+| `allowed_tools` | list of strings | Tools to allow |
+| `denied_tools` | list of strings | Tools to deny |
+| `allow_all` | bool | Allow all tools |
+
+**Authentication and requirements:**
+- The `copilot` CLI binary must be installed and authenticated with a GitHub Copilot subscription
+- System prompt is inlined for the first turn — the Copilot CLI provides no `--system-prompt` flag
+- Multi-turn session resume uses `--resume=<session-id>`
+- Output is JSONL streaming with `assistant.message_delta` and `tool.execution_start` event types
+
+**Multi-turn example:**
+
+```yaml
+initial_review:
+  type: agent
+  provider: github_copilot
+  prompt: "Review: {{.inputs.code}}"
+  options:
+    mode: autopilot
+    effort: medium
+  conversation: {}
+  on_success: deep_review
+
+deep_review:
+  type: agent
+  provider: github_copilot
+  prompt: "Focus on security issues from the previous review."
+  conversation:
+    continue_from: initial_review
+  on_success: done
+```
+
+> `temperature` and `max_tokens` are **not forwarded** to the Copilot CLI.
+
 ### OpenAI-Compatible Provider
 
 For any backend that speaks the Chat Completions API (OpenAI, Ollama, vLLM, Groq, LM Studio):
