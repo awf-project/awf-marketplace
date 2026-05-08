@@ -112,6 +112,83 @@ type Event struct {
 }
 ```
 
+## Emitting Events from Plugins
+
+Plugins have two ways to emit events back to the host:
+
+### 1. Return from HandleEvent
+
+Return an `sdk.Event` slice as an additional return value from `HandleEvent`. The host delivers each returned event to the `EventBus` after `HandleEvent` completes.
+
+```go
+func (p *MyPlugin) HandleEvent(ctx context.Context, event sdk.Event) error {
+    // React to an incoming event and emit a custom one synchronously
+    out := sdk.Event{
+        Type:    "my-plugin.processed",
+        Source:  "my-plugin",
+        Payload: map[string]any{"original": event.Type},
+    }
+    return p.EmitEvent(out) // BasePlugin helper — queues for return
+}
+```
+
+### 2. HostClient.Emit() — runtime emission
+
+`HostClient.Emit()` sends an event to the host at any point during plugin execution, not only inside `HandleEvent`. Use this from operation handlers, step type handlers, or background goroutines.
+
+```go
+type MyPlugin struct {
+    sdk.BasePlugin
+    host *sdk.HostClient
+}
+
+// Wire the host client during plugin initialization
+func (p *MyPlugin) SetHostClient(client *sdk.HostClient) {
+    p.host = client
+}
+
+func (p *MyPlugin) ExecuteOperation(ctx context.Context, op string, inputs map[string]any) (map[string]any, error) {
+    result, err := doWork(inputs)
+    if err != nil {
+        _ = p.host.Emit(sdk.Event{
+            Type:    "my-plugin.operation_failed",
+            Source:  "my-plugin",
+            Payload: map[string]any{"operation": op, "error": err.Error()},
+        })
+        return nil, err
+    }
+    _ = p.host.Emit(sdk.Event{
+        Type:    "my-plugin.operation_completed",
+        Source:  "my-plugin",
+        Payload: map[string]any{"operation": op},
+    })
+    return result, nil
+}
+
+func main() { sdk.Serve(&MyPlugin{}) }
+```
+
+`SetHostClient` is called by `sdk.Serve()` automatically when the plugin implements it. No additional wiring is required in `main()`.
+
+### HostEventServiceID Constant
+
+The SDK exports `HostEventServiceID` — the service identifier used when registering the reverse channel. SDK consumers that need to reference the service name directly (for custom gRPC interceptors or testing) should use this constant instead of a string literal:
+
+```go
+import "github.com/awf-project/cli/pkg/plugin/sdk"
+
+// Use in custom interceptors or test doubles
+fmt.Println(sdk.HostEventServiceID) // "awf.plugin.v1.HostEventService"
+```
+
+## Streaming Delivery
+
+The host delivers events to plugins using a persistent `StreamEvents` gRPC stream (one stream per plugin, kept alive for the duration of the run). This replaces the earlier per-event unary RPC approach and reduces connection overhead on high-frequency event workloads.
+
+This is entirely host-managed and transparent to plugin developers — no SDK changes are required to benefit from streaming delivery.
+
+**Fallback behavior**: If a plugin's gRPC endpoint does not support the `StreamEvents` RPC (e.g., an older plugin binary), the host falls back to unary RPC delivery automatically. The plugin receives events identically in both modes.
+
 ## Cycle Detection
 
 To prevent infinite loops between plugins that both subscribe and emit:
