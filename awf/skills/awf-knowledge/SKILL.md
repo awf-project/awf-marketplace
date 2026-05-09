@@ -76,7 +76,7 @@ awf run hello --input name=Claude
 | `awf validate <workflow>` | Check syntax |
 | `awf diagram <workflow>` | Generate visualization |
 | `awf list` | List workflows (local + pack workflows with `pack/workflow` prefix) |
-| `awf resume` | Resume interrupted |
+| `awf resume [id] [--from current\|previous\|<step>]` | Resume interrupted (see below) |
 | `awf history` | Show history |
 | `awf config show` | Display project config |
 | `awf plugin list` | List plugins (built-in + external, with TYPE and SOURCE columns) |

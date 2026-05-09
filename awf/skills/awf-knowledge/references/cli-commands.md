@@ -248,16 +248,38 @@ awf resume [workflow-id] [flags]
 | `--list, -l` | List resumable workflows |
 | `--input, -i` | Override input on resume |
 | `--output, -o` | Output mode |
+| `--from` | Step to resume from: `current` (default), `previous`, or a named step |
+
+### `--from` flag
+
+Controls which step re-execution begins from. States after the target step are automatically cleaned up before execution restarts.
+
+| Value | Behavior |
+|-------|----------|
+| `current` | Default. Resume from the step that failed or was interrupted (backward compatible). |
+| `previous` | Re-execute the last completed step and all subsequent steps. |
+| `<step-name>` | Reset state to the named step and re-execute forward. The step name must exist in the execution history. |
+
+**State cleanup**: when `--from previous` or `--from <step-name>` is used, all step states recorded after the target step are deleted atomically before execution resumes.
 
 ```bash
 # List resumable
 awf resume --list
 
-# Resume specific
+# Resume specific (default: retry failed step)
 awf resume abc123-def456
 
-# Resume with override
+# Resume from the previous completed step
+awf resume abc123 --from previous
+
+# Resume from a specific named step
+awf resume abc123 --from build
+
+# Resume with input override
 awf resume abc123 -i max_tokens=5000
+
+# Combine: resume from named step with input override
+awf resume abc123 --from deploy -i env=prod
 ```
 
 ## awf list
