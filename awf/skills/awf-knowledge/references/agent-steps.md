@@ -528,11 +528,44 @@ Agent responses are captured in state:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `output` | string | Raw response text (or cleaned text if `output_format` is set) |
-| `response` | object | Parsed JSON response (automatic heuristic) |
-| `json` | object | Parsed JSON from `output_format: json` (explicit, see [Output Formatting](#output-formatting)) |
-| `tokens` | object | Token usage metadata |
-| `exit_code` | int | 0 for success |
+| `Output` | string | Raw response text (or cleaned text if `output_format` is set) |
+| `Response` | object | Parsed JSON response (automatic heuristic) |
+| `JSON` | object | Parsed JSON from `output_format: json` (explicit, see [Output Formatting](#output-formatting)) |
+| `TokensInput` | int | Input tokens (real count from provider, or fallback estimate) |
+| `TokensOutput` | int | Output tokens (real count from provider, or fallback estimate) |
+| `TokensEstimated` | bool | `true` when provider did not emit token data (`len/4` fallback used) |
+| `TokensUsed` | int | Aggregate token count (legacy; prefer `TokensInput`/`TokensOutput`) |
+| `ExitCode` | int | 0 for success |
+
+**Per-provider token sources:**
+
+| Provider | Token data source |
+|----------|------------------|
+| `claude` | `result` event `usage` (includes cache tokens and `total_cost_usd`) |
+| `gemini` | `result` event `stats` |
+| `codex` | `turn.completed` event `usage` |
+| `github_copilot` | `assistant.message` event `outputTokens` |
+| `opencode` | `step_finish` event `part.tokens` |
+| `openai_compatible` | API `usage` response fields |
+| Any (no data emitted) | Fallback: `len(output)/4`; sets `TokensEstimated: true` |
+
+**Example: using token fields in a downstream step:**
+
+```yaml
+analyze:
+  type: agent
+  provider: claude
+  prompt: "Review: {{.inputs.code}}"
+  on_success: report
+
+report:
+  type: step
+  command: |
+    echo "Input tokens: {{.states.analyze.TokensInput}}"
+    echo "Output tokens: {{.states.analyze.TokensOutput}}"
+    echo "Estimated: {{.states.analyze.TokensEstimated}}"
+  on_success: done
+```
 
 ### Raw Output
 
@@ -1082,7 +1115,7 @@ prompt: "{{.states.step.Output}}"
 when: "states.step.ExitCode == 0"
 ```
 
-**State properties (uppercase):** `.Output`, `.Stderr`, `.ExitCode`, `.Status`, `.Response`, `.JSON`, `.Tokens`
+**State properties (uppercase):** `.Output`, `.Stderr`, `.ExitCode`, `.Status`, `.Response`, `.JSON`, `.TokensInput`, `.TokensOutput`, `.TokensEstimated`, `.TokensUsed`
 
 **Loop context (PascalCase):** `.Item`, `.Index`, `.Index1`, `.First`, `.Last`, `.Length`, `.Parent`
 
