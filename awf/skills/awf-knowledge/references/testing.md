@@ -41,7 +41,9 @@ tests/
 │   ├── cli_test.go
 │   ├── workflow_test.go
 │   ├── validation_providers_test.go  # Agent provider behavior validation
-│   ├── graph_algorithm_refactoring_test.go  # Cycle detection and execution order
+│   ├── features/
+│   └── execution_order_determinism_test.go  # Deterministic step ordering across runs
+├── graph_algorithm_refactoring_test.go  # Cycle detection and execution order
 │   ├── cognitive_complexity_refactoring_test.go  # Executor helper refactoring
 │   ├── execution_helpers_test.go  # Execution helper workflow validation
 │   ├── execution_test.go         # Execution service integration (v0.5.35: consolidated EventStreamReader)
@@ -995,6 +997,27 @@ func TestExecution(t *testing.T) {
     // ... test
 }
 ```
+
+## Execution Order Determinism Tests
+
+Integration tests verify that step display order in execution summaries is always workflow-defined, not Go map order (PR #342):
+
+```
+tests/integration/features/
+└── execution_order_determinism_test.go  # //go:build integration
+```
+
+**Coverage**:
+- Repeated runs of the same workflow produce identical step ordering
+- Branching workflows (conditional transitions) follow the default path
+- Parallel step blocks appear in workflow-defined position within the summary
+
+**Unit tests** (`internal/domain/workflow/graph_test.go`):
+- `NextDefaultStep`: nil step, unconditional-transition precedence over `on_success`, `on_success` fallback, conditional-only steps (no default)
+- `ExecutionOrder`: linear chains, cycle prevention, terminal stops, parallel steps, value-copy safety
+
+**CLI display tests** (`internal/interfaces/cli/run_internal_test.go`):
+- `showExecutionDetails`, `showStepOutputs`, `showEmptyStepFeedback`, `buildStepInfos` all accept `*workflow.Workflow` and use `ExecutionOrder()` — tests include ordering assertions
 
 ## Domain Algorithm Tests
 

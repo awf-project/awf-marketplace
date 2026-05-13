@@ -123,6 +123,19 @@ Place a file at `.awf/prompts/<pack>/override.md` to override any pack-embedded 
 | `--otel-exporter` | OTLP gRPC endpoint for distributed tracing (overrides `telemetry.exporter` in config) |
 | `--otel-service-name` | Service name for traces (overrides `telemetry.service_name` in config) |
 
+### Execution Summary Ordering
+
+When a workflow completes, the `--- Execution Details ---` summary lists steps in workflow-defined order: `Initial` state first, then following the default path (unconditional transitions, then `on_success`), stopping at terminal states. This order is deterministic and consistent across repeated runs.
+
+```bash
+awf run deploy --verbose
+# --- Execution Details ---
+# checkout   success   1.2s
+# build      success   4.8s
+# test       success   12.1s
+# deploy     success   3.4s
+```
+
 ### Output Mode (`--output`)
 
 | Mode | Behavior |
@@ -261,6 +274,8 @@ Controls which step re-execution begins from. States after the target step are a
 | `<step-name>` | Reset state to the named step and re-execute forward. The step name must exist in the execution history. |
 
 **State cleanup**: when `--from previous` or `--from <step-name>` is used, all step states recorded after the target step are deleted atomically before execution resumes.
+
+**Execution summary ordering**: after resume completes, the execution summary lists steps in workflow-defined order, identical to `awf run` (Initial → default path → terminal).
 
 ```bash
 # List resumable

@@ -47,7 +47,7 @@ awf/
 │   │   │   ├── step.go          # Step execution
 │   │   │   ├── context.go       # Execution context
 │   │   │   ├── validation.go    # Input validation
-│   │   │   ├── graph.go         # Graph algorithms (cycle detection, execution order)
+│   │   │   ├── graph.go         # Graph algorithms: cycle detection, ExecutionOrder(), NextDefaultStep()
 │   │   │   ├── template_validation.go  # Template validation with BFS helpers
 │   │   │   ├── audit_event.go   # AuditEvent model with start/complete constructors (v0.6.7)
 │   │   │   ├── domain_test_helpers_test.go  # Shared test utilities (v0.5.26)
@@ -240,6 +240,21 @@ type ExecutionContext struct {
 func (c *ExecutionContext) GetStepState(name string) (StepState, bool)
 func (c *ExecutionContext) SetStepState(name string, state StepState)
 func (c *ExecutionContext) GetAllStepStates() map[string]StepState // returns defensive copy
+```
+
+**Graph traversal functions** (`graph.go`):
+
+```go
+// NextDefaultStep returns the next step on the default path:
+// unconditional transition first, falling back to on_success.
+// Returns nil at terminals or when no unconditional transition exists.
+func NextDefaultStep(step *Step) *Step
+
+// ExecutionOrder returns steps in workflow-defined order starting from Initial,
+// following the default path (unconditional transitions then on_success).
+// Stops at terminal states and is cycle-safe.
+// Use this instead of ranging over Workflow.States (map iteration is non-deterministic).
+func ExecutionOrder(wf *Workflow) []*Step
 ```
 
 **Ports (Interfaces):**
