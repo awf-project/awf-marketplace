@@ -17,7 +17,10 @@ State property names must be uppercase (Go template convention):
 ```yaml
 {{.states.step_name.Output}}            # Command output (raw text, or cleaned if output_format set)
 {{.states.step_name.ExitCode}}          # Exit code (integer, POSIX 0-255)
-{{.states.step_name.TokensUsed}}        # Tokens consumed by agent steps
+{{.states.step_name.TokensInput}}       # Input tokens (agent steps; real count or fallback estimate)
+{{.states.step_name.TokensOutput}}      # Output tokens (agent steps; real count or fallback estimate)
+{{.states.step_name.TokensEstimated}}   # true when provider did not emit token data (len/4 fallback)
+{{.states.step_name.TokensUsed}}        # Aggregate token count (legacy; prefer TokensInput/TokensOutput)
 {{.states.step_name.Response.field}}    # Parsed field from operation/agent structured output (heuristic)
 {{.states.step_name.JSON.field}}        # Parsed field from output_format: json (explicit)
 ```
@@ -72,11 +75,41 @@ command: echo "Issues: {{.states.analyze.Response.issues}}"
 # Parsed JSON from output_format: json - explicit
 command: echo "Severity: {{.states.analyze.JSON.severity}}"
 
-# Token usage metadata
+# Token usage — granular fields (preferred)
+command: echo "Input: {{.states.analyze.TokensInput}} Output: {{.states.analyze.TokensOutput}}"
+
+# Token estimation flag — true when provider did not emit token data (fallback len/4 used)
+command: echo "Estimated: {{.states.analyze.TokensEstimated}}"
+
+# Aggregate token count (legacy)
 command: echo "Tokens: {{.states.analyze.TokensUsed}}"
 ```
 
-> **Note**: `TokensUsed` replaced deprecated `Tokens` field. Update workflows from `{{.states.step.Tokens}}` to `{{.states.step.TokensUsed}}`.
+**Token fields per provider:**
+
+| Provider | Source | `TokensEstimated` |
+|----------|--------|-------------------|
+| `claude` | `result` event `usage` (includes cache tokens) | `false` |
+| `gemini` | `result` event `stats` | `false` |
+| `codex` | `turn.completed` event `usage` | `false` |
+| `github_copilot` | `assistant.message` event `outputTokens` | `false` |
+| `opencode` | `step_finish` event `part.tokens` | `false` |
+| `openai_compatible` | API `usage` response fields | `false` |
+| Any (no data emitted) | Fallback: `len(output)/4` | `true` |
+
+When `TokensEstimated` is `true`, the values are rough approximations. Use conditionals to guard token-sensitive logic:
+
+```yaml
+report:
+  type: step
+  command: |
+    echo "Input tokens: {{.states.analyze.TokensInput}}"
+    echo "Output tokens: {{.states.analyze.TokensOutput}}"
+    echo "Estimated: {{.states.analyze.TokensEstimated}}"
+  on_success: done
+```
+
+> **Note**: `TokensUsed` replaced deprecated `Tokens` field. Update workflows from `{{.states.step.Tokens}}` to `{{.states.step.TokensUsed}}`. Prefer `TokensInput`/`TokensOutput` for new workflows.
 
 ### JSON (Explicit Output Formatting)
 

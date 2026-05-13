@@ -123,6 +123,7 @@ command: echo "{{.inputs.file}}"
 # Previous outputs (uppercase property names required)
 command: echo "{{.states.prev.Output}}"
 command: echo "Exit: {{.states.prev.ExitCode}}"
+command: echo "{{.states.prev.TokensInput}} in / {{.states.prev.TokensOutput}} out (estimated: {{.states.prev.TokensEstimated}})"
 
 # Operation outputs (structured data from plugins)
 command: echo "{{.states.get_issue.Response.title}}"
@@ -143,9 +144,7 @@ command: echo "{{.loop.Index1}}/{{.loop.Length}}"
 ```
 
 > **Breaking Change (v0.5.12)**: State property names must be uppercase: `.Output`, `.ExitCode`, `.Status`, `.Stderr`. Lowercase was never functional with Go templates. Use `awf validate` to detect casing issues.
-
 > **Architecture (v0.5.34)**: ExecutionService now uses `ports.AgentRegistry` interface instead of concrete type. Custom agent registries can implement the interface for test isolation or alternative providers.
-
 > **Breaking Change (v0.6.6)**: `provider: custom` and `command` field removed. Use `provider: openai_compatible` with `base_url` and `model` options for any Chat Completions API endpoint (OpenAI, Ollama, vLLM, Groq, LM Studio).
 
 ## Common Patterns
