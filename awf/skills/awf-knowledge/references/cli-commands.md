@@ -611,7 +611,7 @@ awf workflow install <owner/repo>@v1.2.0     # pin to specific release tag
 - Downloads and verifies SHA-256 checksum against the release manifest
 - Validates `awf-pack.yaml` including CLI version constraints
 - Warns if the pack declares plugin dependencies not currently installed
-- Substitutes `dev` CLI version with `0.5.0` for constraint evaluation
+- Dirty dev builds (e.g., `v0.8.1-3-gabcdef-dirty` from `git describe`) fall back to version `999.0.0` for constraint evaluation, satisfying all constraints
 - Enforces 1MB size limit on manifest reads (OOM protection)
 
 ```bash
@@ -707,7 +707,7 @@ Each workflow pack contains an `awf-pack.yaml` manifest:
 ```yaml
 name: my-workflows
 version: "1.0.0"
-min_cli_version: "0.6.0"    # optional, semver constraint
+min_cli_version: "0.6.0"    # optional, semver constraint; "v0.6.0" also accepted
 max_cli_version: "1.0.0"    # optional
 plugins:                     # optional, warns if not installed
   - awf-plugin-database
@@ -720,8 +720,8 @@ workflows:
 |-------|----------|-------------|
 | `name` | yes | Pack identifier used for install/remove |
 | `version` | yes | Pack version |
-| `min_cli_version` | no | Minimum AWF CLI version required |
-| `max_cli_version` | no | Maximum AWF CLI version supported |
+| `min_cli_version` | no | Minimum AWF CLI version required; both `0.6.0` and `v0.6.0` are valid |
+| `max_cli_version` | no | Maximum AWF CLI version supported; both bare and `v`-prefixed forms accepted |
 | `plugins` | no | Plugin dependencies (installation warnings only) |
 | `workflows` | yes | List of workflow YAML files included in the pack |
 
