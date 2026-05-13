@@ -170,7 +170,7 @@ analyze:
 - The `copilot` CLI binary must be installed and authenticated with a GitHub Copilot subscription
 - System prompt is inlined for the first turn — the Copilot CLI provides no `--system-prompt` flag
 - Multi-turn session resume uses `--resume=<session-id>`
-- Output is JSONL streaming with `assistant.message_delta` and `tool.execution_start` event types
+- Output is JSONL streaming; AWF parses `assistant.message` (complete message) and `tool.execution_start` events for display — `assistant.message_delta` (streaming chunks) is silently ignored to prevent duplicated output
 
 **Multi-turn example:**
 
