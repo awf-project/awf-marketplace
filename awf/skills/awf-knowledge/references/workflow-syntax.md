@@ -606,10 +606,11 @@ step2:
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
-| `provider` | string | Yes | `claude`, `codex`, `gemini`, `opencode`, `openai_compatible` |
+| `provider` | string | Yes | `claude`, `codex`, `gemini`, `opencode`, `openai_compatible`, `github_copilot` |
 | `mode` | string | No | `single` (default) or `conversation` for multi-turn |
 | `prompt` | string | Yes* | Prompt template (supports `{{.inputs.*}}` and `{{.states.*}}` interpolation) |
 | `prompt_file` | string | No* | Path to external prompt template file (mutually exclusive with `prompt`) |
+| `skills` | list | No | Skill names or paths injected as `<skill_content>` XML before the prompt (see [Skills Reference](skills.md)) |
 | `system_prompt` | string | No | System message (preserved across turns) |
 | `output_format` | string | No | Post-processing format: `json` (strip fences + validate JSON) or `text` (strip fences only) |
 | `conversation` | object | No | Conversation configuration (required if mode=conversation) |

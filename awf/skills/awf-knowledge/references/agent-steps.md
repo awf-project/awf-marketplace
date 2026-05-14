@@ -522,6 +522,28 @@ Provide:
 awf run code-review --input file_path=main.py --input focus_areas="Performance and security"
 ```
 
+## Skills
+
+Inject reusable knowledge documents into an agent step by adding a `skills:` list. Each entry is either a skill name (resolved from discovery directories) or an explicit path to a directory containing `SKILL.md`:
+
+```yaml
+analyze:
+  type: agent
+  provider: claude
+  skills:
+    - code-review          # resolved by name
+    - security-hardening   # resolved by name
+    - /shared/skills/api-conventions  # resolved by explicit path
+  prompt: "Review: {{.inputs.code}}"
+  on_success: done
+```
+
+**Injection:** AWF strips SKILL.md frontmatter and prepends each skill's body as a `<skill_content>` XML block before the user prompt. Multiple skills are injected in declaration order.
+
+**Validation:** `awf validate` reports `skill_not_found`, `skill_missing_skillmd`, and `skill_empty_content` errors before runtime.
+
+**Details:** [Skills Reference](skills.md)
+
 ## Response Handling
 
 Agent responses are captured in state:
