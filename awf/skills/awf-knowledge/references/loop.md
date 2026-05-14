@@ -565,8 +565,24 @@ states:
     status: success
 ```
 
+## Validation and Diagram
+
+`awf validate` performs graph-based reachability analysis. For loop steps, the following are included as reachable graph edges:
+
+- All steps listed in `body:` — treated as reachable from the loop step
+- The `on_complete` target — treated as reachable from the loop step
+
+Body steps and `on_complete` targets are not reported as unreachable even when they have no direct `on_success` path to themselves.
+
+`awf diagram` renders loop body steps as connected nodes with edges to `on_complete`.
+
+```bash
+awf validate workflow-with-loops.yaml   # body steps and on_complete not flagged
+awf diagram workflow-with-loops.yaml    # graph shows body connections and on_complete edge
+```
+
 ## See Also
 
 - [Workflow Syntax](workflow-syntax.md) - State types overview
 - [Interpolation](interpolation.md) - Loop variable syntax
-- [Validation](validation.md) - Loop validation rules
+- [Validation](validation.md) - Loop validation rules and reachability analysis

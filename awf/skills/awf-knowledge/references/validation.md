@@ -319,3 +319,25 @@ inputs:
 2. **Use enums for fixed choices** - Prevents typos
 3. **Set sensible defaults** - Reduce required inputs
 4. **Combine rules** - Comprehensive validation
+
+---
+
+## Loop Body Reachability
+
+`awf validate` performs graph-based reachability analysis on the full workflow graph. For loop steps (`for_each`, `while`), the following are treated as reachable outbound edges:
+
+| Edge | Description |
+|------|-------------|
+| Body steps | Each step listed in `body:` is reachable from the loop step |
+| `on_complete` | The post-loop continuation target is reachable from the loop step |
+
+Steps unreachable via any graph path are reported as warnings. Body steps and `on_complete` targets are excluded from unreachable warnings even when they carry no direct `on_success` path back to the loop state.
+
+Execution order analysis inlines body steps immediately after the loop step, before advancing to `on_complete`. This matches runtime execution order and ensures `awf diagram` renders accurate step sequencing.
+
+```bash
+$ awf validate for-each-workflow.yaml
+# body steps and on_complete correctly excluded from unreachable warnings
+```
+
+For loop syntax and `on_complete` configuration, see [Loop Reference](loop.md).
