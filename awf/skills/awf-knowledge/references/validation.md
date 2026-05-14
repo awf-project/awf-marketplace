@@ -132,6 +132,27 @@ when: "Context.RetryCount > 0"    # Preferred PascalCase
 
 ---
 
+## Skill Reference Validation
+
+`awf validate` checks all `skills:` entries on agent steps before runtime.
+
+| Error code | Condition |
+|------------|-----------|
+| `skill_not_found` | Named skill not found in any discovery directory |
+| `skill_missing_skillmd` | Skill directory found but contains no `SKILL.md` |
+| `skill_empty_content` | `SKILL.md` exists but is empty after frontmatter stripping |
+
+```bash
+$ awf validate my-workflow
+validation error: skill_not_found
+  step "analyze": skill "code-review" not found in any skills directory
+  searched: .awf/skills/, .agents/skills/, .claude/skills/, ...
+```
+
+For skill directory layout and discovery order, see [Skills Reference](skills.md).
+
+---
+
 # Input Validation
 
 ## Input Definition

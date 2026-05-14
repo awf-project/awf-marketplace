@@ -18,10 +18,14 @@ Workflow reached terminal state with `status: success`.
 - Missing required input
 - Workflow file not found
 - Input validation failed
+- Skill not found or invalid (`USER.INPUT.MISSING_SKILL`)
 
 ```bash
 awf run deploy
 # Error: missing required input: env
+
+awf run my-workflow
+# Error [USER.INPUT.MISSING_SKILL]: skill "code-review" not found in any skills directory
 ```
 
 ## Exit Code 2: Workflow Error

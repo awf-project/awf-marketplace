@@ -136,6 +136,7 @@ command: echo "{{.env.HOME}}"
 
 # AWF system directories (XDG-compliant, local-before-global resolution)
 command: echo "{{.awf.config_dir}}"    # ~/.config/awf
+command: echo "{{.awf.skills_dir}}"   # first active skills directory (.awf/skills/ preferred)
 prompt_file: "{{.awf.prompts_dir}}/analyze.md"   # checks <workflow_dir>/prompts/ first
 script_file: "{{.awf.scripts_dir}}/deploy.sh"    # checks <workflow_dir>/scripts/ first
 
@@ -143,9 +144,8 @@ script_file: "{{.awf.scripts_dir}}/deploy.sh"    # checks <workflow_dir>/scripts
 command: echo "{{.loop.Index1}}/{{.loop.Length}}"
 ```
 
-> **Breaking Change (v0.5.12)**: State property names must be uppercase: `.Output`, `.ExitCode`, `.Status`, `.Stderr`. Lowercase was never functional with Go templates. Use `awf validate` to detect casing issues.
-> **Architecture (v0.5.34)**: ExecutionService now uses `ports.AgentRegistry` interface instead of concrete type. Custom agent registries can implement the interface for test isolation or alternative providers.
-> **Breaking Change (v0.6.6)**: `provider: custom` and `command` field removed. Use `provider: openai_compatible` with `base_url` and `model` options for any Chat Completions API endpoint (OpenAI, Ollama, vLLM, Groq, LM Studio).
+> **Breaking Change (v0.5.12)**: State property names must be uppercase: `.Output`, `.ExitCode`, `.Status`, `.Stderr`. Use `awf validate` to detect casing issues.
+> **Breaking Change (v0.6.6)**: `provider: custom` removed. Use `provider: openai_compatible` with `base_url` and `model`.
 
 ## Common Patterns
 
@@ -251,6 +251,27 @@ process:
   on_success: done
 ```
 
+### Agent Skills
+
+Inject reusable knowledge into agent steps by declaring skill names or paths:
+
+```yaml
+analyze:
+  type: agent
+  provider: claude
+  skills:
+    - code-review          # resolved by name from .awf/skills/, .agents/skills/, etc.
+    - /path/to/my-skill    # resolved by explicit path (directory containing SKILL.md)
+  prompt: "Review: {{.inputs.code}}"
+  on_success: done
+```
+
+- SKILL.md frontmatter is stripped; body injected as `<skill_content>` XML before the prompt
+- `awf validate` checks: `skill_not_found`, `skill_missing_skillmd`, `skill_empty_content`
+- Override discovery with `AWF_SKILLS_PATH` env var; use `{{.awf.skills_dir}}` in paths
+
+**Details**: [Skills Reference](references/skills.md)
+
 ### OpenAI-Compatible Agent (Ollama, vLLM, Groq)
 
 ```yaml
@@ -268,10 +289,8 @@ analyze:
   on_success: process
 ```
 
-- Native multi-turn conversation support via `mode: conversation`
-- Accurate token tracking from API `usage` fields
-- Structured HTTP error mapping: 401 (auth), 429 (rate limit), 5xx (server)
-- `temperature` and `max_completion_tokens` are not forwarded to CLI providers
+- Supports multi-turn (`mode: conversation`), token tracking, HTTP error mapping (401/429/5xx)
+- `temperature` and `max_completion_tokens` not forwarded to CLI providers
 
 **Details**: [Agent Steps - OpenAI-Compatible Provider](references/agent-steps.md#openai-compatible-provider)
 
@@ -285,12 +304,8 @@ analyze:
   options:
     mode: autopilot    # interactive | plan | autopilot
     effort: high       # low | medium | high
-    allowed_tools: [read_file, run_command]
   on_success: process
 ```
-
-- Requires `copilot` CLI installed and authenticated
-- `mode` and `effort` are enum-validated; multi-turn uses `--resume=<session-id>`
 
 **Details**: [Agent Steps - GitHub Copilot](references/agent-steps.md#github-copilot)
 
@@ -352,9 +367,8 @@ deploy:
 
 ### Multi-Turn Conversation
 
-**Interactive session** (`mode: conversation`) — live user input via terminal:
-
 ```yaml
+# Interactive session (mode: conversation) — live user input via terminal
 review:
   type: agent
   provider: claude
@@ -362,31 +376,16 @@ review:
   system_prompt: "You are a code reviewer."
   prompt: "What would you like to review?"
   on_success: done
-```
 
-- `prompt` is sent as the first user message. AWF prompts `> ` for subsequent input. Empty line exits.
-- Requires a terminal — not suitable for CI/CD pipelines.
-
-**Cross-step session tracking** — track session for downstream resume:
-
-```yaml
-initial_review:
-  type: agent
-  provider: claude
-  prompt: "Review: {{.inputs.code}}"
-  conversation: {}                  # enables session tracking
-  on_success: deep_review
-
+# Cross-step session tracking — resume a previous step's session
 deep_review:
   type: agent
   provider: claude
   prompt: "Focus on security issues."
   conversation:
-    continue_from: initial_review   # resumes initial_review's session
+    continue_from: initial_review   # validated at awf validate time
   on_success: done
 ```
-
-- **`continue_from`**: Resume a previous step's session (SessionID or Turns). Validated at `awf validate` time.
 
 **Details**: [Conversation Mode](references/conversation-steps.md)
 
@@ -479,6 +478,7 @@ Opt-in OpenTelemetry tracing — exports spans to Jaeger, Grafana Tempo, Honeyco
 - [references/configuration.md](references/configuration.md) - Project configuration
 - [references/plugins.md](references/plugins.md) - Plugin system & SDK
 - [references/plugin-events.md](references/plugin-events.md) - Inter-plugin event system
+- [references/skills.md](references/skills.md) - Agent skills injection
 - [references/templates.md](references/templates.md) - Workflow templates
 - [references/examples.md](references/examples.md) - Real-world examples
 

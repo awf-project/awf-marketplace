@@ -226,6 +226,7 @@ Access system directories configured per XDG standards:
 {{.awf.scripts_dir}}     # Designated scripts directory within config_dir
 {{.awf.workflows_dir}}   # Designated workflows directory within config_dir
 {{.awf.plugins_dir}}     # Plugin installation directory
+{{.awf.skills_dir}}      # First active skills directory (.awf/skills/ if it exists, otherwise first non-empty discovery dir)
 ```
 
 Examples:
