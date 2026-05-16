@@ -40,8 +40,8 @@ Rejected alternatives include serialising the full knowledge base on every write
 
 **Consequences for skill users:**
 
-- Persistence is **project-scoped**. Each `.zpm/` directory is a self-contained knowledge base; switching projects switches state.
-- `PersistenceManager.init` takes **two paths**: `data_dir` (WAL) and `snapshot_dir_path` (snapshots + auto-loaded `*.pl`). They map to `.zpm/data/` and `.zpm/kb/` respectively. The separation lets `kb/` be committed to version control while `data/` stays ephemeral.
+- Persistence is **project-scoped and per-segment**. Each `.zpm/` directory is a self-contained set of knowledge bases; switching projects switches state. Within a project, each mounted segment has its own WAL and snapshot files (see "Segmented memory" below).
+- `PersistenceManager.init` takes **two paths per segment**: a WAL path (`.zpm/data/<name>.wal`) and a snapshot directory (`.zpm/kb/<name>/`, which also holds auto-loaded `*.pl`). The separation lets `kb/` be committed to version control while `data/` stays ephemeral.
 - Facts and rules survive process restart without client re-loading. ADR 0001's "engine state does not survive a restart" is now scoped to the in-memory case only; the durable path is the default.
 - If WAL or snapshot I/O fails at startup (missing or non-writable `.zpm/data/`), `PersistenceManager` falls back to **degraded mode**: writes still execute against the in-memory engine, but nothing is journalled. Use `get_persistence_status` to confirm `mode == "durable"` before relying on durability.
 - **WAL and snapshot format**: both use JSON Lines. Each write is fsynced to disk. There are no size limits per clause or per journal file.
@@ -57,29 +57,50 @@ Rejected alternatives include serialising the full knowledge base on every write
 
 - `discover(allocator, cwd)` walks up from `cwd`, stopping at a directory that contains `.zpm/`. The walk is bounded to the starting filesystem device; it will not cross mount points into a sibling project.
 - Missing `.zpm/` → `ProjectError.NotFound` → the server exits 1 with a hint to run `zpm init`.
-- `initProject(cwd)` creates `.zpm/`, `.zpm/kb/`, `.zpm/data/`, and `.zpm/.gitignore` (contents: `data/`). It returns `ProjectError.AlreadyInitialized` if `.zpm/` already exists — the CLI treats this as a soft success (exit 0, idempotent).
-- `loadKnowledgeBase(allocator, kb_dir, engine)` iterates `.zpm/kb/`, loading every file ending in `.pl` via `engine.loadFile`. Individual load failures are logged to stderr; the server keeps loading the remaining files.
+- `initProject(cwd)` creates `.zpm/`, `.zpm/kb/default/`, `.zpm/data/`, `.zpm/mounts.json` (initial contents: `[{"name":"default","scope":"project","mode":"rw"}]`), and `.zpm/.gitignore` (contents: `data/`). It returns `ProjectError.AlreadyInitialized` if `.zpm/` already exists — the CLI treats this as a soft success (exit 0, idempotent).
+- `kbDirFor(name)` resolves the per-segment KB directory `.zpm/kb/<name>/`. `loadKnowledgeBase(allocator, kb_dir, engine, module)` iterates that directory, loading every `*.pl` into the named Prolog module. Individual load failures are logged to stderr; the server keeps loading the remaining files.
 
-**Ordering at startup:** discover → `PersistenceManager.init(data_dir, kb_dir)` → `Engine.init` → `loadKnowledgeBase(kb_dir)` → `PersistenceManager.restore(engine)` (snapshot + WAL replay) → MCP dispatch loop.
+**Ordering at startup:** discover → `bootstrap.loadManifest(.zpm/mounts.json)` (auto-creates `default` on first boot) → `Engine.init` → `MemoryRegistry.init(engine)` → for each segment in the manifest: `PersistenceManager.init(data_path, kb_dir)` + `loadKnowledgeBase(kb_dir, module)` + `PersistenceManager.restore(engine, module)` (snapshot + WAL replay) → MCP dispatch loop.
+
+## Segmented memory (F021 + F022)
+
+The engine hosts one or more **named segments**, each implemented as a Prolog module with its own persistence:
+
+- `src/memory/registry.zig` owns the mount table. Each entry records the segment name, mode (`rw`/`ro`), scope (`project`/`global`), the `PersistenceManager` handle, and the Prolog module identifier. Lookup by name returns the segment context; missing names produce `ExecutionFailed` at the tool layer.
+- `src/mounts/manifest.zig` serialises the mount table to `.zpm/mounts.json` and reads it on bootstrap. The manifest is the source of truth across CLI process boundaries — mounts survive restart without re-issuing `mount_memory`.
+- **Routing.** Tool handlers read the optional `memory` parameter (or `--memory` flag on CLI). The registry resolves the name to a segment context, the handler then targets that segment's module on the engine and journals through that segment's `PersistenceManager`. Omitting the parameter routes to `default`.
+- **Read-only enforcement.** When a write tool targets a `ro`-mounted segment, the registry returns an error before the engine mutation runs. The WAL is not touched.
+- **Cross-segment queries.** `Engine.query` accepts Prolog module qualification (`Module:Goal`) so a single goal can reference clauses from any mounted segment. Module names must match mounted segments; unknown modules produce a Prolog existence error captured as `ExecutionFailed`.
+- **`default` is always mounted.** It is created on first boot, cannot be unmounted, and is the implicit target for tools that omit `memory`.
 
 ## Layer responsibilities
 
 ```
 src/main.zig                 MCP dispatch, lifecycle, logging to stderr;
                              runs project discovery, initialises
-                             PersistenceManager and Engine
-src/project.zig              .zpm/ discovery, init, *.pl auto-load
-src/tools/context.zig        engine + persistence-manager singleton
-src/tools/*.zig              MCP tool handlers; writes go via Engine and
-                             are journalled through the persistence manager
-src/persistence/manager.zig  lifecycle, degraded-mode detection, dual-path
-                             (data_dir for WAL, snapshot_dir_path for snapshots)
+                             MemoryRegistry, Engine, per-segment persistence
+src/cli/bootstrap.zig        reads .zpm/mounts.json on boot, auto-mounts every
+                             listed segment, creates `default` on first boot
+src/cli/memory.zig           `memory create|mount|unmount|list` subcommand group
+src/project.zig              .zpm/ discovery, init, per-segment kb dir resolution,
+                             *.pl auto-load into a named Prolog module
+src/memory/registry.zig      named-segment mount table; routes tool calls to the
+                             correct module + PersistenceManager; enforces ro mode
+src/mounts/manifest.zig      .zpm/mounts.json serialisation; survives process exit
+src/tools/context.zig        engine + memory-registry singleton
+src/tools/*.zig              MCP tool handlers; read optional `memory` arg, route
+                             writes via Engine + per-segment persistence manager
+src/tools/{create,mount,    memory-management tool handlers
+  unmount,list}_memory.zig
+src/persistence/manager.zig  lifecycle, degraded-mode detection, per-segment
+                             paths (data/<name>.wal for WAL, kb/<name>/ for snapshots)
 src/persistence/wal.zig      append-only journal (JSON Lines, fsync per write);
                              replay from a sequence number
 src/persistence/snapshot.zig snapshot serialisation and restoration (JSON Lines);
                              restore uses resetUserKnowledge (wipe-before-reload)
 src/tools/term_utils.zig     shared Prolog term parsing for tools + persistence
-src/prolog/engine.zig        public Zig API; only layer MCP handlers may call
+src/prolog/engine.zig        public Zig API; module-qualified queries for cross-
+                             memory reads; only layer MCP handlers may call
 src/prolog/ffi.zig           extern "C" declarations matching Trealla exports
 src/prolog/capture.zig       stdout redirection and JSON output parsing for queries
   -> trealla-prolog submodule  actual Prolog machine (C library)
@@ -102,7 +123,7 @@ Keep Prolog-specific concerns inside `engine.zig` and below. MCP handlers should
 
 **Motivation:** Tool handlers are separate compilation units (`src/tools/*.zig`) and cannot import `src/main.zig`. The singleton in `context.zig` provides a dependency-injection point without requiring a global import cycle.
 
-**Persistence manager handle.** `context.zig` also carries a reference to the `PersistenceManager` instance. Write-path handlers retrieve it alongside the engine to journal each mutation. The same single-process / single-instance invariants apply: set once at startup, never re-assigned, not safe for concurrent use.
+**Memory registry handle.** `context.zig` also carries a reference to the `MemoryRegistry` instance. Write-path handlers resolve the optional `memory` argument through the registry to obtain the target segment's module name and `PersistenceManager`, then journal each mutation against that segment. The registry is set once at startup, never re-assigned, and not safe for concurrent use.
 
 ## Versioning and evolution
 

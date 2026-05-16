@@ -5,6 +5,7 @@
 - **Transport**: STDIO (stdin/stdout)
 - **Protocol version**: `2025-11-25`
 - **Server name**: `zpm`
+- **Server version**: `0.4.0`
 
 ## Server Capabilities
 
@@ -66,8 +67,41 @@ The response lists all registered tools with their input schemas.
 | `restore_snapshot` | yes | Restore from a named snapshot and replay subsequent journal entries |
 | `list_snapshots` | no | List all available snapshots with metadata |
 | `get_persistence_status` | no | Query journal size, last snapshot name, and operational mode (durable / degraded) |
+| `create_memory` | yes | Provision a new on-disk memory segment (`.zpm/kb/<name>/`); does not mount |
+| `mount_memory` | yes | Mount a segment into the engine (`rw` or `ro`); persists to `.zpm/mounts.json` |
+| `unmount_memory` | yes | Flush WAL, unload segment, remove from manifest; cannot unmount `default` |
+| `list_memories` | no | List all mounted segments with scope and mode |
 
 All write tools (`remember_fact`, `forget_fact`, `update_fact`, `upsert_fact`, `assume_fact`, `define_rule`, `clear_context`, `retract_assumption`, `retract_assumptions`) automatically journal mutations through the WAL using two-phase commit: the WAL entry is written and fsynced before the engine mutation executes. The WAL uses JSON Lines format with no per-entry size limits. When the persistence layer fails to initialise, the server runs in degraded mode: writes still execute against the in-memory engine but are not durable. Use `get_persistence_status` to inspect operational mode at runtime.
+
+## `memory` parameter (existing tools)
+
+All 20 knowledge/reasoning tools (every tool above except `echo` and the four `*_memory` management tools) accept an optional `memory` field in their arguments:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `memory` | string | no | Name of a mounted segment to target. Default: `default`. |
+
+- The named segment must already be mounted (see `mount_memory`). Targeting an unmounted segment returns `ExecutionFailed`.
+- Writes to a `ro`-mounted segment return `ExecutionFailed` with stderr text `memory '<name>' is read-only`.
+- Cross-segment reads use Prolog module qualification directly in the goal: `query_logic` with `goal = "design_decisions:rationale(X, Y)"`.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 100,
+  "method": "tools/call",
+  "params": {
+    "name": "remember_fact",
+    "arguments": {
+      "fact": "rationale(api_v2, security)",
+      "memory": "design_decisions"
+    }
+  }
+}
+```
+
+Full lifecycle and CLI parity: `memory-segments.md`.
 
 ## Echo
 
@@ -1880,6 +1914,265 @@ No arguments. Pass an empty object `{}`.
 }
 ```
 
+## create_memory
+
+Provision a new memory segment on disk. Creates `.zpm/kb/<name>/` and writes a `knowledge.pl` header. Does not mount the segment — call `mount_memory` afterward to make it addressable.
+
+**Annotations**: not read-only, not idempotent, destructive (allocates on-disk state).
+
+### Input Schema
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | yes | Segment name; must match `[a-z][a-z0-9_]*` (valid Prolog atom). |
+| `scope` | string | no | `project` (default) or `global`. |
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 28,
+  "method": "tools/call",
+  "params": {
+    "name": "create_memory",
+    "arguments": { "name": "design_decisions" }
+  }
+}
+```
+
+### Response (Success)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 28,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Created memory: design_decisions"
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — invalid name)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 28,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "InvalidArguments",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — already exists)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 28,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "ExecutionFailed",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+## mount_memory
+
+Mount a segment into the running engine, replay its WAL, and persist its presence in `.zpm/mounts.json` so it auto-mounts on subsequent startups.
+
+**Annotations**: not read-only, not idempotent, destructive (mutates manifest).
+
+### Input Schema
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | yes | Segment name (must already exist on disk). |
+| `mode` | string | no | `rw` (default) or `ro`. |
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 29,
+  "method": "tools/call",
+  "params": {
+    "name": "mount_memory",
+    "arguments": { "name": "design_decisions", "mode": "ro" }
+  }
+}
+```
+
+### Response (Success)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 29,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Mounted memory: design_decisions (ro)"
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — segment does not exist)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 29,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "ExecutionFailed",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+## unmount_memory
+
+Flush the segment's WAL, unload its Prolog module, and remove it from `.zpm/mounts.json`. Unmounting `default` is rejected.
+
+**Annotations**: not read-only, not idempotent, destructive.
+
+### Input Schema
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | yes | Segment name to unmount. |
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 30,
+  "method": "tools/call",
+  "params": {
+    "name": "unmount_memory",
+    "arguments": { "name": "design_decisions" }
+  }
+}
+```
+
+### Response (Success)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 30,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Unmounted memory: design_decisions"
+      }
+    ]
+  }
+}
+```
+
+### Response (Error — attempt to unmount default)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 30,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "ExecutionFailed",
+        "isError": true
+      }
+    ]
+  }
+}
+```
+
+## list_memories
+
+Enumerate all currently mounted segments along with their scope and mode. Read-only.
+
+### Input Schema
+
+No arguments. Pass an empty object `{}`.
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 31,
+  "method": "tools/call",
+  "params": {
+    "name": "list_memories",
+    "arguments": {}
+  }
+}
+```
+
+### Response (Success — segments mounted)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 31,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[{\"name\":\"default\",\"scope\":\"project\",\"mode\":\"rw\"},{\"name\":\"design_decisions\",\"scope\":\"project\",\"mode\":\"ro\"}]"
+      }
+    ]
+  }
+}
+```
+
+### Response (Success — only default mounted)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 31,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[{\"name\":\"default\",\"scope\":\"project\",\"mode\":\"rw\"}]"
+      }
+    ]
+  }
+}
+```
+
 ## End-to-End Example
 
 Assert facts and rules, then query and trace dependencies:
@@ -1936,6 +2229,7 @@ Error strings returned by the tools:
 
 | String | Meaning |
 |--------|---------|
-| `InvalidArguments` | Required argument missing, null, or empty |
-| `ExecutionFailed` | Engine rejected the operation (syntax error, Prolog failure) |
+| `InvalidArguments` | Required argument missing, null, empty, or segment name not a valid Prolog atom |
+| `ExecutionFailed` | Engine rejected the operation (syntax error, Prolog failure), segment not mounted, segment is read-only, attempt to unmount `default`, or `create_memory` on existing segment |
 | `Invalid Prolog syntax in rule: <detail>` | `define_rule` pre-validation caught unbalanced parentheses |
+| `memory '<name>' is read-only` | Write tool targeted a `ro`-mounted segment (text accompanies `ExecutionFailed`) |
