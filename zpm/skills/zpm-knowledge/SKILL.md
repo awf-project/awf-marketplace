@@ -13,6 +13,7 @@ ZPM is an MCP server written in Zig that embeds a Trealla Prolog logic engine th
 - Build or run the ZPM MCP server
 - Execute Prolog operations from an MCP client (Claude Code, Cursor, etc.)
 - Script knowledge-base operations from the shell without an MCP client (`zpm <tool-name>`)
+- Create, mount, or query named memory segments for isolated or read-only knowledge stores
 - Extend the Prolog engine API or its C FFI bridge
 - Diagnose build, link, or runtime issues involving the Trealla submodule
 
@@ -26,8 +27,13 @@ Zig MCP server (src/main.zig)
    |  context.getEngine() -- shared engine singleton
    v
 MCP tool handlers (src/tools/*.zig)
-   |  Zig Engine API (src/prolog/engine.zig)
-   |  + WAL journal (src/persistence/*.zig) on writes
+   |  optional `memory` arg routes to a named segment
+   v
+Memory registry (src/memory/registry.zig)
+   |  per-segment Prolog module, WAL, snapshots
+   v
+Zig Engine API (src/prolog/engine.zig)
+   |  module-qualified queries; + WAL journal on writes
    v
 C-ABI bindings (src/prolog/ffi.zig)
    |  extern "C"
@@ -36,7 +42,7 @@ Trealla Prolog (C git submodule)
    |  in-process call; query output captured via src/prolog/capture.zig
 ```
 
-All layers run in a single process. The Trealla submodule is compiled and linked into the Zig binary at build time; no separate daemon or IPC is involved. `src/tools/context.zig` holds the engine singleton; `src/main.zig` initializes it at startup via `context.setEngine` and tool handlers retrieve it via `context.getEngine`. Project discovery (`src/project.zig`) locates `.zpm/` before engine init so persistence paths (`kb/`, `data/`) are known. See `references/architecture.md` for the rationale (STDIO transport, C FFI submodule, engine singleton, project layout).
+All layers run in a single process. The Trealla submodule is compiled and linked into the Zig binary at build time; no separate daemon or IPC is involved. `src/tools/context.zig` holds the engine singleton; `src/main.zig` initializes it at startup via `context.setEngine` and tool handlers retrieve it via `context.getEngine`. Project discovery (`src/project.zig`) locates `.zpm/` before engine init so per-segment persistence paths (`kb/<name>/`, `data/<name>.wal`) are known. The memory registry (`src/memory/registry.zig`) manages named segments; the mount manifest (`src/mounts/manifest.zig`) persists mount state across CLI invocations via `.zpm/mounts.json`. See `references/architecture.md` for the rationale (STDIO transport, C FFI submodule, engine singleton, segmented memory, project layout).
 
 ## Prerequisites
 
@@ -71,7 +77,11 @@ zpm init       # creates .zpm/kb/, .zpm/data/, .zpm/.gitignore
 zpm serve      # discovers .zpm/ by walking up from cwd
 ```
 
-On startup, `zpm serve` auto-loads every `*.pl` file from `.zpm/kb/` into the engine and initialises persistence with dual paths: WAL journal in `.zpm/data/`, snapshots in `.zpm/kb/`. `.zpm/kb/` is intended for version control (share Prolog source with the team); `.zpm/data/` is ephemeral and gitignored.
+On startup, `zpm serve`:
+
+1. Reads `.zpm/mounts.json` and mounts every listed segment. On first boot (no manifest), creates the `default` segment and auto-discovers any existing `.zpm/kb/<name>/` directories into the manifest.
+2. For each mounted segment, loads `.zpm/kb/<name>/*.pl` into its Prolog module and initialises persistence (WAL at `.zpm/data/<name>.wal`, snapshots under `.zpm/kb/<name>/`).
+3. `.zpm/kb/` is intended for version control (share Prolog source with the team); `.zpm/data/` is ephemeral and gitignored.
 
 If no `.zpm/` is found in the directory ancestry the server exits 1 with `error: no project directory found`. If `.zpm/data/` is not writable the server enters **degraded mode** (in-memory only); verify with `get_persistence_status`.
 
@@ -88,15 +98,16 @@ MCP client configuration must pass `serve` as the argument; the client's working
 }
 ```
 
-All 22 MCP tools are also available as direct CLI subcommands — no MCP client required:
+All 26 MCP tools are also available as direct CLI subcommands — no MCP client required. Knowledge/reasoning tools accept an optional `--memory <name>` flag to target a specific segment (default: `default`):
 
 ```sh
 zpm remember-fact "task_status(f017,done)"
+zpm remember-fact "rationale(api_v2,security)" --memory design_decisions
 zpm query-logic "task_status(X,done)" --format json | jq '.[0].X'
 zpm get-persistence-status --format json
 ```
 
-Other subcommands: `version` (exits 0), `upgrade`. `--help`/`-h` exits 0. Unknown subcommands exit 1 on stderr. Full CLI reference: `references/cli.md`.
+Other subcommands: `memory create|mount|unmount|list` (segment lifecycle), `version` (exits 0), `upgrade`. `--help`/`-h` exits 0. Unknown subcommands exit 1 on stderr. Full CLI reference: `references/cli.md`.
 
 ## MCP Tools
 
@@ -124,6 +135,12 @@ Other subcommands: `version` (exits 0), `upgrade`. `--help`/`-h` exits 0. Unknow
 | `mcp__zpm__restore_snapshot` | yes | Restore from a named snapshot and replay subsequent journal entries |
 | `mcp__zpm__list_snapshots` | no | List all available snapshots with metadata |
 | `mcp__zpm__get_persistence_status` | no | Query journal size, last snapshot name, and operational mode (durable / degraded) |
+| `mcp__zpm__create_memory` | yes | Create a new on-disk memory segment (`.zpm/kb/<name>/`); does not mount |
+| `mcp__zpm__mount_memory` | yes | Mount a segment into the engine (mode `rw` or `ro`); persists to `.zpm/mounts.json` |
+| `mcp__zpm__unmount_memory` | yes | Flush WAL, unload the segment, and remove from the manifest; cannot unmount `default` |
+| `mcp__zpm__list_memories` | no | List all mounted segments with scope and mode |
+
+All knowledge/reasoning tools (the 20 above except `echo` and the four `*_memory` tools) accept an optional `memory` parameter to target a specific segment; omitting it targets `default`. Writes to read-only segments return `ExecutionFailed`. See `references/memory-segments.md`.
 
 All write tools journal mutations through a write-ahead log (WAL) using two-phase commit (journal fsynced before engine mutation). WAL and snapshot files use JSON Lines format with no per-entry size limits. The knowledge base is recovered on next startup by replaying the WAL on top of the latest snapshot. Snapshot restore uses wipe-before-reload semantics to prevent duplicate facts. If the persistence layer fails to initialise, the server runs in degraded (in-memory only) mode — writes still succeed but are not durable. See `references/architecture.md` for the WAL + snapshot design.
 
@@ -138,6 +155,7 @@ Key behavioral notes:
 - **`restore_snapshot`** wipes the engine knowledge base before loading (wipe-before-reload) to prevent duplicate facts.
 - **`get_persistence_status`** returns `mode: "durable"` or `mode: "degraded"`. Call this before relying on WAL recovery.
 - **Do not include a trailing `.`** in `fact`, `goal`, or `head`/`body` arguments — tools append it internally.
+- **`memory` parameter** is optional on all knowledge/reasoning tools and routes the operation to that mounted segment; omitting it targets `default`. Writes to `ro`-mounted segments return `ExecutionFailed`. Cross-segment reads use Prolog module qualification (`segment_name:Goal`).
 
 ## Engine API
 
@@ -184,24 +202,36 @@ The C FFI surface in `src/prolog/ffi.zig` maps Trealla return codes to Zig error
 
 ## Project layout (`.zpm/`)
 
-Each ZPM project has its own `.zpm/` directory, created by `zpm init`:
+Each ZPM project has its own `.zpm/` directory, created by `zpm init`. The layout is **per-segment**, not flat:
 
 ```
 .zpm/
-  kb/          # Versionable: *.pl sources + snapshots (auto-loaded on serve)
-  data/        # Ephemeral: WAL journal, locks (gitignored)
-  .gitignore   # Contains `data/`
+  kb/
+    default/         # Auto-created on first boot
+      knowledge.pl   # Versionable: Prolog source for this segment
+      <snapshot>.snap
+    <name>/          # Each mounted segment has its own subdirectory
+      knowledge.pl
+      <snapshot>.snap
+  data/              # Ephemeral, gitignored
+    default.wal      # One WAL file per segment
+    <name>.wal
+  mounts.json        # Mount manifest (auto-discovered on first boot)
+  .gitignore         # Contains `data/`
 ```
 
-- Drop `*.pl` files into `.zpm/kb/` to have them loaded automatically on every `zpm serve`.
-- Snapshots written by `save_snapshot` land in `.zpm/kb/` and replay alongside the WAL in `.zpm/data/` on the next start.
-- Each project is isolated: different `.zpm/` directories hold independent knowledge bases, so multiple `zpm serve` processes can run in parallel without cross-contamination.
+- Drop `*.pl` files into `.zpm/kb/<name>/` to have them loaded automatically when segment `<name>` mounts.
+- Snapshots written by `save_snapshot` land in `.zpm/kb/<segment>/` and replay alongside that segment's WAL on the next start.
+- Each project is isolated: different `.zpm/` directories hold independent knowledge bases, so multiple `zpm serve` processes can run in parallel against different projects without cross-contamination.
 - Discovery walks up from cwd and stops at the filesystem boundary (does not cross mount points).
+
+**Breaking change**: the pre-F021 flat `.zpm/kb/` layout (Prolog files at the top of `kb/`) is no longer supported. Existing knowledge bases must be re-initialized into the per-segment layout — either re-run `zpm init` in a fresh `.zpm/` and re-load facts, or move existing `*.pl` files into `.zpm/kb/default/`.
 
 ## References
 
-- `references/cli.md` — CLI subcommands (`init`, `serve`, all 22 tool subcommands), `--format` flag, exit codes, `.zpm/` discovery, MCP client configuration, concurrency warning
-- `references/mcp-tools.md` — MCP tool protocol: input schemas, request/response examples, error shapes
+- `references/cli.md` — CLI subcommands (`init`, `serve`, `memory create|mount|unmount|list`, all 26 tool subcommands), `--format` and `--memory` flags, exit codes, `.zpm/` discovery, MCP client configuration, concurrency warning
+- `references/mcp-tools.md` — MCP tool protocol: input schemas (including `memory` parameter), request/response examples, error shapes
+- `references/memory-segments.md` — Memory segments: lifecycle, scope, mount modes, manifest, cross-memory queries, full specs for `create_memory` / `mount_memory` / `unmount_memory` / `list_memories`
 - `references/prolog-engine.md` — Engine API reference (methods, errors, ownership)
 - `references/build.md` — Build system, Trealla submodule, C FFI layout, CI
-- `references/architecture.md` — ADR summaries: STDIO transport, Trealla C FFI submodule, engine singleton, WAL + snapshot persistence, project discovery
+- `references/architecture.md` — ADR summaries: STDIO transport, Trealla C FFI submodule, engine singleton, WAL + snapshot persistence, segmented memory registry and mount manifest, project discovery
