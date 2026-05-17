@@ -7,7 +7,7 @@ AWF follows Hexagonal (Ports and Adapters) / Clean Architecture.
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     INTERFACES LAYER                        │
-│      CLI (current)  │  API (future)  │  MQ (future)        │
+│      CLI  │  HTTP REST API (awf serve)  │  MQ (future)        │
 └───────────────────────────┬─────────────────────────────────┘
                             │
 ┌───────────────────────────┴─────────────────────────────────┐
@@ -143,6 +143,7 @@ awf/
 │   │   └── plugin/              # Plugin manager, composite provider (v0.5.43)
 │   │       ├── registry.go      # RPC plugin registry
 │   │       └── composite.go     # CompositeOperationProvider (multiplexes GitHub + Notify)
+│   ├── interfaces/api/          # HTTP REST API adapter (Huma v2 + chi v5)
 │   └── interfaces/cli/          # Cobra commands
 │       ├── ui/                  # UI formatting helpers
 │       │   ├── output.go        # Table output, row builders
