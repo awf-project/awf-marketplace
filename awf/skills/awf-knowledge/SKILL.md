@@ -377,6 +377,8 @@ deep_review:
   on_success: done
 ```
 
+- **`continue_from`**: Resumes a previous step's session. Validated at `awf validate` time.
+
 **Details**: [Conversation Mode](references/conversation-steps.md)
 
 ### GitHub Operations
