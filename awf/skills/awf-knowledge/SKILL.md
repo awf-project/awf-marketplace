@@ -26,7 +26,7 @@ argument-hint: "[topic]"
 6. See [CLI Commands](references/cli-commands.md)
 
 **Debugging issues?**
-1. `awf validate <name>` to check syntax (validates expressions since v0.5.33; warns on disabled plugin references)
+1. `awf validate <name>` to check syntax (validates expressions; warns on disabled plugin references)
 2. Run with `--verbose` for details
 3. Check `$XDG_STATE_HOME/awf/` for logs (~/.local/state/awf/)
 4. Review audit trail at `$XDG_DATA_HOME/awf/audit.jsonl` for execution history (v0.6.7)
@@ -34,9 +34,7 @@ argument-hint: "[topic]"
 
 **Developing AWF?**
 1. See [Architecture](references/architecture.md)
-2. Follow hexagonal architecture (ports pattern for external deps)
-3. Domain layer has no dependencies - use function types for validator injection
-4. Application layer depends on ports interfaces only (DIP-compliant, v0.5.34)
+2. Follow hexagonal architecture — domain layer has no deps; application layer depends on ports only
 
 ## Quick Start
 
@@ -86,14 +84,14 @@ awf run hello --input name=Claude
 | `awf plugin update <name>` | Update installed plugin to latest release |
 | `awf plugin remove <name>` | Remove installed plugin |
 | `awf plugin search <query>` | Search GitHub for AWF plugins |
-| `awf workflow install <owner/repo>` | Install workflow pack from GitHub Releases into XDG data dir |
-| `awf workflow list` | List installed workflow packs with name, version, source, and workflows |
-| `awf workflow info <name>` | Show pack manifest details, plugin status, and embedded README |
+| `awf workflow install <owner/repo>` | Install workflow pack from GitHub Releases |
+| `awf workflow list` | List installed workflow packs |
+| `awf workflow info <name>` | Show pack manifest details, plugin status, README |
 | `awf workflow update [--all] <name>` | Update workflow pack(s) to latest release |
 | `awf workflow search <query>` | Search GitHub for AWF workflow packs |
 | `awf workflow remove <name>` | Remove installed workflow pack |
 | `awf upgrade` | Self-update the AWF binary from GitHub Releases |
-| `awf upgrade --check` | Check for a newer version without installing |
+| `awf serve [--host] [--port]` | Start HTTP REST API server (default: localhost:2511) |
 | `awf tui` | Launch interactive full-screen terminal dashboard |
 
 **Details**: [CLI Commands Reference](references/cli-commands.md)
@@ -134,12 +132,11 @@ command: echo "{{.states.analyze.JSON.severity}}"
 # Environment
 command: echo "{{.env.HOME}}"
 
-# AWF system directories (XDG-compliant, local-before-global resolution)
-command: echo "{{.awf.config_dir}}"    # ~/.config/awf
+# AWF directories (local-before-global)
+command: echo "{{.awf.config_dir}}"
 command: echo "{{.awf.skills_dir}}"   # first active skills directory (.awf/skills/ preferred)
-prompt_file: "{{.awf.prompts_dir}}/analyze.md"   # checks <workflow_dir>/prompts/ first
-script_file: "{{.awf.scripts_dir}}/deploy.sh"    # checks <workflow_dir>/scripts/ first
-
+prompt_file: "{{.awf.prompts_dir}}/analyze.md"
+script_file: "{{.awf.scripts_dir}}/deploy.sh"
 # Loop context (PascalCase)
 command: echo "{{.loop.Index1}}/{{.loop.Length}}"
 ```
@@ -194,7 +191,7 @@ test_runner:
     - goto: unknown_error  # default fallback
 ```
 
-> **Transition evaluation (v0.6.3)**: Transitions are evaluated on **both success and failure paths**, including execution errors and timeouts. When a transition matches, it takes priority over `on_success`, `on_failure`, and `continue_on_error`. If no transition matches, legacy routing applies as fallback.
+> Transitions evaluate on both success and failure paths (including errors/timeouts). A matching transition overrides `on_success`/`on_failure`; no match falls back to legacy routing.
 
 ### Mixed Exit Code + Output Routing
 
@@ -224,12 +221,9 @@ done:
   status: success
 ```
 
-- `on_failure` accepts an inline object `{message: "...", status: N}` as shorthand for a named terminal state
-- Synthesized into an anonymous terminal step at parse time — no changes to execution engine
-- `message` supports full template interpolation (`{{.inputs.*}}`, `{{.states.*}}`, `{{.env.*}}`)
-- `status` defaults to exit code `1` when omitted
-- `awf validate` reports clear errors for missing or empty `message`
-- String form `on_failure: step_name` remains unchanged
+- `on_failure` accepts `{message: "...", status: N}` as shorthand for an anonymous terminal state
+- `message` supports full template interpolation; `status` defaults to `1` when omitted
+- String form `on_failure: step_name` unchanged; `awf validate` checks for missing `message`
 
 **Details**: [Workflow Syntax - Inline Error Shorthand](references/workflow-syntax.md#inline-error-shorthand)
 
@@ -325,10 +319,8 @@ process:
   on_success: done
 ```
 
-- `output_format: json` — strips markdown fences, validates JSON, stores in `{{.states.step.JSON.field}}`
-- `output_format: text` — strips fences only, stores cleaned text in `{{.states.step.Output}}`; omitted behaves like `text`
-- Invalid JSON fails the step with a descriptive error; unknown values rejected at `awf validate` time
-- With `--output streaming --verbose`, adds `[tool: Name(Arg)]` markers; `json` bypasses filtering
+- `json`: strips fences, validates, stores in `{{.states.step.JSON.field}}`; invalid JSON fails the step
+- `text` (default): strips fences, stores in `{{.states.step.Output}}`; `--verbose` adds `[tool:]` markers
 
 **Details**: [Agent Steps - Output Formatting](references/agent-steps.md) | [Agent Steps - Streaming Output Display](references/agent-steps.md#streaming-output-display)
 
@@ -343,9 +335,8 @@ analyze:
   on_success: done
 ```
 
-- `prompt_file` loads prompt from external `.md` file with full template interpolation; 1MB size limit; mutually exclusive with `prompt`
-- **Local-before-global**: `{{.awf.prompts_dir}}/file.md` checks `<workflow_dir>/prompts/` first, then global XDG fallback
-- Template helpers: `split`, `join`, `readFile`, `trimSpace`
+- Loads `.md` file with full template interpolation; 1MB limit; mutually exclusive with `prompt`
+- Local-before-global: `{{.awf.prompts_dir}}/file.md` checks `<workflow_dir>/prompts/` first
 
 **Details**: [Agent Steps - External Prompt Files](references/agent-steps.md)
 
@@ -359,9 +350,8 @@ deploy:
   on_success: verify
 ```
 
-- `script_file` loads script from external file with full template interpolation; 1MB size limit; mutually exclusive with `command`
-- **Shebang support**: shebang scripts execute via kernel interpreter; no-shebang scripts fall back to `$SHELL -c`
-- **Local-before-global**: `{{.awf.scripts_dir}}/deploy.sh` checks `<workflow_dir>/scripts/` first, then global XDG fallback
+- Loads script with full template interpolation; 1MB limit; mutually exclusive with `command`
+- Shebang scripts execute via kernel interpreter; no-shebang falls back to `$SHELL -c`
 
 **Details**: [Workflow Syntax - External Script Files](references/workflow-syntax.md#external-script-files)
 
@@ -452,6 +442,26 @@ Plugins declaring `validators` capability run at `awf validate` and `awf run` ti
 
 **Details**: [Plugins Reference](references/plugins.md)
 
+### HTTP REST API (awf serve)
+
+```bash
+awf serve --port 2511
+
+# Trigger workflow (async, returns execution_id)
+curl -X POST http://localhost:2511/api/workflows/deploy/run \
+  -H "Content-Type: application/json" \
+  -d '{"inputs": {"env": "prod"}}'
+
+# Stream real-time events via SSE
+curl -N http://localhost:2511/api/executions/<id>/events
+```
+
+SSE event types: `step.started`, `step.completed`, `workflow.completed`, `workflow.failed`.
+
+Cancel: `DELETE /api/executions/{id}`. Resume: `POST /api/executions/{id}/resume`. History: `GET /api/history`. Swagger UI: `/docs`.
+
+**Details**: [HTTP REST API Reference](references/api.md)
+
 ### Distributed Tracing
 
 ```yaml
@@ -461,19 +471,19 @@ telemetry:
   service_name: "my-service"
 ```
 
-Opt-in OpenTelemetry tracing — exports spans to Jaeger, Grafana Tempo, Honeycomb, or Datadog. Zero overhead when not configured. Each run emits a `workflow.run` root span with child spans per step, agent call, parallel block, and loop. Override per-run with `--otel-exporter` and `--otel-service-name`.
+Opt-in OpenTelemetry tracing. Exports to Jaeger, Grafana Tempo, Honeycomb, or Datadog. Zero overhead when not configured. Override per-run with `--otel-exporter` and `--otel-service-name`.
 
 **Details**: [Distributed Tracing Reference](references/tracing.md)
 
 ## Resources
 
 **Getting Started**
-- [references/installation.md](references/installation.md) - Prerequisites & setup
-- [references/upgrade.md](references/upgrade.md) - Self-update the AWF binary
+- [references/installation.md](references/installation.md) - Prerequisites & setup | [references/upgrade.md](references/upgrade.md) - Self-update
 
 **User Guide**
 - [references/workflow-syntax.md](references/workflow-syntax.md) - Complete YAML syntax
 - [references/cli-commands.md](references/cli-commands.md) - All CLI commands and flags
+- [references/api.md](references/api.md) - HTTP REST API server and SSE streaming
 - [references/tui.md](references/tui.md) - Terminal dashboard (five-tab interactive UI)
 - [references/configuration.md](references/configuration.md) - Project configuration
 - [references/plugins.md](references/plugins.md) - Plugin system & SDK

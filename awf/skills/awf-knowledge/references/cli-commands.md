@@ -33,6 +33,7 @@
 | `awf completion <shell>` | Generate autocompletion |
 | `awf upgrade` | Self-update the AWF binary from GitHub Releases |
 | `awf upgrade --check` | Check for a newer version without installing |
+| `awf serve` | Start HTTP REST API server (`--host`, `--port 2511`) |
 | `awf tui` | Launch interactive full-screen terminal dashboard |
 
 ## Global Flags
@@ -849,6 +850,33 @@ awf upgrade --force
 Set `GITHUB_TOKEN` to avoid GitHub API rate limits (shared with `awf plugin install` and `awf workflow install`).
 
 **Details**: [Self-Update Reference](upgrade.md)
+
+## awf serve
+
+Start the HTTP REST API server.
+
+```bash
+awf serve [flags]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--host` | Bind address (default: `localhost`) |
+| `--port` | Port number (default: `2511`) |
+
+```bash
+# Start with defaults (localhost:2511)
+awf serve
+
+# Bind to all interfaces on custom port
+awf serve --host 0.0.0.0 --port 8080
+```
+
+The server shuts down gracefully on SIGINT or SIGTERM.
+
+Swagger UI and auto-generated OpenAPI 3.1 spec available at `/docs`.
+
+**Details**: [HTTP REST API Reference](api.md)
 
 ## Output Formats
 

@@ -1,0 +1,281 @@
+# HTTP REST API Reference
+
+AWF provides an HTTP REST API server for programmatic workflow execution, monitoring, and control. Start the server with `awf serve`.
+
+## Starting the Server
+
+```bash
+awf serve                          # localhost:2511
+awf serve --port 8080              # custom port
+awf serve --host 0.0.0.0           # bind all interfaces
+awf serve --host 0.0.0.0 --port 8080
+```
+
+The server shuts down gracefully on SIGINT or SIGTERM.
+
+**Interactive API docs:** `http://localhost:2511/docs` — Swagger UI with auto-generated OpenAPI 3.1 spec.
+
+## When to Use the API vs CLI
+
+| Scenario | Use |
+|----------|-----|
+| Interactive terminal use | `awf run` / `awf tui` |
+| CI/CD pipeline (sequential) | `awf run` |
+| External system integration | API (`POST /api/workflows/{name}/run`) |
+| Long-running workflow monitoring | API (`GET /api/executions/{id}/events`) |
+| Parallel execution from multiple clients | API |
+| Cancelling a running workflow remotely | API (`DELETE /api/executions/{id}`) |
+| Resuming a paused workflow remotely | API (`POST /api/executions/{id}/resume`) |
+
+## Endpoints
+
+### Run a Workflow
+
+```
+POST /api/workflows/{name}/run
+```
+
+Starts a workflow asynchronously. Returns immediately with an execution ID.
+
+**Request:**
+
+```bash
+curl -X POST http://localhost:2511/api/workflows/deploy/run \
+  -H "Content-Type: application/json" \
+  -d '{"inputs": {"env": "prod", "version": "1.2.3"}}'
+```
+
+**Response — 202 Accepted:**
+
+```json
+{
+  "execution_id": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+Use the returned `execution_id` to monitor progress via SSE or poll for status.
+
+### List Active Executions
+
+```
+GET /api/executions
+```
+
+Returns all currently running or paused executions.
+
+```bash
+curl http://localhost:2511/api/executions
+```
+
+**Response — 200 OK:**
+
+```json
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "workflow": "deploy",
+    "status": "running",
+    "started_at": "2026-05-17T10:00:00Z"
+  }
+]
+```
+
+### Get Execution Details
+
+```
+GET /api/executions/{id}
+```
+
+```bash
+curl http://localhost:2511/api/executions/550e8400-e29b-41d4-a716-446655440000
+```
+
+**Response — 200 OK:**
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "workflow": "deploy",
+  "status": "running",
+  "current_step": "build",
+  "started_at": "2026-05-17T10:00:00Z"
+}
+```
+
+### Cancel an Execution
+
+```
+DELETE /api/executions/{id}
+```
+
+Sends a cancellation signal. The execution stops at the next safe checkpoint.
+
+```bash
+curl -X DELETE http://localhost:2511/api/executions/550e8400-e29b-41d4-a716-446655440000
+```
+
+**Response — 200 OK** on success; **404** if execution not found.
+
+### Resume a Paused Execution
+
+```
+POST /api/executions/{id}/resume
+```
+
+Resumes a workflow paused at an interactive breakpoint or after a failure with `continue_on_error`.
+
+```bash
+curl -X POST http://localhost:2511/api/executions/550e8400-e29b-41d4-a716-446655440000/resume
+```
+
+**Response — 200 OK** on success; **404** if execution not found.
+
+### Stream Execution Events (SSE)
+
+```
+GET /api/executions/{id}/events
+```
+
+Returns a Server-Sent Events stream for real-time execution progress. The connection stays open until the workflow completes or fails.
+
+```bash
+curl -N http://localhost:2511/api/executions/550e8400-e29b-41d4-a716-446655440000/events
+```
+
+**Event stream format:**
+
+```
+data: {"type":"step.started","step":"build","timestamp":"2026-05-17T10:00:01Z"}
+
+data: {"type":"step.completed","step":"build","exit_code":0,"timestamp":"2026-05-17T10:00:05Z"}
+
+data: {"type":"step.started","step":"deploy","timestamp":"2026-05-17T10:00:05Z"}
+
+data: {"type":"step.completed","step":"deploy","exit_code":0,"timestamp":"2026-05-17T10:00:12Z"}
+
+data: {"type":"workflow.completed","status":"success","timestamp":"2026-05-17T10:00:12Z"}
+```
+
+#### SSE Event Types
+
+| Type | Emitted when |
+|------|-------------|
+| `step.started` | A step begins executing |
+| `step.completed` | A step finishes (check `exit_code` for outcome) |
+| `workflow.completed` | Workflow reaches a terminal success state |
+| `workflow.failed` | Workflow reaches a terminal failure state |
+
+Each event is a JSON object with at minimum `type` and `timestamp` fields. Step events include `step` (state name). `step.completed` includes `exit_code`.
+
+### List Execution History
+
+```
+GET /api/history
+```
+
+Lists past (completed) executions. Supports filtering.
+
+| Query parameter | Description |
+|----------------|-------------|
+| `workflow` | Filter by workflow name |
+| `status` | Filter by status (`success`, `failed`, `interrupted`) |
+| `since` | Start date filter (ISO 8601, e.g. `2026-05-01T00:00:00Z`) |
+| `until` | End date filter (ISO 8601) |
+
+```bash
+# All history
+curl http://localhost:2511/api/history
+
+# Filter by workflow and status
+curl "http://localhost:2511/api/history?workflow=deploy&status=failed"
+
+# Date range
+curl "http://localhost:2511/api/history?since=2026-05-01T00:00:00Z&until=2026-05-17T23:59:59Z"
+```
+
+**Response — 200 OK:**
+
+```json
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "workflow": "deploy",
+    "status": "success",
+    "started_at": "2026-05-17T10:00:00Z",
+    "completed_at": "2026-05-17T10:00:12Z",
+    "duration_ms": 12000
+  }
+]
+```
+
+### Execution Statistics
+
+```
+GET /api/history/stats
+```
+
+Returns aggregate execution statistics.
+
+```bash
+curl http://localhost:2511/api/history/stats
+```
+
+**Response — 200 OK:**
+
+```json
+{
+  "total": 42,
+  "success": 38,
+  "failed": 3,
+  "interrupted": 1
+}
+```
+
+## Error Responses
+
+Errors follow RFC 7807 (Problem Details). All error responses include `status`, `title`, and `detail` fields.
+
+```json
+{
+  "status": 404,
+  "title": "Not Found",
+  "detail": "execution 550e8400 not found"
+}
+```
+
+## Common Patterns
+
+### Fire and Monitor
+
+Start a workflow and stream its events until completion:
+
+```bash
+# Start
+EXEC_ID=$(curl -s -X POST http://localhost:2511/api/workflows/deploy/run \
+  -H "Content-Type: application/json" \
+  -d '{"inputs": {"env": "prod"}}' | jq -r .execution_id)
+
+# Stream events
+curl -N "http://localhost:2511/api/executions/$EXEC_ID/events"
+```
+
+### Poll for Completion
+
+For clients without SSE support, poll execution status:
+
+```bash
+EXEC_ID="550e8400-e29b-41d4-a716-446655440000"
+
+while true; do
+  STATUS=$(curl -s "http://localhost:2511/api/executions/$EXEC_ID" | jq -r .status)
+  echo "Status: $STATUS"
+  [ "$STATUS" = "success" ] || [ "$STATUS" = "failed" ] && break
+  sleep 2
+done
+```
+
+## Architecture Notes
+
+The API adapter lives at `internal/interfaces/api/` and imports nothing from `internal/infrastructure/`. It calls the same application layer services used by the CLI (`ExecutionService`, `WorkflowService`). Built with Huma v2 (OpenAPI 3.1 generation) and chi v5 (routing). The default port 2511 is fixed; use `--port` to override.
+
+**Details**: [CLI Commands - awf serve](cli-commands.md#awf-serve) | [Architecture](architecture.md)
