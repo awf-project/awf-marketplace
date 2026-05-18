@@ -544,6 +544,31 @@ analyze:
 
 **Details:** [Skills Reference](skills.md)
 
+## Roles
+
+Inject a reusable agent persona into an agent step by declaring `role:`. AWF loads `AGENTS.md` from a named directory and injects its body as the agent's system prompt. Roles define *who* the agent is; skills define *what* it knows — orthogonal injection channels.
+
+```yaml
+analyze:
+  type: agent
+  provider: claude
+  role: go-senior            # loads AGENTS.md from discovery path
+  skills:
+    - code-review            # knowledge injection (orthogonal)
+  prompt: "Review: {{.inputs.code}}"
+  on_success: done
+```
+
+**Discovery:** AWF searches `.awf/agents/` → `.agents/` → `$XDG_CONFIG_HOME/awf/agents/` → `~/.agents/` (compatible with Cursor/Cline global `~/.agents/`). Set `AWF_AGENTS_PATH` for exclusive override (CI/sandbox isolation).
+
+**Composition:** When both `role:` and `system_prompt:` are set, role content prepends `system_prompt:` separated by a blank line. AWF logs a warning.
+
+**Validation:** `awf validate` reports hard errors for missing role directories and missing `AGENTS.md`; non-blocking warnings for empty content, files > 500KB, and composed prompts > 10KB.
+
+**Error code:** `USER.INPUT.MISSING_ROLE` (exit code 1).
+
+**Details:** [Agent Roles Reference](agent-roles.md)
+
 ## Response Handling
 
 Agent responses are captured in state:

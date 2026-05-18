@@ -355,6 +355,26 @@ deploy:
 
 **Details**: [Workflow Syntax - External Script Files](references/workflow-syntax.md#external-script-files)
 
+### Agent Roles
+
+Define *who* the agent is via `role:` — loads `AGENTS.md` as system prompt. Orthogonal to `skills:` (which define *what* the agent knows).
+
+```yaml
+analyze:
+  type: agent
+  provider: claude
+  role: go-senior
+  prompt: "Review: {{.inputs.code}}"
+  on_success: done
+```
+
+- Discovery: `.awf/agents/` → `.agents/` → `$XDG_CONFIG_HOME/awf/agents/` → `~/.agents/`; `AWF_AGENTS_PATH` for exclusive CI override
+- Composition: when `system_prompt:` is also set, role content prepends it (blank line separator)
+- Validation: missing dir/AGENTS.md → hard error; empty, > 500KB, combined > 10KB → warnings
+- Error: `USER.INPUT.MISSING_ROLE` (exit code 1)
+
+**Details**: [Agent Roles Reference](references/agent-roles.md)
+
 ### Multi-Turn Conversation
 
 ```yaml
@@ -458,9 +478,7 @@ curl -X POST http://localhost:2511/api/workflows/deploy/run \
 curl -N http://localhost:2511/api/executions/<id>/events
 ```
 
-SSE event types: `step.started`, `step.completed`, `workflow.completed`, `workflow.failed`.
-
-Cancel: `DELETE /api/executions/{id}`. Resume: `POST /api/executions/{id}/resume`. History: `GET /api/history`. Swagger UI: `/docs`.
+SSE events: `step.started`, `step.completed`, `workflow.completed`, `workflow.failed`. Cancel: `DELETE /api/executions/{id}`. Resume: `POST /api/executions/{id}/resume`. History: `GET /api/history`. Swagger: `/docs`.
 
 **Details**: [HTTP REST API Reference](references/api.md)
 
@@ -500,6 +518,7 @@ Opt-in OpenTelemetry tracing. Exports to Jaeger, Grafana Tempo, Honeycomb, or Da
 - [references/interpolation.md](references/interpolation.md) - Variable substitution
 - [references/interactive-inputs.md](references/interactive-inputs.md) - Auto-prompting for missing inputs
 - [references/agent-steps.md](references/agent-steps.md) - AI agent integration
+- [references/agent-roles.md](references/agent-roles.md) - Agent role injection via AGENTS.md
 - [references/conversation-steps.md](references/conversation-steps.md) - Multi-turn agent conversations
 - [references/loop.md](references/loop.md) - Loop control flow and transitions
 - [references/exit-codes.md](references/exit-codes.md) - Error codes

@@ -18,7 +18,6 @@ Workflow reached terminal state with `status: success`.
 - Missing required input
 - Workflow file not found
 - Input validation failed
-- Skill not found or invalid (`USER.INPUT.MISSING_SKILL`)
 
 ```bash
 awf run deploy
@@ -26,6 +25,9 @@ awf run deploy
 
 awf run my-workflow
 # Error [USER.INPUT.MISSING_SKILL]: skill "code-review" not found in any skills directory
+
+awf run my-workflow
+# Error [USER.INPUT.MISSING_ROLE]: role "go-senior" not found in any agents directory
 ```
 
 ## Exit Code 2: Workflow Error

@@ -610,8 +610,9 @@ step2:
 | `mode` | string | No | `single` (default) or `conversation` for multi-turn |
 | `prompt` | string | Yes* | Prompt template (supports `{{.inputs.*}}` and `{{.states.*}}` interpolation) |
 | `prompt_file` | string | No* | Path to external prompt template file (mutually exclusive with `prompt`) |
+| `role` | string | No | Role name or path — loads `AGENTS.md` as system prompt (see [Agent Roles Reference](agent-roles.md)) |
 | `skills` | list | No | Skill names or paths injected as `<skill_content>` XML before the prompt (see [Skills Reference](skills.md)) |
-| `system_prompt` | string | No | System message (preserved across turns) |
+| `system_prompt` | string | No | System message; prepended by role content when `role:` is also set |
 | `output_format` | string | No | Post-processing format: `json` (strip fences + validate JSON) or `text` (strip fences only) |
 | `conversation` | object | No | Conversation configuration (required if mode=conversation) |
 | `options` | map | No | Provider options (`model` for all; `temperature`/`max_completion_tokens` for `openai_compatible` only) |
