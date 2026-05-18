@@ -26,7 +26,17 @@ inputs:
       pattern: "^[0-9]+$"
 
 states:
-  initial: resolve_skill
+  initial: ensure_main
+
+  ensure_main:
+    type: step
+    description: Ensure working directory is on main branch and up-to-date with origin
+    command: |
+      git checkout main && \
+      git fetch origin main && \
+      git merge --ff-only origin/main
+    on_success: resolve_skill
+    on_failure: {message: "Must be on main branch and up-to-date with origin/main"}
 
   resolve_skill:
     type: step
@@ -87,8 +97,15 @@ states:
     workflow: commit
     inputs:
       pr: true
-    on_success: done
+    on_success: return_to_main
     on_failure: {message: "Failed to commit and create PR"}
+
+  return_to_main:
+    type: step
+    description: Return to main branch after PR creation
+    command: git checkout main
+    on_success: done
+    on_failure: {message: "Failed to checkout main branch"}
 
   done:
     type: terminal
