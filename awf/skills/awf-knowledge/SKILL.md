@@ -92,6 +92,7 @@ awf run hello --input name=Claude
 | `awf workflow remove <name>` | Remove installed workflow pack |
 | `awf upgrade` | Self-update the AWF binary from GitHub Releases |
 | `awf serve [--host] [--port]` | Start HTTP REST API server (default: localhost:2511) |
+| `awf mcp serve` | Start stdio MCP server wrapping AWF plugins (for external MCP clients) |
 | `awf tui` | Launch interactive full-screen terminal dashboard |
 
 **Details**: [CLI Commands Reference](references/cli-commands.md)
@@ -266,42 +267,34 @@ analyze:
 
 **Details**: [Skills Reference](references/skills.md)
 
-### OpenAI-Compatible Agent (Ollama, vLLM, Groq)
+### OpenAI-Compatible / GitHub Copilot Agents
 
 ```yaml
-analyze:
+# OpenAI-compatible (Ollama, vLLM, Groq, OpenAI)
+my_ai:
   type: agent
   provider: openai_compatible
-  prompt: "Review this code: {{.inputs.code}}"
+  prompt: "Review: {{.inputs.code}}"
   options:
     base_url: "http://localhost:11434/v1"
     model: "llama3"
-    api_key: "sk-..."                   # optional, falls back to OPENAI_API_KEY
-    max_completion_tokens: 2048         # max_tokens accepted as legacy fallback
+    api_key: "sk-..."       # optional, falls back to OPENAI_API_KEY
+    max_completion_tokens: 2048
     temperature: 0.7
-  timeout: 120
   on_success: process
-```
 
-- Supports multi-turn (`mode: conversation`), token tracking, HTTP error mapping (401/429/5xx)
-- `temperature` and `max_completion_tokens` not forwarded to CLI providers
-
-**Details**: [Agent Steps - OpenAI-Compatible Provider](references/agent-steps.md#openai-compatible-provider)
-
-### GitHub Copilot Agent
-
-```yaml
-analyze:
+# GitHub Copilot
+copilot:
   type: agent
   provider: github_copilot
   prompt: "Review: {{.inputs.code}}"
   options:
-    mode: autopilot    # interactive | plan | autopilot
-    effort: high       # low | medium | high
+    mode: autopilot          # interactive | plan | autopilot
+    effort: high             # low | medium | high
   on_success: process
 ```
 
-**Details**: [Agent Steps - GitHub Copilot](references/agent-steps.md#github-copilot)
+**Details**: [Agent Steps - Providers](references/agent-steps.md#providers)
 
 ### Output Formatting for Agent Steps
 
@@ -309,55 +302,38 @@ analyze:
 analyze:
   type: agent
   provider: claude
-  prompt: "Return JSON analysis with 'issues' and 'severity' fields"
-  output_format: json                   # json or text
+  prompt: "Return JSON with 'severity' field"
+  output_format: json   # strips fences, validates JSON, stores in {{.states.analyze.JSON.severity}}
   on_success: process
-
-process:
-  type: step
-  command: echo "Severity: {{.states.analyze.JSON.severity}}"
-  on_success: done
 ```
 
-- `json`: strips fences, validates, stores in `{{.states.step.JSON.field}}`; invalid JSON fails the step
-- `text` (default): strips fences, stores in `{{.states.step.Output}}`; `--verbose` adds `[tool:]` markers
+- `json`: validates JSON → `{{.states.step.JSON.field}}`; invalid JSON fails the step
+- `text` (default): strips fences → `{{.states.step.Output}}`; `--verbose` adds `[tool:]` markers
 
-**Details**: [Agent Steps - Output Formatting](references/agent-steps.md) | [Agent Steps - Streaming Output Display](references/agent-steps.md#streaming-output-display)
+**Details**: [Agent Steps - Output Formatting](references/agent-steps.md#streaming-output-display)
 
-### External Prompt Files
+### External Prompt & Script Files
 
 ```yaml
 analyze:
   type: agent
   provider: claude
-  prompt_file: prompts/code_review.md   # Mutually exclusive with prompt
-  timeout: 120
+  prompt_file: prompts/code_review.md   # mutually exclusive with prompt; 1MB limit
   on_success: done
-```
 
-- Loads `.md` file with full template interpolation; 1MB limit; mutually exclusive with `prompt`
-- Local-before-global: `{{.awf.prompts_dir}}/file.md` checks `<workflow_dir>/prompts/` first
-
-**Details**: [Agent Steps - External Prompt Files](references/agent-steps.md)
-
-### External Script Files
-
-```yaml
 deploy:
   type: step
-  script_file: scripts/deploy.sh   # Mutually exclusive with command
-  timeout: 60
+  script_file: scripts/deploy.sh        # mutually exclusive with command; shebang supported
   on_success: verify
 ```
 
-- Loads script with full template interpolation; 1MB limit; mutually exclusive with `command`
-- Shebang scripts execute via kernel interpreter; no-shebang falls back to `$SHELL -c`
+- `{{.awf.prompts_dir}}/file.md` and `{{.awf.scripts_dir}}/file.sh` use local-before-global resolution
 
-**Details**: [Workflow Syntax - External Script Files](references/workflow-syntax.md#external-script-files)
+**Details**: [Agent Steps](references/agent-steps.md) | [Workflow Syntax](references/workflow-syntax.md#external-script-files)
 
 ### Agent Roles
 
-Define *who* the agent is via `role:` — loads `AGENTS.md` as system prompt. Orthogonal to `skills:` (which define *what* the agent knows).
+Define *who* the agent is via `role:` — loads `AGENTS.md` as system prompt. Orthogonal to `skills:`.
 
 ```yaml
 analyze:
@@ -368,26 +344,23 @@ analyze:
   on_success: done
 ```
 
-- Discovery: `.awf/agents/` → `.agents/` → `$XDG_CONFIG_HOME/awf/agents/` → `~/.agents/`; `AWF_AGENTS_PATH` for exclusive CI override
-- Composition: when `system_prompt:` is also set, role content prepends it (blank line separator)
-- Validation: missing dir/AGENTS.md → hard error; empty, > 500KB, combined > 10KB → warnings
-- Error: `USER.INPUT.MISSING_ROLE` (exit code 1)
+- Discovery: `.awf/agents/` → `.agents/` → `$XDG_CONFIG_HOME/awf/agents/` → `~/.agents/` (or `AWF_AGENTS_PATH`)
+- When `system_prompt:` also set, role content prepends it; missing `AGENTS.md` → hard error
 
 **Details**: [Agent Roles Reference](references/agent-roles.md)
 
 ### Multi-Turn Conversation
 
 ```yaml
-# Interactive session (mode: conversation) — live user input via terminal
+# Interactive session — live user input via terminal
 review:
   type: agent
   provider: claude
   mode: conversation
-  system_prompt: "You are a code reviewer."
   prompt: "What would you like to review?"
   on_success: done
 
-# Cross-step session tracking — resume a previous step's session
+# Cross-step session tracking
 deep_review:
   type: agent
   provider: claude
@@ -397,88 +370,83 @@ deep_review:
   on_success: done
 ```
 
-- **`continue_from`**: Resumes a previous step's session. Validated at `awf validate` time.
-
 **Details**: [Conversation Mode](references/conversation-steps.md)
 
-### GitHub Operations
+### GitHub & Notification Operations
 
 ```yaml
 get_issue:
   type: operation
-  operation: github.get_issue
+  operation: github.get_issue           # 8 ops: get_issue/pr, create_issue/pr, add_labels/comment, list_comments, batch
   inputs:
-    number: "{{.inputs.issue_number}}"
+    number: "{{.inputs.issue_number}}"  # auth: gh CLI or GITHUB_TOKEN; repo from git remote
   on_success: process
 
-process:
-  type: step
-  command: echo "Issue: {{.states.get_issue.Response.title}}"
-  on_success: done
-```
-
-8 built-in operations: `get_issue`, `get_pr`, `create_issue`, `create_pr`, `add_labels`, `add_comment`, `list_comments`, `batch`. Auth via `gh` CLI or `GITHUB_TOKEN`. Repo auto-detected from git remote.
-
-### Notification Operations
-
-```yaml
 notify_team:
   type: operation
   operation: notify.send
   inputs:
-    backend: desktop
+    backend: desktop                    # desktop | ntfy | slack | webhook
     title: "Build Complete"
     message: "{{.states.summary.Output}}"
-  on_success: done
-  on_failure: done
   continue_on_error: true
+  on_success: done
 ```
 
-4 backends: `desktop` (OS-native), `ntfy` (push notifications), `slack` (webhook), `webhook` (generic HTTP). Configure in `.awf/config.yaml` under `plugins.notify`.
-
-**Details**: [Plugins Reference](references/plugins.md) | [Workflow Syntax - Operation State](references/workflow-syntax.md)
+**Details**: [Plugins Reference](references/plugins.md)
 
 ### Plugin Custom Step Types
 
-Plugins can define new step types referenced as `{plugin-id}.{step-type}` with a `config:` block:
-
 ```yaml
 query_db:
-  type: awf-plugin-database.sql_query
+  type: awf-plugin-database.sql_query   # {plugin-id}.{step-type}
   config:
     query: "SELECT * FROM users WHERE id = {{.inputs.user_id}}"
     connection: postgres
   on_success: process
-  on_failure: error
 ```
-
-Use `--skip-plugins` during development to bypass plugin validation and execution:
 
 ```bash
-awf validate my-workflow --skip-plugins
-awf run my-workflow --skip-plugins
-awf run my-workflow --validator-timeout 30s   # control validator plugin timeout
+awf validate my-workflow --skip-plugins    # bypass plugin validation
+awf run my-workflow --validator-timeout 30s
 ```
 
-Plugins declaring `validators` capability run at `awf validate` and `awf run` time to enforce custom rules (e.g. block hardcoded secrets).
-
 **Details**: [Plugins Reference](references/plugins.md)
+
+### MCP Proxy (Per-Step Tool Control)
+
+```yaml
+audit:
+  type: agent
+  provider: claude
+  prompt: "Audit: {{.inputs.path}}"
+  options:
+    dangerously_skip_permissions: true
+  mcp_proxy:
+    enabled: true
+    allowed_tools: [read, glob, grep]   # builtins: bash glob grep read write edit
+    plugin_bindings:
+      - plugin: awf-plugin-database
+        tools: [sql_query]
+  on_success: report
+```
+
+- Spawns a stdio JSON-RPC proxy subprocess per step; enforces `allowed_tools` allowlist
+- Claude: `--mcp-config`; Gemini/Copilot/OpenCode: config injection; openai_compatible: API-level tool injection; Codex: warning (stdio MCP unsupported)
+- `awf mcp serve` — standalone stdio MCP server for external MCP clients (Claude Code, Gemini, etc.)
+
+**Details**: [MCP Proxy Reference](references/mcp-proxy.md)
 
 ### HTTP REST API (awf serve)
 
 ```bash
 awf serve --port 2511
-
-# Trigger workflow (async, returns execution_id)
 curl -X POST http://localhost:2511/api/workflows/deploy/run \
-  -H "Content-Type: application/json" \
-  -d '{"inputs": {"env": "prod"}}'
-
-# Stream real-time events via SSE
-curl -N http://localhost:2511/api/executions/<id>/events
+  -H "Content-Type: application/json" -d '{"inputs": {"env": "prod"}}'
+curl -N http://localhost:2511/api/executions/<id>/events   # SSE stream
 ```
 
-SSE events: `step.started`, `step.completed`, `workflow.completed`, `workflow.failed`. Cancel: `DELETE /api/executions/{id}`. Resume: `POST /api/executions/{id}/resume`. History: `GET /api/history`. Swagger: `/docs`.
+SSE: `step.started`, `step.completed`, `workflow.completed`, `workflow.failed`. Cancel: `DELETE /api/executions/{id}`. Swagger: `/docs`.
 
 **Details**: [HTTP REST API Reference](references/api.md)
 
@@ -504,6 +472,7 @@ Opt-in OpenTelemetry tracing. Exports to Jaeger, Grafana Tempo, Honeycomb, or Da
 - [references/workflow-syntax.md](references/workflow-syntax.md) - Complete YAML syntax
 - [references/cli-commands.md](references/cli-commands.md) - All CLI commands and flags
 - [references/api.md](references/api.md) - HTTP REST API server and SSE streaming
+- [references/mcp-proxy.md](references/mcp-proxy.md) - MCP proxy (per-step tool control and awf mcp serve)
 - [references/tui.md](references/tui.md) - Terminal dashboard (five-tab interactive UI)
 - [references/configuration.md](references/configuration.md) - Project configuration
 - [references/plugins.md](references/plugins.md) - Plugin system & SDK
