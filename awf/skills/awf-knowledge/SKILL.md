@@ -344,8 +344,10 @@ analyze:
   on_success: done
 ```
 
-- Discovery: `.awf/agents/` → `.agents/` → `$XDG_CONFIG_HOME/awf/agents/` → `~/.agents/` (or `AWF_AGENTS_PATH`)
-- When `system_prompt:` also set, role content prepends it; missing `AGENTS.md` → hard error
+- Discovery: `.awf/roles/` → `.agents/roles/` → `$XDG_CONFIG_HOME/awf/roles/` → `~/.agents/roles/`; `AWF_ROLES_PATH` for exclusive CI override
+- Composition: when `system_prompt:` is also set, role content prepends it (blank line separator)
+- Validation: missing dir/AGENTS.md → hard error; empty, > 500KB, combined > 10KB → warnings
+- Error: `USER.INPUT.MISSING_ROLE` (exit code 1)
 
 **Details**: [Agent Roles Reference](references/agent-roles.md)
 

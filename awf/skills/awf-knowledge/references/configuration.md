@@ -138,6 +138,7 @@ AWF supports environment variables for configuration:
 | `AWF_AUDIT_LOG` | Audit trail file path, or `off` to disable (v0.6.7) |
 | `AWF_PLUGINS_PATH` | Colon-separated list of additional plugin search directories |
 | `AWF_SKILLS_PATH` | Single directory searched first for named skill resolution (overrides all discovery directories) |
+| `AWF_ROLES_PATH` | Single directory for named role resolution; replaces the entire discovery chain when set |
 
 ### Prompt Path Resolution
 
