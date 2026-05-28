@@ -27,7 +27,7 @@ awf run my-workflow
 # Error [USER.INPUT.MISSING_SKILL]: skill "code-review" not found in any skills directory
 
 awf run my-workflow
-# Error [USER.INPUT.MISSING_ROLE]: role "go-senior" not found in any agents directory
+# Error [USER.INPUT.MISSING_ROLE]: role "go-senior" not found
 ```
 
 ## Exit Code 2: Workflow Error

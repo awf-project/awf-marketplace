@@ -559,7 +559,7 @@ analyze:
   on_success: done
 ```
 
-**Discovery:** AWF searches `.awf/agents/` → `.agents/` → `$XDG_CONFIG_HOME/awf/agents/` → `~/.agents/` (compatible with Cursor/Cline global `~/.agents/`). Set `AWF_AGENTS_PATH` for exclusive override (CI/sandbox isolation).
+**Discovery:** AWF searches `.awf/roles/` → `.agents/roles/` → `$XDG_CONFIG_HOME/awf/roles/` → `~/.agents/roles/` (compatible with Cursor/Cline global `~/.agents/`). Set `AWF_ROLES_PATH` for exclusive override (CI/sandbox isolation).
 
 **Composition:** When both `role:` and `system_prompt:` are set, role content prepends `system_prompt:` separated by a blank line. AWF logs a warning.
 

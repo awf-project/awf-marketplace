@@ -24,13 +24,13 @@ AWF searches for named roles in the following directories, from highest to lowes
 
 | Priority | Directory | Notes |
 |----------|-----------|-------|
-| 1 | `$AWF_AGENTS_PATH` | Exclusive override; replaces the entire discovery chain |
-| 2 | `.awf/agents/` | Project-local (highest path-based priority) |
-| 3 | `.agents/` | Cross-client project convention (Cursor/Cline compatible) |
-| 4 | `$XDG_CONFIG_HOME/awf/agents/` | Global XDG user config |
-| 5 | `~/.agents/` | Home-dir fallback (cross-client global, Cursor/Cline compatible) |
+| 1 | `$AWF_ROLES_PATH` | Exclusive override; replaces the entire discovery chain |
+| 2 | `.awf/roles/` | Project-local (highest path-based priority) |
+| 3 | `.agents/roles/` | Cross-client project convention (Cursor/Cline compatible) |
+| 4 | `$XDG_CONFIG_HOME/awf/roles/` | Global XDG user config |
+| 5 | `~/.agents/roles/` | Home-dir fallback (cross-client global, Cursor/Cline compatible) |
 
-When `AWF_AGENTS_PATH` is set, AWF searches only that directory — all other discovery paths are skipped. Use this for CI/sandbox isolation.
+When `AWF_ROLES_PATH` is set, AWF searches only that directory — all other discovery paths are skipped. Use this for CI/sandbox isolation.
 
 ### Explicit Paths
 
@@ -58,7 +58,7 @@ awf run workflow --input agent_persona=go-senior
 Each role directory contains a single `AGENTS.md` file:
 
 ```
-.awf/agents/
+.awf/roles/
 └── go-senior/
     └── AGENTS.md        # required; body injected as system prompt
 ```
@@ -136,13 +136,12 @@ $ awf validate workflow.yaml
 
 validation error: USER.INPUT.MISSING_ROLE
   step "review": role "go-senior" not found
-  searched: .awf/agents/, .agents/, ~/.config/awf/agents/, ~/.agents/
 ```
 
 Fix role resolution errors by:
-1. Creating the role directory in `.awf/agents/<name>/`
+1. Creating the role directory in `.awf/roles/<name>/`
 2. Adding a non-empty `AGENTS.md` to the directory
-3. Or setting `AWF_AGENTS_PATH` to the directory containing the role
+3. Or setting `AWF_ROLES_PATH` to the directory containing the role
 
 ## Error Code
 
@@ -150,7 +149,7 @@ Missing roles report `USER.INPUT.MISSING_ROLE` (exit code 1):
 
 ```bash
 $ awf run my-workflow
-Error [USER.INPUT.MISSING_ROLE]: role "go-senior" not found in any agents directory
+Error [USER.INPUT.MISSING_ROLE]: role "go-senior" not found
 ```
 
 ## Conversation Mode
@@ -175,7 +174,7 @@ chat:
 .awf/
 ├── workflows/
 │   └── review.yaml
-└── agents/
+└── roles/
     └── go-senior/
         └── AGENTS.md
 ```
@@ -220,10 +219,10 @@ The agent receives the `go-senior` AGENTS.md body as its system prompt and the `
 
 | Variable | Description |
 |----------|-------------|
-| `AWF_AGENTS_PATH` | Exclusive override; replaces the entire discovery chain. Single directory path. |
+| `AWF_ROLES_PATH` | Exclusive override; replaces the entire discovery chain. Single directory path. |
 
 ```bash
-export AWF_AGENTS_PATH=/opt/shared/awf-agents
+export AWF_ROLES_PATH=/opt/shared/awf-roles
 awf run review --input code="$(cat main.go)"
-# AWF looks for /opt/shared/awf-agents/go-senior/AGENTS.md only
+# AWF looks for /opt/shared/awf-roles/go-senior/AGENTS.md only
 ```
