@@ -1,0 +1,32 @@
+{
+  "name": "awf-marketplace",
+  "interface": {
+    "displayName": "AWF Marketplace"
+  },
+  "plugins": [
+    {
+      "name": "awf",
+      "source": {
+        "source": "local",
+        "path": "./awf"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "zpm",
+      "source": {
+        "source": "local",
+        "path": "./zpm"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

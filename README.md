@@ -1,8 +1,18 @@
 # AWF Marketplace
 
-Claude Code plugin marketplace for AWF CLI https://github.com/awf-project/cli and [ZPM](https://github.com/awf-project/ZPM).
+Plugin marketplace for AWF CLI https://github.com/awf-project/cli and [ZPM](https://github.com/awf-project/ZPM), compatible with Claude Code and Codex.
 
 ## Installation
+
+### Codex
+
+```bash
+codex plugin marketplace add awf-project/awf-marketplace
+```
+
+Codex also discovers the repo-scoped marketplace at `.agents/plugins/marketplace.json`.
+
+### Claude Code
 
 ```bash
 /plugin marketplace add awf-project/awf-marketplace
@@ -12,8 +22,8 @@ Claude Code plugin marketplace for AWF CLI https://github.com/awf-project/cli an
 
 | Plugin | Description |
 |--------|-------------|
-| `awf` | AWF CLI - skills, agents, and commands |
-| `zpm` | ZPM - skills, agents, hooks and commands |
+| `awf` | AWF CLI - skills, agents, and commands for Claude; skills for Codex |
+| `zpm` | ZPM - skills, agents, hooks and commands for Claude; skills, hooks, and MCP config for Codex |
 
 ## Author
 

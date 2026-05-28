@@ -1,0 +1,28 @@
+{
+  "name": "awf",
+  "version": "0.9.3",
+  "description": "AWF CLI skills and workflow design knowledge for Codex.",
+  "author": {
+    "name": "Alex pocky Balmes",
+    "email": "awf@alex.balmes.co",
+    "url": "https://alex.balmes.co"
+  },
+  "homepage": "https://github.com/awf-project/cli",
+  "repository": "https://github.com/awf-project/awf-marketplace",
+  "license": "EUPL-1.2",
+  "keywords": ["awf", "workflow", "agents", "yaml", "cli"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "AWF",
+    "shortDescription": "AWF CLI workflow skills for Codex.",
+    "longDescription": "Deep reference documentation for creating, validating, and maintaining AWF YAML workflows and AWF CLI integrations.",
+    "developerName": "Alex pocky Balmes",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"],
+    "websiteURL": "https://github.com/awf-project/cli",
+    "defaultPrompt": [
+      "Use AWF to design a valid workflow YAML file.",
+      "Use AWF to debug a workflow syntax or validation issue."
+    ]
+  }
+}

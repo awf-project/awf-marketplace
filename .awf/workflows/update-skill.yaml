@@ -65,10 +65,10 @@ states:
 
   update_marketplace_version:
     type: step
-    description: Update plugin version in marketplace.json
+    description: Update plugin version in Claude marketplace and Codex manifest
     script_file: "{{.awf.scripts_dir}}/update-marketplace.sh"
     on_success: create_branch
-    on_failure: {message: "Failed to update marketplace.json for {{.states.resolve_skill.Output}} to {{.states.read_and_bump_version.Output}}"}
+    on_failure: {message: "Failed to update Claude/Codex JSON for {{.states.resolve_skill.Output}} to {{.states.read_and_bump_version.Output}}"}
 
   create_branch:
     type: step
