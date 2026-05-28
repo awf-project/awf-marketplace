@@ -569,6 +569,71 @@ analyze:
 
 **Details:** [Agent Roles Reference](agent-roles.md)
 
+## MCP Proxy
+
+Add `mcp_proxy:` to control which tools the agent can invoke during a step. AWF spawns a stdio MCP proxy subprocess that intercepts all tool calls and enforces the allowlist before forwarding to the target tool or plugin.
+
+```yaml
+audit:
+  type: agent
+  provider: claude
+  prompt: "Audit files in {{.inputs.dir}}"
+  options:
+    dangerously_skip_permissions: true
+  mcp_proxy:
+    enabled: true
+    allowed_tools:
+      - read
+      - glob
+      - grep
+  on_success: done
+```
+
+### `mcp_proxy` Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `enabled` | bool | Activate MCP proxy for this step |
+| `allowed_tools` | list of strings | Tool names the agent may invoke |
+| `plugin_bindings` | list | Plugin-provided tools to expose |
+| `plugin_bindings[].plugin` | string | Plugin ID (must be installed and enabled) |
+| `plugin_bindings[].tools` | list of strings | Tool names from that plugin |
+
+### Builtin Tools
+
+`bash`, `glob`, `grep`, `read`, `write`, `edit`
+
+### Plugin Tool Exposure
+
+```yaml
+query_step:
+  type: agent
+  provider: claude
+  prompt: "Query the database and summarize"
+  mcp_proxy:
+    enabled: true
+    allowed_tools:
+      - read
+    plugin_bindings:
+      - plugin: awf-plugin-database
+        tools:
+          - sql_query
+  on_success: done
+```
+
+### Provider Notes
+
+| Provider | Behavior |
+|----------|----------|
+| `claude` | Passes `--mcp-config` with proxy server address |
+| `gemini` | MCP config injected via config file |
+| `github_copilot` | MCP config injected |
+| `opencode` | Workspace config includes MCP server entry |
+| `openai_compatible` | Tool schemas injected at API level (no CLI subprocess) |
+| `codex` | Warning emitted; stdio MCP is not supported by Codex CLI |
+
+**Details**: [MCP Proxy Reference](mcp-proxy.md)
+
 ## Response Handling
 
 Agent responses are captured in state:

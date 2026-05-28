@@ -34,6 +34,7 @@
 | `awf upgrade` | Self-update the AWF binary from GitHub Releases |
 | `awf upgrade --check` | Check for a newer version without installing |
 | `awf serve` | Start HTTP REST API server (`--host`, `--port 2511`) |
+| `awf mcp serve` | Start stdio MCP server wrapping AWF plugins |
 | `awf tui` | Launch interactive full-screen terminal dashboard |
 
 ## Global Flags
@@ -877,6 +878,56 @@ The server shuts down gracefully on SIGINT or SIGTERM.
 Swagger UI and auto-generated OpenAPI 3.1 spec available at `/docs`.
 
 **Details**: [HTTP REST API Reference](api.md)
+
+## awf mcp
+
+MCP (Model Context Protocol) integration commands.
+
+### awf mcp serve
+
+Start a stdio JSON-RPC 2.0 MCP server that wraps AWF plugins. Any MCP-capable agent (Claude Code, Gemini, Codex, Copilot, OpenAI-compatible) can connect to it and invoke AWF tools via the standard MCP protocol.
+
+```bash
+awf mcp serve [flags]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--plugins` | Comma-separated plugin IDs to expose (default: all enabled plugins) |
+
+```bash
+# Start MCP server (reads from stdin, writes to stdout)
+awf mcp serve
+
+# Expose only specific plugins
+awf mcp serve --plugins awf-plugin-database,awf-plugin-slack
+```
+
+**Builtin tools exposed:**
+
+| Tool | Description |
+|------|-------------|
+| `bash` | Execute shell commands |
+| `glob` | File pattern matching |
+| `grep` | Content search |
+| `read` | Read file contents |
+| `write` | Write file contents |
+| `edit` | Exact-string file edits |
+
+**Claude Code MCP configuration example:**
+
+```json
+{
+  "mcpServers": {
+    "awf": {
+      "command": "awf",
+      "args": ["mcp", "serve"]
+    }
+  }
+}
+```
+
+**Details**: [MCP Proxy Reference](mcp-proxy.md)
 
 ## Output Formats
 
