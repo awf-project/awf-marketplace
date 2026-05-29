@@ -14,7 +14,7 @@
       "name": "awf",
       "source": "./awf",
       "description": "AWF CLI - skills, agents, and commands",
-      "version": "0.9.3",
+      "version": "0.9.4",
       "author": {
         "name": "Alex pocky Balmes"
       },

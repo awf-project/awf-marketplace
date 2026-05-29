@@ -142,8 +142,7 @@ script_file: "{{.awf.scripts_dir}}/deploy.sh"
 command: echo "{{.loop.Index1}}/{{.loop.Length}}"
 ```
 
-> **Breaking Change (v0.5.12)**: State property names must be uppercase: `.Output`, `.ExitCode`, `.Status`, `.Stderr`. Use `awf validate` to detect casing issues.
-> **Breaking Change (v0.6.6)**: `provider: custom` removed. Use `provider: openai_compatible` with `base_url` and `model`.
+> **Breaking Changes**: State property names must be uppercase (`.Output`, `.ExitCode`, `.Status`, `.Stderr`) — use `awf validate` to detect. `provider: custom` removed; use `provider: openai_compatible` with `base_url` and `model`.
 
 ## Common Patterns
 
@@ -262,8 +261,7 @@ analyze:
 ```
 
 - SKILL.md frontmatter is stripped; body injected as `<skill_content>` XML before the prompt
-- `awf validate` checks: `skill_not_found`, `skill_missing_skillmd`, `skill_empty_content`
-- Override discovery with `AWF_SKILLS_PATH` env var; use `{{.awf.skills_dir}}` in paths
+- `awf validate` checks: `skill_not_found`, `skill_missing_skillmd`, `skill_empty_content`; override discovery with `AWF_SKILLS_PATH`; use `{{.awf.skills_dir}}` in paths
 
 **Details**: [Skills Reference](references/skills.md)
 
@@ -433,8 +431,7 @@ audit:
   on_success: report
 ```
 
-- Spawns a stdio JSON-RPC proxy subprocess per step; enforces `allowed_tools` allowlist
-- Claude: `--mcp-config`; Gemini/Copilot/OpenCode: config injection; openai_compatible: API-level tool injection; Codex: warning (stdio MCP unsupported)
+- Spawns a stdio JSON-RPC proxy subprocess per step; enforces `allowed_tools` allowlist; Claude: `--mcp-config`; openai_compatible: API-level tool injection; Codex: warning (stdio MCP unsupported)
 - `awf mcp serve` — standalone stdio MCP server for external MCP clients (Claude Code, Gemini, etc.)
 
 **Details**: [MCP Proxy Reference](references/mcp-proxy.md)
@@ -443,12 +440,14 @@ audit:
 
 ```bash
 awf serve --port 2511
-curl -X POST http://localhost:2511/api/workflows/deploy/run \
+curl -X POST http://localhost:2511/api/workflows/local/deploy/run \
   -H "Content-Type: application/json" -d '{"inputs": {"env": "prod"}}'
+curl -X POST http://localhost:2511/api/workflows/speckit/specify/run \
+  -H "Content-Type: application/json" -d '{"inputs": {"target": "my-api"}}'
 curl -N http://localhost:2511/api/executions/<id>/events   # SSE stream
 ```
 
-SSE: `step.started`, `step.completed`, `workflow.completed`, `workflow.failed`. Cancel: `DELETE /api/executions/{id}`. Swagger: `/docs`.
+Routes use `{scope}/{name}`: `local` for non-pack workflows, pack vendor name for pack workflows (e.g., `speckit`). SSE: `step.started`, `step.completed`, `workflow.completed`, `workflow.failed`. Cancel: `DELETE /api/executions/{id}`. Swagger: `/docs`.
 
 **Details**: [HTTP REST API Reference](references/api.md)
 
@@ -461,7 +460,7 @@ telemetry:
   service_name: "my-service"
 ```
 
-Opt-in OpenTelemetry tracing. Exports to Jaeger, Grafana Tempo, Honeycomb, or Datadog. Zero overhead when not configured. Override per-run with `--otel-exporter` and `--otel-service-name`.
+Opt-in OpenTelemetry tracing. Exports to Jaeger, Grafana Tempo, Honeycomb, or Datadog. Zero overhead when not configured; override per-run with `--otel-exporter` and `--otel-service-name`.
 
 **Details**: [Distributed Tracing Reference](references/tracing.md)
 
