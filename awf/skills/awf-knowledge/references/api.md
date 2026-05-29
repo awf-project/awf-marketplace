@@ -15,13 +15,38 @@ The server shuts down gracefully on SIGINT or SIGTERM.
 
 **Interactive API docs:** `http://localhost:2511/docs` — Swagger UI with auto-generated OpenAPI 3.1 spec.
 
+## URL Grammar — scope/name
+
+All workflow-specific routes use a two-segment `{scope}/{name}` path. The `scope` identifies the workflow source:
+
+| Scope | Meaning |
+|-------|---------|
+| `local` | Non-pack workflow (local `.awf/workflows/` or global `$XDG_CONFIG_HOME/awf/workflows/`) |
+| `<vendor>` | Pack workflow — use the pack's vendor/scope name (e.g., `speckit`) |
+
+The scope values `local`, `global`, and `env` are reserved. Pack names matching any of these are rejected at install time with `USER.INPUT.VALIDATION_FAILED`.
+
+**Examples:**
+
+```bash
+# Local workflow named "deploy-prod"
+curl -X POST http://localhost:2511/api/workflows/local/deploy-prod/run \
+  -H "Content-Type: application/json" \
+  -d '{"inputs": {"env": "prod"}}'
+
+# Pack workflow "specify" from pack vendor "speckit"
+curl -X POST http://localhost:2511/api/workflows/speckit/specify/run \
+  -H "Content-Type: application/json" \
+  -d '{"inputs": {"target": "my-api"}}'
+```
+
 ## When to Use the API vs CLI
 
 | Scenario | Use |
 |----------|-----|
 | Interactive terminal use | `awf run` / `awf tui` |
 | CI/CD pipeline (sequential) | `awf run` |
-| External system integration | API (`POST /api/workflows/{name}/run`) |
+| External system integration | API (`POST /api/workflows/{scope}/{name}/run`) |
 | Long-running workflow monitoring | API (`GET /api/executions/{id}/events`) |
 | Parallel execution from multiple clients | API |
 | Cancelling a running workflow remotely | API (`DELETE /api/executions/{id}`) |
@@ -29,10 +54,85 @@ The server shuts down gracefully on SIGINT or SIGTERM.
 
 ## Endpoints
 
+### List Available Workflows
+
+```
+GET /api/workflows
+```
+
+Returns all discoverable workflows (local, global, and from installed packs). Each entry includes `scope` and `workflow` fields to identify the source.
+
+```bash
+curl http://localhost:2511/api/workflows
+```
+
+**Response — 200 OK:**
+
+```json
+[
+  {
+    "name": "local/deploy-prod",
+    "scope": "local",
+    "workflow": "deploy-prod"
+  },
+  {
+    "name": "speckit/specify",
+    "scope": "speckit",
+    "workflow": "specify"
+  }
+]
+```
+
+`scope` values: `env`, `local`, `global`, or the pack vendor name.
+
+### Get Workflow Details
+
+```
+GET /api/workflows/{scope}/{name}
+```
+
+Returns metadata for a single workflow.
+
+```bash
+# Local workflow
+curl http://localhost:2511/api/workflows/local/deploy-prod
+
+# Pack workflow
+curl http://localhost:2511/api/workflows/speckit/specify
+```
+
+**Response — 200 OK:**
+
+```json
+{
+  "name": "deploy-prod",
+  "version": "1.0.0",
+  "scope": "local"
+}
+```
+
+### Validate a Workflow
+
+```
+POST /api/workflows/{scope}/{name}/validate
+```
+
+Runs `awf validate` logic against the workflow and returns any errors or warnings.
+
+```bash
+# Local workflow
+curl -X POST http://localhost:2511/api/workflows/local/deploy-prod/validate
+
+# Pack workflow
+curl -X POST http://localhost:2511/api/workflows/speckit/specify/validate
+```
+
+**Response — 200 OK** when valid; structured error body when validation fails.
+
 ### Run a Workflow
 
 ```
-POST /api/workflows/{name}/run
+POST /api/workflows/{scope}/{name}/run
 ```
 
 Starts a workflow asynchronously. Returns immediately with an execution ID.
@@ -40,9 +140,15 @@ Starts a workflow asynchronously. Returns immediately with an execution ID.
 **Request:**
 
 ```bash
-curl -X POST http://localhost:2511/api/workflows/deploy/run \
+# Local workflow
+curl -X POST http://localhost:2511/api/workflows/local/deploy-prod/run \
   -H "Content-Type: application/json" \
   -d '{"inputs": {"env": "prod", "version": "1.2.3"}}'
+
+# Pack workflow
+curl -X POST http://localhost:2511/api/workflows/speckit/specify/run \
+  -H "Content-Type: application/json" \
+  -d '{"inputs": {"target": "my-api"}}'
 ```
 
 **Response — 202 Accepted:**
@@ -250,8 +356,8 @@ Errors follow RFC 7807 (Problem Details). All error responses include `status`, 
 Start a workflow and stream its events until completion:
 
 ```bash
-# Start
-EXEC_ID=$(curl -s -X POST http://localhost:2511/api/workflows/deploy/run \
+# Start a local workflow
+EXEC_ID=$(curl -s -X POST http://localhost:2511/api/workflows/local/deploy/run \
   -H "Content-Type: application/json" \
   -d '{"inputs": {"env": "prod"}}' | jq -r .execution_id)
 
