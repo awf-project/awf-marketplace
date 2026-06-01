@@ -100,3 +100,25 @@ awf run deploy -f json
 ```
 
 > **Output Routing**: JSON error responses are always written to **stderr**, not stdout. This preserves stdout cleanliness for script piping contracts. Check `stderr` when consuming JSON errors programmatically.
+
+## ACP Error Codes
+
+The `awf acp-serve` server returns JSON-RPC error objects instead of process exit codes. These are not process-level exit codes — they appear in JSON-RPC error responses.
+
+| Code | Meaning |
+|------|---------|
+| `ACP.SESSION_NOT_FOUND` | Session ID does not exist or has expired |
+| `ACP.WORKFLOW_NOT_FOUND` | Named slash command targets a workflow not in the catalog |
+| `ACP.INVALID_COMMAND` | Slash command name failed name-encoding validation |
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "error": {
+    "code": -32602,
+    "message": "ACP.WORKFLOW_NOT_FOUND",
+    "data": {"command": "/unknown__workflow"}
+  }
+}
+```
