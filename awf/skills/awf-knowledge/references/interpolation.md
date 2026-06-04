@@ -15,14 +15,14 @@ command: echo "{{.inputs.file_path}}"
 State property names must be uppercase (Go template convention):
 
 ```yaml
-{{.states.step_name.Output}}            # Command output (raw text, or cleaned if output_format set)
+{{.states.step_name.Output}}            # Extracted assistant text (CLI providers) or API text; cleaned if output_format set
 {{.states.step_name.ExitCode}}          # Exit code (integer, POSIX 0-255)
 {{.states.step_name.TokensInput}}       # Input tokens (agent steps; real count or fallback estimate)
 {{.states.step_name.TokensOutput}}      # Output tokens (agent steps; real count or fallback estimate)
 {{.states.step_name.TokensEstimated}}   # true when provider did not emit token data (len/4 fallback)
 {{.states.step_name.TokensUsed}}        # Aggregate token count (legacy; prefer TokensInput/TokensOutput)
-{{.states.step_name.Response.field}}    # Parsed field from operation/agent structured output (heuristic)
-{{.states.step_name.JSON.field}}        # Parsed field from output_format: json (explicit)
+{{.states.step_name.Response.field}}    # Parsed field — heuristic for ALL providers when Output is valid JSON
+{{.states.step_name.JSON.field}}        # Parsed field from output_format: json (explicit, with fence-stripping)
 ```
 
 > **Breaking Change (v0.5.12)**: Lowercase properties (`.output`, `.exit_code`) were never functional. Use `awf validate` to detect casing issues.
@@ -66,13 +66,16 @@ On POSIX systems, exit codes are typically 0-255. Exit code 0 indicates success;
 For `type: agent` steps, additional fields are available:
 
 ```yaml
-# Raw text response (or cleaned text if output_format is set)
+# Extracted assistant text (all CLI providers); API response text for openai_compatible
+# Further cleaned if output_format is set
 command: echo "{{.states.analyze.Output}}"
 
-# Parsed JSON response - automatic heuristic (if valid JSON returned)
+# Parsed JSON response - automatic heuristic for ALL providers
+# Populated when Output is valid JSON; no output_format: json required
 command: echo "Issues: {{.states.analyze.Response.issues}}"
+command: echo "Severity: {{.states.analyze.Response.severity}}"
 
-# Parsed JSON from output_format: json - explicit
+# Parsed JSON from output_format: json - explicit (with fence-stripping + validation)
 command: echo "Severity: {{.states.analyze.JSON.severity}}"
 
 # Token usage — granular fields (preferred)
@@ -111,7 +114,30 @@ report:
 
 > **Note**: `TokensUsed` replaced deprecated `Tokens` field. Update workflows from `{{.states.step.Tokens}}` to `{{.states.step.TokensUsed}}`. Prefer `TokensInput`/`TokensOutput` for new workflows.
 
-### JSON (Explicit Output Formatting)
+### Response vs JSON
+
+Two fields provide structured access to agent output. Use `Response` when the agent naturally returns JSON; use `JSON` when you need explicit fence-stripping and validation.
+
+| Field | When populated | Access |
+|-------|---------------|--------|
+| `Response` | Automatically, for ALL providers, when `Output` is valid JSON (heuristic) | `{{.states.step.Response.field}}` |
+| `JSON` | Only when `output_format: json` is explicitly set; strips fences, validates | `{{.states.step.JSON.field}}` |
+
+**`Response` — automatic heuristic (no `output_format` required):**
+
+```yaml
+# Works for Claude, Codex, Gemini, OpenCode, GitHub Copilot, openai_compatible
+# Agent output: {"issues": ["buffer overflow"], "severity": "high", "count": 2}
+
+process:
+  type: step
+  command: |
+    echo "Severity: {{.states.analyze.Response.severity}}"
+    echo "Count: {{.states.analyze.Response.count}}"
+  on_success: done
+```
+
+**`JSON` — explicit output formatting (with fence-stripping + validation):**
 
 When an agent step uses `output_format: json`, the parsed JSON is accessible via `JSON`:
 
@@ -119,11 +145,6 @@ When an agent step uses `output_format: json`, the parsed JSON is accessible via
 {{.states.step_name.JSON.field}}         # Access a JSON object field
 {{.states.step_name.JSON}}               # Full parsed JSON object
 ```
-
-**Key differences from `Response`:**
-- `JSON` is only populated when `output_format: json` is explicitly set on the agent step
-- `Response` is populated automatically for all agent outputs if valid JSON is detected (heuristic)
-- `JSON` represents explicitly formatted output; `Response` is automatic best-effort parsing
 
 Example:
 
@@ -149,6 +170,12 @@ states:
     type: terminal
 ```
 
+**Summary of differences:**
+- `Response` works without any `output_format` setting; it is a best-effort parse of `Output`
+- `JSON` requires `output_format: json`; it strips markdown fences before parsing and fails the step on invalid JSON
+- When the agent wraps output in `` ```json ``` `` fences, use `output_format: json` + `JSON` to strip fences first
+- When the agent returns bare JSON (no fences), `Response` is sufficient
+
 See [Agent Steps - Output Formatting](agent-steps.md#output-formatting) for detailed examples.
 
 ### Operation State Outputs
@@ -164,7 +191,7 @@ command: echo "Title: {{.states.get_issue.Response.title}}"
 command: echo "Labels: {{.states.get_issue.Response.labels}}"
 ```
 
-Use `Output` for raw JSON, `Response.field` for individual parsed fields.
+Use `Output` for the raw JSON string, `Response.field` for individual parsed fields. `Response` is also populated heuristically for agent steps when output is valid JSON — see [Response vs JSON](#response-vs-json) above.
 
 ### Conversation State Outputs
 
