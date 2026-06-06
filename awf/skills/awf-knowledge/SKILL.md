@@ -222,9 +222,7 @@ done:
   status: success
 ```
 
-- `on_failure` accepts `{message: "...", status: N}` as shorthand for an anonymous terminal state
-- `message` supports full template interpolation; `status` defaults to `1` when omitted
-- String form `on_failure: step_name` unchanged; `awf validate` checks for missing `message`
+`on_failure` accepts `{message: "...", status: N}` (anonymous terminal state); `message` supports interpolation; `status` defaults to `1`; string form `on_failure: step_name` unchanged; `awf validate` checks for missing `message`.
 
 **Details**: [Workflow Syntax - Inline Error Shorthand](references/workflow-syntax.md#inline-error-shorthand)
 
@@ -398,10 +396,7 @@ query_db:
   on_success: process
 ```
 
-```bash
-awf validate my-workflow --skip-plugins    # bypass plugin validation
-awf run my-workflow --validator-timeout 30s
-```
+Use `--skip-plugins` with `awf validate` to bypass plugin validation; `--validator-timeout 30s` to control timeout.
 
 **Details**: [Plugins Reference](references/plugins.md)
 
@@ -451,14 +446,7 @@ Routes use `{scope}/{name}`: `local` for non-pack workflows, pack vendor name fo
 
 ### Distributed Tracing
 
-```yaml
-# .awf/config.yaml
-telemetry:
-  exporter: "localhost:4317"   # OTLP gRPC endpoint
-  service_name: "my-service"
-```
-
-Opt-in OpenTelemetry tracing. Exports to Jaeger, Grafana Tempo, Honeycomb, or Datadog. Zero overhead when not configured; override per-run with `--otel-exporter` and `--otel-service-name`.
+Opt-in OpenTelemetry tracing via `.awf/config.yaml` (`telemetry.exporter`, `telemetry.service_name`). Exports to Jaeger, Grafana Tempo, Honeycomb, or Datadog. Zero overhead when not configured; override per-run with `--otel-exporter` and `--otel-service-name`.
 
 **Details**: [Distributed Tracing Reference](references/tracing.md)
 
