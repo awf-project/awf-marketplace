@@ -30,7 +30,8 @@ argument-hint: "[topic]"
 2. Run with `--verbose` for details
 3. Check `$XDG_STATE_HOME/awf/` for logs (~/.local/state/awf/)
 4. Review audit trail at `$XDG_DATA_HOME/awf/audit.jsonl` for execution history (v0.6.7)
-5. `awf plugin list` to verify built-in providers (github, http, notify) are enabled
+5. Review transcript at `storage/transcripts/<run-id>.jsonl` for full agent exchange (messages, tool calls, results)
+6. `awf plugin list` to verify built-in providers (github, http, notify) are enabled
 
 **Developing AWF?**
 1. See [Architecture](references/architecture.md)
@@ -470,9 +471,8 @@ Opt-in OpenTelemetry tracing via `.awf/config.yaml` (`telemetry.exporter`, `tele
 - [references/examples.md](references/examples.md) - Real-world examples
 
 **Reference**
-- [references/audit-trail.md](references/audit-trail.md) - Structured JSONL audit trail
-- [references/tracing.md](references/tracing.md) - Distributed tracing (OpenTelemetry)
-- [references/interpolation.md](references/interpolation.md) - Variable substitution
+- [references/audit-trail.md](references/audit-trail.md) - Structured JSONL audit trail | [references/transcript.md](references/transcript.md) - Agent exchange transcript (messages, tool calls, results)
+- [references/tracing.md](references/tracing.md) - Distributed tracing (OpenTelemetry) | [references/interpolation.md](references/interpolation.md) - Variable substitution
 - [references/interactive-inputs.md](references/interactive-inputs.md) - Auto-prompting for missing inputs
 - [references/agent-steps.md](references/agent-steps.md) - AI agent integration
 - [references/agent-roles.md](references/agent-roles.md) - Agent role injection via AGENTS.md
