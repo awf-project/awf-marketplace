@@ -79,6 +79,37 @@ tests/
     └── conversation-parallel.yaml  # Conversation parallel execution (v0.5.41)
 ```
 
+### Interface-Layer Testing with facadetest
+
+`facadetest.FakeFacade` in `internal/testutil/facadetest/` provides a scriptable implementation of `WorkflowFacade` for testing CLI, TUI, and HTTP handlers without running real application services.
+
+```go
+func TestRunCommand(t *testing.T) {
+    fake := facadetest.New()
+    fake.ScriptRun([]ports.FacadeEvent{
+        &ports.StepStarted{Step: "build"},
+        &ports.OutputLine{Step: "build", Line: "compiling..."},
+        &ports.StepDone{Step: "build", Status: "success"},
+        &ports.Terminal{Status: "success"},
+    })
+    // inject fake into command under test
+    cmd := cli.NewRunCommand(fake)
+    // assert output
+}
+```
+
+Golden files in `tests/fixtures/facade/` enforce cross-interface output parity:
+- `cli-stdout.golden` — expected CLI stdout for a canonical run
+- `sse-frames.golden` — expected SSE event frames
+- `tui-tea-msg.golden` — expected Bubble Tea messages from FacadeBridge
+- `acp-session-update.golden` — expected ACP session-update events
+
+Integration tests using the real facade adapter:
+- `facade_conformance_test.go` — contract suite that any WorkflowFacade implementation must satisfy
+- `facade_e2e_run_test.go` — end-to-end run via facade
+- `facade_resume_test.go` — resume flow integration
+- `agent_uniformity_test.go` — verifies CLI, TUI, HTTP all produce equivalent event sequences
+
 ### Conversation Workflow Fixture Corrections (v0.5.41)
 
 As of v0.5.41, conversation workflow fixtures are corrected to match domain model requirements (PR #156):

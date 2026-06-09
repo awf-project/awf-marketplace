@@ -441,7 +441,7 @@ curl -X POST http://localhost:2511/api/workflows/speckit/specify/run \
 curl -N http://localhost:2511/api/executions/<id>/events   # SSE stream
 ```
 
-Routes use `{scope}/{name}`: `local` for non-pack workflows, pack vendor name for pack workflows (e.g., `speckit`). SSE: `step.started`, `step.completed`, `workflow.completed`, `workflow.failed`. Cancel: `DELETE /api/executions/{id}`. Swagger: `/docs`.
+Routes use `{scope}/{name}`: `local` for non-pack workflows, pack vendor name for pack workflows (e.g., `speckit`). SSE: `step.started`, `step.done`, `output.line` (streaming text), `terminal` (final); legacy types `step.completed`/`workflow.completed`/`workflow.failed` retained. Cancel: `DELETE /api/executions/{id}`. Swagger: `/docs`.
 
 **Details**: [HTTP REST API Reference](references/api.md)
 
@@ -482,5 +482,4 @@ Opt-in OpenTelemetry tracing via `.awf/config.yaml` (`telemetry.exporter`, `tele
 - [references/validation.md](references/validation.md) - Input validation
 **Development**
 - [references/architecture.md](references/architecture.md) - Architecture & project structure
-- [references/code-quality.md](references/code-quality.md) - Linting, formatting, CI quality gates
-- [references/testing.md](references/testing.md) - Testing conventions
+- [references/code-quality.md](references/code-quality.md) - Linting, formatting, CI quality gates | [references/testing.md](references/testing.md) - Testing conventions

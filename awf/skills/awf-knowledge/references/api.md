@@ -253,13 +253,11 @@ curl -N http://localhost:2511/api/executions/550e8400-e29b-41d4-a716-44665544000
 ```
 data: {"type":"step.started","step":"build","timestamp":"2026-05-17T10:00:01Z"}
 
-data: {"type":"step.completed","step":"build","exit_code":0,"timestamp":"2026-05-17T10:00:05Z"}
+data: {"type":"output.line","step":"build","line":"Compiling...","timestamp":"2026-05-17T10:00:02Z"}
 
-data: {"type":"step.started","step":"deploy","timestamp":"2026-05-17T10:00:05Z"}
+data: {"type":"step.done","step":"build","status":"success","timestamp":"2026-05-17T10:00:05Z"}
 
-data: {"type":"step.completed","step":"deploy","exit_code":0,"timestamp":"2026-05-17T10:00:12Z"}
-
-data: {"type":"workflow.completed","status":"success","timestamp":"2026-05-17T10:00:12Z"}
+data: {"type":"terminal","status":"success","timestamp":"2026-05-17T10:00:12Z"}
 ```
 
 #### SSE Event Types
@@ -267,11 +265,42 @@ data: {"type":"workflow.completed","status":"success","timestamp":"2026-05-17T10
 | Type | Emitted when |
 |------|-------------|
 | `step.started` | A step begins executing |
-| `step.completed` | A step finishes (check `exit_code` for outcome) |
-| `workflow.completed` | Workflow reaches a terminal success state |
-| `workflow.failed` | Workflow reaches a terminal failure state |
+| `step.done` | A step finishes (replaces `step.completed` in facade path; check `status` field) |
+| `output.line` | A streaming output line from a running step |
+| `terminal` | Workflow reached terminal state (replaces `workflow.completed`/`workflow.failed`) |
+| `step.completed` | (legacy) A step finishes — still emitted for backward compatibility |
+| `workflow.completed` | (legacy) Success terminal — still emitted for backward compatibility |
+| `workflow.failed` | (legacy) Failure terminal — still emitted for backward compatibility |
 
-Each event is a JSON object with at minimum `type` and `timestamp` fields. Step events include `step` (state name). `step.completed` includes `exit_code`.
+The facade event types (`step.done`, `output.line`, `terminal`) are the canonical events. Legacy types remain for backward compatibility.
+
+Each event is a JSON object with at minimum `type` and `timestamp` fields. Step events include `step` (state name). `step.completed` includes `exit_code`; `step.done` includes `status`.
+
+### Get Synchronous Terminal Result
+
+```
+POST /api/executions/{id}/respond
+```
+
+Blocks until the execution reaches a terminal state, then returns the final `terminal` event as a JSON response. Use this for clients that cannot consume SSE.
+
+```bash
+curl -X POST http://localhost:2511/api/executions/550e8400-e29b-41d4-a716-446655440000/respond
+```
+
+**Response — 200 OK** (workflow succeeded):
+
+```json
+{"type":"terminal","status":"success","timestamp":"2026-05-17T10:00:12Z"}
+```
+
+**Response — 200 OK** (workflow failed — check `status` field):
+
+```json
+{"type":"terminal","status":"failed","timestamp":"2026-05-17T10:00:12Z"}
+```
+
+**Response — 404** if execution not found.
 
 ### List Execution History
 
@@ -382,6 +411,6 @@ done
 
 ## Architecture Notes
 
-The API adapter lives at `internal/interfaces/api/` and imports nothing from `internal/infrastructure/`. It calls the same application layer services used by the CLI (`ExecutionService`, `WorkflowService`). Built with Huma v2 (OpenAPI 3.1 generation) and chi v5 (routing). The default port 2511 is fixed; use `--port` to override.
+The API adapter lives at `internal/interfaces/api/` and imports nothing from `internal/infrastructure/`. All four interface entry points (CLI, TUI, HTTP, ACP) call `WorkflowFacade` methods (`Run`, `Validate`, `List`, `History`) instead of calling application services directly. The SSE handler and `respond` handler consume the `WorkflowFacade.Run` event channel and emit typed facade events, replacing the previous polling model. Built with Huma v2 (OpenAPI 3.1 generation) and chi v5 (routing). The default port 2511 is fixed; use `--port` to override.
 
 **Details**: [CLI Commands - awf serve](cli-commands.md#awf-serve) | [Architecture](architecture.md)

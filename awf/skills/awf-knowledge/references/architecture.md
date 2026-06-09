@@ -7,12 +7,13 @@ AWF follows Hexagonal (Ports and Adapters) / Clean Architecture.
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     INTERFACES LAYER                        │
-│      CLI  │  HTTP REST API (awf serve)  │  MQ (future)        │
+│      CLI  │  TUI  │  HTTP/SSE (awf serve)  │  ACP           │
 └───────────────────────────┬─────────────────────────────────┘
-                            │
+                            │ (all four call WorkflowFacade)
 ┌───────────────────────────┴─────────────────────────────────┐
 │                   APPLICATION LAYER                         │
-│   WorkflowService │ ExecutionService │ PluginService        │
+│   WorkflowFacade (entry point) │ WorkflowService            │
+│   ExecutionService │ PluginService │ SessionRegistry        │
 └───────────────────────────┬─────────────────────────────────┘
                             │
 ┌───────────────────────────┴─────────────────────────────────┐
@@ -82,13 +83,24 @@ awf/
 │   │   ├── interactive_executor.go  # Step execution with result handlers
 │   │   ├── parallel_executor.go     # Parallel step coordination
 │   │   ├── state_manager.go     # State persistence
-│   │   └── template_service.go  # Template resolution with param helpers
+│   │   ├── template_service.go  # Template resolution with param helpers
+│   │   # Facade (F107)
+│   │   ├── facade_adapter.go    # WorkflowFacade adapter; delegates to resolver, session registry, execution service
+│   │   ├── resolver.go          # Workflow identifier resolution (name/scope → entity)
+│   │   ├── resolver_wire.go     # Wires resolver with pack discoverer and repository fallback
+│   │   ├── session_registry.go  # In-memory concurrent registry of active RunSession by run ID
+│   │   ├── run_session.go       # Per-run session: event channel, cancel func, status
+│   │   ├── drain.go             # Drains event channel after execution to prevent event loss
+│   │   ├── facade_projection.go # Projects domain events onto typed facade events
+│   │   ├── input_bridge.go      # Routes RunRequest to fresh run / resume / dry-run
+│   │   └── error_codes.go       # MapError: domain errors → facade error codes
 │   ├── testutil/                # Test infrastructure (v0.5.22, updated v0.5.32)
 │   │   ├── builders.go          # Fluent builders for Workflow, Step, State
 │   │   ├── fixtures.go          # Reusable test fixtures and factories
 │   │   ├── mocks.go             # Thread-safe mocks with sync.RWMutex
 │   │   ├── cli_fixtures.go      # CLI-specific test fixtures
-│   │   └── doc.go               # Package documentation and examples
+│   │   ├── doc.go               # Package documentation and examples
+│   │   └── facadetest/          # Scriptable FakeFacade for interface-layer tests; pre-configure event sequences
 │   ├── infrastructure/          # Adapters
 │   │   ├── repository/yaml.go   # YAML file loader with validator injection (v0.5.33)
 │   │   ├── expression/          # Expression validation adapter (v0.5.33)
@@ -145,6 +157,10 @@ awf/
 │   │       ├── registry.go      # RPC plugin registry
 │   │       └── composite.go     # CompositeOperationProvider (multiplexes GitHub + Notify)
 │   ├── interfaces/api/          # HTTP REST API adapter (Huma v2 + chi v5)
+│   │   └── respond_handler.go   # POST /api/executions/{id}/respond — synchronous Terminal-event response
+│   ├── interfaces/tui/          # Bubble Tea terminal dashboard
+│   │   ├── bridge.go            # FacadeBridge wrapping WorkflowFacade for Bubble Tea
+│   │   └── messages.go          # Facade event message types for Bubble Tea update loop
 │   └── interfaces/cli/          # Cobra commands
 │       ├── ui/                  # UI formatting helpers
 │       │   ├── output.go        # Table output, row builders
@@ -162,6 +178,7 @@ awf/
 │       ├── run_interactive_test.go   # Interactive mode tests (2 tests, v0.5.28)
 │       ├── validate_coverage_test.go # Validate command unit tests (v0.5.37)
 │       ├── resume.go            # Resume command with signal handler (v0.5.29)
+│       ├── resume_list.go       # awf resume --list via facade.List
 │       ├── signal_handler.go    # Shared signal handler preventing goroutine leaks (v0.5.29)
 │       └── signal_handler_test.go  # Signal handler cleanup tests (v0.5.29)
 ├── pkg/                         # Public packages
@@ -179,7 +196,12 @@ awf/
 │   │   ├── input_validation_functional_test.go    # Validation pipeline (v0.5.30)
 │   │   └── state_persistence_functional_test.go   # Persistence tests (v0.5.30)
 │   ├── fixtures/audit_skips/    # Audit script test fixtures (v0.5.39)
-│   └── fixtures/workflows/      # Test fixtures
+│   ├── fixtures/workflows/      # Test fixtures
+│   └── fixtures/facade/         # Golden files enforcing cross-interface output parity
+│       ├── cli-stdout.golden     # Expected CLI stdout
+│       ├── sse-frames.golden     # Expected SSE frame sequence
+│       ├── tui-tea-msg.golden    # Expected Bubble Tea messages
+│       └── acp-session-update.golden  # Expected ACP session update payload
 └── docs/                        # Documentation
 ```
 
@@ -308,6 +330,37 @@ type EventPublisher interface {
 }
 ```
 
+**Facade Port:**
+
+```go
+// WorkflowFacade is the single entry point all interface layers use (F107)
+type WorkflowFacade interface {
+    Run(ctx context.Context, req RunRequest) (<-chan FacadeEvent, error)
+    Validate(ctx context.Context, scope, name string) error
+    List(ctx context.Context) ([]ListItem, error)
+    History(ctx context.Context) ([]HistoryEntry, error)
+}
+```
+
+DTOs defined in `internal/domain/ports/facade_dto.go`:
+- `RunRequest` — scope, name, inputs map, resume ID, dry-run flag
+- `RunResult` — final status, output, error code
+- `ListItem` — workflow name, scope, source
+- `HistoryEntry` — run ID, workflow name, status, timestamps
+
+**Facade Event Vocabulary:**
+
+Events emitted on the channel returned by `Run`:
+
+| Go type | JSON `type` | Description |
+|---------|-------------|-------------|
+| `StepStarted` | `step.started` | Step begins |
+| `StepDone` | `step.done` | Step finishes |
+| `OutputLine` | `output.line` | Streaming output line |
+| `Terminal` | `terminal` | Final status (success/failure) |
+
+`Terminal` is the canonical final event. `workflow.completed` and `workflow.failed` may still appear for backwards compatibility but are superseded by `Terminal`.
+
 ## Application Layer
 
 Orchestrates use cases using domain and ports.
@@ -322,6 +375,16 @@ Orchestrates use cases using domain and ports.
 - `ParallelExecutor` - Concurrent step coordination with branch helpers
 - `StateManager` - State persistence
 - `TemplateService` - Template resolution with parameter processing helpers
+
+**Facade components (F107):**
+- `facade_adapter.go` — Adapter implementing `WorkflowFacade`; delegates to resolver, session registry, and execution service
+- `resolver.go` — Workflow identifier resolution (name/scope → workflow entity); `resolver_wire.go` wires it with pack discoverer and repository fallback
+- `session_registry.go` — In-memory concurrent registry tracking active `RunSession` by run ID
+- `run_session.go` — Per-run session encapsulating event channel, cancel func, and status; `Terminal` events trigger permanent shutdown
+- `drain.go` — Drains event channel after execution to prevent in-flight event loss
+- `facade_projection.go` — Projects domain execution events onto typed facade events
+- `input_bridge.go` — Routes `RunRequest` to the appropriate execution service method (fresh run, resume, dry-run)
+- `error_codes.go` — `MapError` function mapping domain errors to structured facade error codes
 
 ## Infrastructure Layer
 
@@ -342,6 +405,7 @@ Implements domain ports with concrete tech.
 - `plugin/` - RPC plugin registry + CompositeOperationProvider that multiplexes GitHub and Notify providers (v0.5.43)
 - `acp/` — ACP server adapters using `github.com/coder/acp-go-sdk`: `Agent` (session lifecycle), `Emitter` (SDK event dispatch), `PermissionClient` (tool-approval), `Renderer` (stream writing); `EventProjector` maps SDK events to domain events
 - `pluginmgr/` - `EventBus` (glob-pattern fan-out, 256-event buffered channels per plugin, depth-3 cycle detection), gRPC `EventService` adapter, `RPCPluginManager` with `SetEventBus()` (F090)
+- `transcript/fanout.go` - Fan-out subscriber support used by the facade mirror subscriber to broadcast execution transcript events to multiple consumers
 
 ## Key Patterns
 
@@ -446,3 +510,4 @@ make quality        # lint + fmt + vet + test
 - **Infrastructure:** Integration tests
 - **Interfaces:** E2E CLI tests (>80% coverage since v0.5.37)
 - **Skip Management:** Build tags and standardized helpers (v0.5.39, 84% skip reduction)
+- **FacadeTest Harness:** Interface-layer tests use `facadetest.FakeFacade` to script event sequences without spinning up real services; golden files in `tests/fixtures/facade/` enforce cross-interface output parity (CLI, SSE, TUI, ACP)
