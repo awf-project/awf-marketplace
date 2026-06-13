@@ -492,7 +492,6 @@ Opt-in OpenTelemetry tracing. Exports to Jaeger, Grafana Tempo, Honeycomb, or Da
 - [references/loop.md](references/loop.md) - Loop control flow and transitions
 - [references/exit-codes.md](references/exit-codes.md) - Error codes
 - [references/validation.md](references/validation.md) - Input validation
-
 **Development**
 - [references/architecture.md](references/architecture.md) - Architecture & project structure
 - [references/code-quality.md](references/code-quality.md) - Linting, formatting, CI quality gates

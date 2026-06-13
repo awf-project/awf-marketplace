@@ -160,6 +160,7 @@ Once configured, Claude Code can invoke AWF builtin tools (`bash`, `read`, `grep
 **Lifecycle:**
 - Reads requests from stdin, writes responses to stdout (JSON-RPC 2.0 framing)
 - Graceful shutdown on SIGINT or SIGTERM
+- Terminates with a system error if the working directory cannot be determined (required for sandbox isolation)
 - Plugin RPC connections are established on first tool call (lazy init)
 - Stale proxy config files are cleaned up automatically after shutdown
 
@@ -186,6 +187,11 @@ func (p *MyPlugin) Tools() []sdk.ToolSchema {
 }
 ```
 
+**ToolProvider call contract:**
+- Nil args and empty args are treated as equivalent (no arguments).
+- A successful invocation must return a non-nil result.
+- Errors can be reported via the returned `error` value or as an error field within the result (dual error-reporting contract).
+
 When `awf plugin list` shows a plugin with the `tools` capability flag, its tools are available for `plugin_bindings` in `mcp_proxy` configuration.
 
 ## Architecture
@@ -195,7 +201,7 @@ Agent CLI
     │
     │  JSON-RPC 2.0 (stdio)
     ▼
-AWF MCP Proxy Server (pkg/mcpserver)
+AWF MCP Proxy Server (internal/infrastructure/mcp)
     │
     ├── Builtin tools (bash, glob, grep, read, write, edit)
     │

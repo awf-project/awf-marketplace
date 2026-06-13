@@ -89,6 +89,8 @@ generate:
 
 > **Breaking Change**: AWF now invokes Codex using the `exec --json <prompt>` subcommand (previously `--prompt <prompt> --quiet`). The `quiet` option has been removed from the Codex provider. Conversation resume uses `codex resume <id> --json` (previously `--prompt`). These are CLI-level implementation details — workflow YAML is unchanged.
 
+> **F103 Output Parity**: AWF extracts assistant text from the Codex NDJSON stream unconditionally. `state.Output` contains the extracted assistant text — not raw JSON envelopes. This matches Claude, Gemini, and OpenCode behavior. `state.Response` is populated heuristically if the extracted text is valid JSON.
+
 ### Gemini (Google)
 
 ```yaml
@@ -640,8 +642,8 @@ Agent responses are captured in state:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `Output` | string | Raw response text (or cleaned text if `output_format` is set) |
-| `Response` | object | Parsed JSON response (automatic heuristic) |
+| `Output` | string | Extracted assistant text for all CLI providers (Claude, Codex, Gemini, OpenCode, GitHub Copilot); API response text for `openai_compatible`. Cleaned further if `output_format` is set. |
+| `Response` | object | Parsed JSON response — populated heuristically for ALL providers when `Output` is valid JSON. No `output_format: json` required. |
 | `JSON` | object | Parsed JSON from `output_format: json` (explicit, see [Output Formatting](#output-formatting)) |
 | `TokensInput` | int | Input tokens (real count from provider, or fallback estimate) |
 | `TokensOutput` | int | Output tokens (real count from provider, or fallback estimate) |
@@ -688,9 +690,9 @@ report:
   on_success: done
 ```
 
-### JSON Parsing
+### JSON Parsing (Automatic Heuristic)
 
-If agent returns valid JSON, it's automatically parsed:
+If the extracted assistant text is valid JSON, `Response` is populated automatically for ALL providers — no `output_format: json` required:
 
 ```yaml
 # Agent returns: {"issues": ["bug1"], "severity": "high"}
@@ -700,6 +702,8 @@ process:
   command: echo "Found {{.states.analyze.Response.issues}} issues"
   on_success: done
 ```
+
+This works for Claude, Codex, Gemini, OpenCode, GitHub Copilot, and `openai_compatible`. Use `{{.states.step.Response.field}}` to access parsed fields directly. For guaranteed JSON validation and fence-stripping, use `output_format: json` and access via `{{.states.step.JSON.field}}`.
 
 ## Output Formatting
 
@@ -783,7 +787,7 @@ save_code:
 
 #### No Format (Default)
 
-Omit `output_format` for backward compatibility. For CLI providers (Claude, Gemini, OpenCode), clean text is still extracted from the NDJSON stream — the output stored in `{{.states.step_name.Output}}` is plain text, not raw NDJSON. For the `openai_compatible` provider, the API response text is returned directly.
+Omit `output_format` for backward compatibility. For all CLI providers (Claude, Codex, Gemini, OpenCode, GitHub Copilot), extracted assistant text is stored in `{{.states.step_name.Output}}` — never raw NDJSON. For the `openai_compatible` provider, the API response text is returned directly. If the extracted text is valid JSON, `{{.states.step_name.Response}}` is populated automatically regardless of `output_format`.
 
 ### Error Handling
 
@@ -810,7 +814,7 @@ handle_json_error:
 
 ### Lifecycle Hook Compatibility
 
-CLI providers (Claude, Gemini, OpenCode) extract clean text from the NDJSON stream unconditionally before passing output to `applyOutputFormat`. This means `output_format: json` works correctly even when tools that inject lifecycle events into the NDJSON stream (e.g. claude-mem, superpowers, zpm SessionStart hooks) are active. Previously, these extra events caused an `invalid JSON: invalid character '{' after top-level value` error because the raw multi-document stream was passed directly to JSON validation.
+All CLI providers (Claude, Codex, Gemini, OpenCode, GitHub Copilot) extract clean text from the NDJSON stream unconditionally before passing output to `applyOutputFormat`. This means `output_format: json` works correctly even when tools that inject lifecycle events into the NDJSON stream (e.g. claude-mem, superpowers, zpm SessionStart hooks) are active. Previously, these extra events caused an `invalid JSON: invalid character '{' after top-level value` error because the raw multi-document stream was passed directly to JSON validation.
 
 If you see this error on an older AWF binary, upgrade AWF. No workflow YAML changes are required.
 
@@ -868,11 +872,11 @@ When `--verbose` is active and `output_format` is `text` or omitted, each tool i
 # WRONG — does not resolve
 command: echo "{{.states.analyze.DisplayOutput}}"
 
-# CORRECT — use Output for template interpolation (retains raw NDJSON-derived text)
+# CORRECT — use Output for template interpolation (extracted assistant text)
 command: echo "{{.states.analyze.Output}}"
 ```
 
-`state.Output` always retains the raw NDJSON-derived content for use in subsequent step templates, independent of what was displayed on the terminal.
+`state.Output` always contains the extracted assistant text for use in subsequent step templates, independent of what was displayed on the terminal. For all CLI providers (Claude, Codex, Gemini, OpenCode, GitHub Copilot) this is clean text extracted from the NDJSON stream — never raw wire format.
 
 ### Example: Streaming a JSON Agent Response
 
