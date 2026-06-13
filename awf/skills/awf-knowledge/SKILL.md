@@ -93,6 +93,7 @@ awf run hello --input name=Claude
 | `awf upgrade` | Self-update the AWF binary from GitHub Releases |
 | `awf serve [--host] [--port]` | Start HTTP REST API server (default: localhost:2511) |
 | `awf mcp serve` | Start stdio MCP server wrapping AWF plugins (for external MCP clients) |
+| `awf acp-serve` | Start stdio ACP server exposing workflows as JSON-RPC 2.0 slash commands |
 | `awf tui` | Launch interactive full-screen terminal dashboard |
 
 **Details**: [CLI Commands Reference](references/cli-commands.md)
@@ -296,16 +297,7 @@ copilot:
 
 ### Output Formatting for Agent Steps
 
-```yaml
-analyze:
-  type: agent
-  provider: claude
-  prompt: "Return JSON with 'severity' field"
-  output_format: json   # strips fences, validates JSON, stores in {{.states.analyze.JSON.severity}}
-  on_success: process
-```
-
-- `json`: validates JSON → `{{.states.step.JSON.field}}`; invalid JSON fails the step
+- `json`: set `output_format: json`; validates JSON → `{{.states.step.JSON.field}}`; invalid JSON fails the step
 - `text` (default): strips fences → `{{.states.step.Output}}`; `--verbose` adds `[tool:]` markers
 
 **Details**: [Agent Steps - Output Formatting](references/agent-steps.md#streaming-output-display)
@@ -436,6 +428,12 @@ audit:
 
 **Details**: [MCP Proxy Reference](references/mcp-proxy.md)
 
+### ACP Server (awf acp-serve)
+
+`awf acp-serve` (stdio) — exposes local workflows and installed packs as JSON-RPC 2.0 slash commands; slash-safe encoding: `speckit/specify` → `/speckit__specify`; multi-turn parking supported; Claude Desktop: `acpServers` config.
+
+**Details**: [ACP Server Reference](references/acp-server.md)
+
 ### HTTP REST API (awf serve)
 
 ```bash
@@ -474,6 +472,7 @@ Opt-in OpenTelemetry tracing. Exports to Jaeger, Grafana Tempo, Honeycomb, or Da
 - [references/cli-commands.md](references/cli-commands.md) - All CLI commands and flags
 - [references/api.md](references/api.md) - HTTP REST API server and SSE streaming
 - [references/mcp-proxy.md](references/mcp-proxy.md) - MCP proxy (per-step tool control and awf mcp serve)
+- [references/acp-server.md](references/acp-server.md) - ACP server (workflows as JSON-RPC 2.0 slash commands)
 - [references/tui.md](references/tui.md) - Terminal dashboard (five-tab interactive UI)
 - [references/configuration.md](references/configuration.md) - Project configuration
 - [references/plugins.md](references/plugins.md) - Plugin system & SDK

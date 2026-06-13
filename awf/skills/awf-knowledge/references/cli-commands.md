@@ -929,6 +929,33 @@ awf mcp serve --plugins awf-plugin-database,awf-plugin-slack
 
 **Details**: [MCP Proxy Reference](mcp-proxy.md)
 
+## awf acp-serve
+
+Start a transparent ACP (Agent Communication Protocol) server over stdio. Exposes local workflows and installed workflow packs as JSON-RPC 2.0 slash commands to external ACP-capable agents (Claude Desktop, IDEs).
+
+```bash
+awf acp-serve
+```
+
+The server has no command-specific flags beyond the global flags. It reads from stdin and writes to stdout. Terminate with SIGINT/SIGTERM or by closing stdin.
+
+```bash
+# Smoke-test: session/new returns available workflows as slash commands
+echo '{"jsonrpc":"2.0","id":1,"method":"session/new","params":{}}' | awf acp-serve
+
+# Claude Desktop configuration
+# Add to Claude Desktop settings:
+# {
+#   "acpServers": {
+#     "awf": { "command": "awf", "args": ["acp-serve"] }
+#   }
+# }
+```
+
+**Slash command encoding:** Pack and workflow names use `__` as separator (replaces `/` and `.`). Example: `speckit/specify` → `/speckit__specify`.
+
+**Details**: [ACP Server Reference](acp-server.md)
+
 ## Output Formats
 
 | Format | Use |
