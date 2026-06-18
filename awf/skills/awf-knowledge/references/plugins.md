@@ -52,7 +52,7 @@ notify_team:
 ### Notification Backends
 
 | Backend | Transport | Required Config | Required Inputs |
-|---------|-----------|-----------------|-----------------|
+|---------|-----------|-----------------|------------------|
 | `desktop` | OS-native (`notify-send` / `osascript`) | None | `message` |
 | `ntfy` | HTTP POST to ntfy server | `ntfy_url` in config | `message`, `topic` |
 | `slack` | HTTP POST to Slack webhook | `slack_webhook_url` in config | `message` |
@@ -278,10 +278,12 @@ Downloads the platform-matched binary, verifies SHA-256 checksum, and atomically
 
 ```bash
 awf plugin update awf-plugin-slack          # fetch latest from stored SOURCE
-awf plugin remove awf-plugin-slack          # remove binary and state
+awf plugin remove awf-plugin-slack          # gracefully shut down plugin process, then remove binary and state
 awf plugin remove awf-plugin-slack --keep-data  # remove binary, preserve state
 awf plugin search slack                     # search GitHub for AWF plugins
 ```
+
+> **Note:** `awf plugin remove` gracefully shuts down the plugin process (connection cleanup) before deleting the binary — prevents errors when removing active plugins.
 
 ### Listing and Visibility
 
@@ -416,7 +418,7 @@ See `examples/plugins/awf-plugin-echo/` for a minimal working plugin with `echo`
 AWF validates plugin operation schemas at load time. Four validation methods ensure schema correctness:
 
 | Method | Purpose |
-|--------|---------|
+|--------|----------|
 | `ValidateOperationSchema` | Validates operation/plugin names, delegates to input schemas, checks for duplicate outputs |
 | `RequiredInputs` | Returns list of required input parameter names |
 | `ValidateInputSchema` | Validates input type, validation rules, and default value type matching |

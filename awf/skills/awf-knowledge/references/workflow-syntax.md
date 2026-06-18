@@ -35,7 +35,7 @@ states:
 | Type | Description |
 |------|-------------|
 | `step` | Execute a command |
-| `agent` | Invoke AI agent (Claude, Codex, Gemini, OpenCode) |
+| `agent` | Invoke AI agent (Claude, Codex, Gemini, Mistral Vibe, OpenCode, OpenAI-Compatible, GitHub Copilot) |
 | `terminal` | End with success/failure |
 | `parallel` | Run steps concurrently |
 | `for_each` | Iterate over list |
@@ -545,7 +545,7 @@ outputs:
 
 ## Agent State
 
-Invoke AI agents (Claude, Codex, Gemini, OpenCode) with prompt templates.
+Invoke AI agents (Claude, Codex, Gemini, Mistral Vibe, OpenCode, OpenAI-Compatible, GitHub Copilot) with prompt templates.
 
 ### Basic Agent Step
 
@@ -606,7 +606,7 @@ step2:
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
-| `provider` | string | Yes | `claude`, `codex`, `gemini`, `opencode`, `openai_compatible`, `github_copilot` |
+| `provider` | string | Yes | `claude`, `codex`, `gemini`, `mistral_vibe`, `opencode`, `openai_compatible`, `github_copilot` |
 | `mode` | string | No | `single` (default) or `conversation` for multi-turn |
 | `prompt` | string | Yes* | Prompt template (supports `{{.inputs.*}}` and `{{.states.*}}` interpolation) |
 | `prompt_file` | string | No* | Path to external prompt template file (mutually exclusive with `prompt`) |
@@ -615,7 +615,7 @@ step2:
 | `system_prompt` | string | No | System message; prepended by role content when `role:` is also set |
 | `output_format` | string | No | Post-processing format: `json` (strip fences + validate JSON) or `text` (strip fences only) |
 | `conversation` | object | No | Conversation configuration (required if mode=conversation) |
-| `options` | map | No | Provider options (`model` for all; `temperature`/`max_completion_tokens` for `openai_compatible` only) |
+| `options` | map | No | Provider options (`model` for all; `mode`/`effort` for `github_copilot`; `temperature`/`max_completion_tokens` for `openai_compatible`) |
 | `timeout` | int/string | No | Timeout in seconds (`120`) or Go duration string (`"2m"`, `"1m30s"`) |
 | `on_success` | string | No | Next state on success |
 | `on_failure` | string or object | No | Next state on failure — string (named terminal ref) or inline object (see [Inline Error Shorthand](#inline-error-shorthand)) |

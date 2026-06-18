@@ -8,6 +8,8 @@
 | 3 | Execution Error | Command failed, timeout |
 | 4 | System Error | IO error, permission denied |
 
+> Error codes are consistent across all AWF interfaces — the same exit code semantics apply whether running via awf run, awf serve, awf tui, or awf acp-serve (ACP uses JSON-RPC error objects but maps to the same categories).
+
 ## Exit Code 0: Success
 
 Workflow reached terminal state with `status: success`.

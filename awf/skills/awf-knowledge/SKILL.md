@@ -32,6 +32,7 @@ argument-hint: "[topic]"
 4. Review audit trail at `$XDG_DATA_HOME/awf/audit.jsonl` for execution history (v0.6.7)
 5. Review transcript at `storage/transcripts/<run-id>.jsonl` for full agent exchange (messages, tool calls, results)
 6. `awf plugin list` to verify built-in providers (github, http, notify) are enabled
+7. Mistyped a name? AWF suggests the closest match — e.g. `Error: workflow "deolpy" not found. Did you mean "deploy"?`
 
 **Developing AWF?**
 1. See [Architecture](references/architecture.md)
@@ -78,6 +79,7 @@ awf run hello --input name=Claude
 | `awf resume [id] [--from current\|previous\|<step>]` | Resume interrupted (see below) |
 | `awf history` | Show history |
 | `awf config show` | Display project config |
+| `awf providers list` | List registered agent providers (includes `mistral_vibe`) |
 | `awf plugin list` | List plugins (built-in + external, with TYPE and SOURCE columns) |
 | `awf plugin list --operations` | List operations per plugin (triggers gRPC init for external plugins) |
 | `awf plugin verify [name]` | Verify plugin binary integrity (checksum) |
@@ -104,7 +106,7 @@ awf run hello --input name=Claude
 | Type | Use |
 |------|-----|
 | `step` | Execute command (inline or from script file) |
-| `agent` | Invoke AI agent (Claude, Codex, Gemini, OpenCode, OpenAI-Compatible, GitHub Copilot) |
+| `agent` | Invoke AI agent (Claude, Codex, Gemini, Mistral Vibe, OpenCode, OpenAI-Compatible, GitHub Copilot) |
 | `parallel` | Run concurrent steps |
 | `terminal` | End workflow |
 | `for_each` | Iterate over list (supports transitions) |
@@ -265,7 +267,7 @@ analyze:
 
 **Details**: [Skills Reference](references/skills.md)
 
-### OpenAI-Compatible / GitHub Copilot Agents
+### OpenAI-Compatible / Copilot / Mistral Vibe Agents
 
 ```yaml
 # OpenAI-compatible (Ollama, vLLM, Groq, OpenAI)
@@ -289,6 +291,15 @@ copilot:
   options:
     mode: autopilot          # interactive | plan | autopilot
     effort: high             # low | medium | high
+  on_success: process
+
+# Mistral Vibe
+vibe:
+  type: agent
+  provider: mistral_vibe
+  prompt: "Review: {{.inputs.code}}"
+  options:
+    model: mistral-large
   on_success: process
 ```
 
@@ -419,7 +430,7 @@ audit:
   on_success: report
 ```
 
-- Spawns a stdio JSON-RPC proxy subprocess per step; enforces `allowed_tools` allowlist; Claude: `--mcp-config`; openai_compatible: API-level tool injection; Codex: warning (stdio MCP unsupported)
+- Spawns a stdio JSON-RPC proxy subprocess per step; enforces `allowed_tools` allowlist; Claude: `--mcp-config`; Mistral Vibe: isolated `VIBE_HOME` config; openai_compatible: API-level tool injection; Codex: warning (stdio MCP unsupported)
 - `awf mcp serve` — standalone stdio MCP server for external MCP clients (Claude Code, Gemini, etc.)
 
 **Details**: [MCP Proxy Reference](references/mcp-proxy.md)
@@ -453,22 +464,9 @@ Opt-in OpenTelemetry tracing via `.awf/config.yaml` (`telemetry.exporter`, `tele
 
 ## Resources
 
-**Getting Started**
-- [references/installation.md](references/installation.md) - Prerequisites & setup | [references/upgrade.md](references/upgrade.md) - Self-update
+**Getting Started**: [installation](references/installation.md), [upgrade](references/upgrade.md)
 
-**User Guide**
-- [references/workflow-syntax.md](references/workflow-syntax.md) - Complete YAML syntax
-- [references/cli-commands.md](references/cli-commands.md) - All CLI commands and flags
-- [references/api.md](references/api.md) - HTTP REST API server and SSE streaming
-- [references/mcp-proxy.md](references/mcp-proxy.md) - MCP proxy (per-step tool control and awf mcp serve)
-- [references/acp-server.md](references/acp-server.md) - ACP server (workflows as JSON-RPC 2.0 slash commands)
-- [references/tui.md](references/tui.md) - Terminal dashboard (five-tab interactive UI)
-- [references/configuration.md](references/configuration.md) - Project configuration
-- [references/plugins.md](references/plugins.md) - Plugin system & SDK
-- [references/plugin-events.md](references/plugin-events.md) - Inter-plugin event system
-- [references/skills.md](references/skills.md) - Agent skills injection
-- [references/templates.md](references/templates.md) - Workflow templates
-- [references/examples.md](references/examples.md) - Real-world examples
+**User Guide**: [workflow syntax](references/workflow-syntax.md), [CLI commands](references/cli-commands.md), [HTTP API](references/api.md), [MCP proxy](references/mcp-proxy.md), [ACP server](references/acp-server.md), [TUI](references/tui.md), [configuration](references/configuration.md), [plugins](references/plugins.md), [plugin events](references/plugin-events.md), [skills](references/skills.md), [templates](references/templates.md), [examples](references/examples.md)
 
 **Reference**
 - [references/audit-trail.md](references/audit-trail.md) - Structured JSONL audit trail | [references/transcript.md](references/transcript.md) - Agent exchange transcript (messages, tool calls, results)
@@ -483,3 +481,4 @@ Opt-in OpenTelemetry tracing via `.awf/config.yaml` (`telemetry.exporter`, `tele
 **Development**
 - [references/architecture.md](references/architecture.md) - Architecture & project structure
 - [references/code-quality.md](references/code-quality.md) - Linting, formatting, CI quality gates | [references/testing.md](references/testing.md) - Testing conventions
+- [references/testing.md](references/testing.md) - Testing conventions

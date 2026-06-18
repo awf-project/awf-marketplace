@@ -948,9 +948,9 @@ tests/integration/
 | New integration test lines | - | 640 |
 | Test cases added | - | 130+ unit, 18 integration |
 
-## CLI Provider Delegation Tests (v0.6.38)
+## CLI Provider Delegation Tests
 
-As of v0.6.38, CLI agent providers (Claude, Codex, Gemini, OpenCode) share Execute/ExecuteConversation orchestration via `baseCLIProvider`. Tests are split between shared orchestration coverage and per-provider delegation validation.
+CLI agent providers (Claude, Codex, Gemini, Mistral Vibe, OpenCode, GitHub Copilot) share Execute/ExecuteConversation orchestration via `baseCLIProvider`. Tests are split between shared orchestration coverage and per-provider delegation validation.
 
 ```
 internal/infrastructure/agents/
@@ -959,6 +959,7 @@ internal/infrastructure/agents/
 ├── claude_provider_delegation_test.go      # Claude hooks wire correctly through base
 ├── codex_provider_delegation_test.go       # Codex hooks wire correctly through base
 ├── gemini_provider_migration_test.go       # Gemini delegation and session resume post-refactor
+├── mistral_vibe_provider_unit_test.go      # Mistral Vibe args, MCP injection, config sanitization, option validation
 └── opencode_provider_delegation_test.go    # OpenCode delegation (nil validateOptions hook)
 ```
 
@@ -968,6 +969,7 @@ internal/infrastructure/agents/
 - Empty prompt guard — `" "` fallback normalized across all providers
 - Context cancellation propagation through Execute and ExecuteConversation
 - Validation hook — invoked before execution; nil hook skips validation
+- Environment hook — `RunWithEnv` injects per-provider environment variables such as isolated `VIBE_HOME`
 - Session ID extraction hook — tested with and without hook set
 - `TokensEstimated` always `true` for all CLI Execute results
 

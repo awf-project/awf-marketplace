@@ -70,6 +70,7 @@ mcp_proxy:
 | `claude` | Full support via `--mcp-config` flag |
 | `gemini` | Full support via MCP config |
 | `github_copilot` | Full support via MCP config |
+| `mistral_vibe` | Full support via isolated `VIBE_HOME/config.toml`; tool names exposed as `awf-proxy_<tool>` |
 | `opencode` | Full support via workspace config |
 | `openai_compatible` | Full support via API-level tool injection |
 | `codex` | Warning emitted; stdio MCP not supported |
@@ -129,9 +130,34 @@ query_and_analyze:
   on_success: done
 ```
 
+### Example: Mistral Vibe Tool Names
+
+Configure workflow allowlists with normal AWF tool names. AWF injects them into Vibe as `awf-proxy_<tool>` names inside a temporary `VIBE_HOME/config.toml`:
+
+```yaml
+vibe_audit:
+  type: agent
+  provider: mistral_vibe
+  prompt: "Audit scripts under {{.inputs.path}}."
+  mcp_proxy:
+    enabled: true
+    allowed_tools:
+      - read
+      - grep
+  on_success: done
+```
+
+Inside Vibe, the visible MCP tools are `awf-proxy_read` and `awf-proxy_grep`.
+
+**Config handling:**
+- AWF creates a temporary `VIBE_HOME` for the step and runs the `vibe` subprocess with that environment override.
+- User credentials are copied into the temporary home.
+- Existing user `[[mcp_servers]]` entries are stripped before AWF writes the proxy server entry, preventing stale MCP servers from leaking into the step.
+- Temporary config is scoped to the step lifecycle.
+
 ## `awf mcp serve`
 
-Starts a stdio JSON-RPC 2.0 MCP server that wraps AWF plugins. Any MCP-capable agent (Claude Code, Gemini, Codex, Copilot, OpenAI-compatible) can connect to it and invoke AWF tools directly.
+Starts a stdio JSON-RPC 2.0 MCP server that wraps AWF plugins. Any MCP-capable agent (Claude Code, Gemini, Mistral Vibe, Codex, Copilot, OpenAI-compatible) can connect to it and invoke AWF tools directly.
 
 ```bash
 awf mcp serve [flags]
