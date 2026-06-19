@@ -64,6 +64,10 @@ Failed steps are auto-selected in the execution tree. The log viewport auto-scro
 
 The tree refreshes every 200 ms via `tea.Tick`-based polling.
 
+**Interactive input during execution:**
+
+When a running workflow requires user input (e.g. a `mode: conversation` agent step or an explicit input prompt), an input box appears at the bottom of the monitoring tab. Type the response and press `enter` to submit. The workflow resumes automatically. The input box is hidden when no execution is active.
+
 ### History Tab
 
 | Key | Action |
