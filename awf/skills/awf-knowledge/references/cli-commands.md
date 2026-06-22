@@ -35,6 +35,7 @@
 | `awf upgrade --check` | Check for a newer version without installing |
 | `awf serve` | Start HTTP REST API server (`--host`, `--port 2511`) |
 | `awf mcp serve` | Start stdio MCP server wrapping AWF plugins |
+| `awf acp-serve` | Start stdio ACP server exposing workflows as JSON-RPC 2.0 slash commands |
 | `awf tui` | Launch interactive full-screen terminal dashboard |
 
 ## Global Flags
@@ -934,10 +935,14 @@ awf mcp serve --plugins awf-plugin-database,awf-plugin-slack
 Start a transparent ACP (Agent Communication Protocol) server over stdio. Exposes local workflows and installed workflow packs as JSON-RPC 2.0 slash commands to external ACP-capable agents (Claude Desktop, IDEs).
 
 ```bash
-awf acp-serve
+awf acp-serve [--config <path>]
 ```
 
-The server has no command-specific flags beyond the global flags. It reads from stdin and writes to stdout. Terminate with SIGINT/SIGTERM or by closing stdin.
+| Flag | Description |
+|------|-------------|
+| `--config` | Path to ACP server config file |
+
+It reads from stdin and writes to stdout. Terminate with SIGINT/SIGTERM or by closing stdin.
 
 ```bash
 # Smoke-test: session/new returns available workflows as slash commands

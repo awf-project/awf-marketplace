@@ -140,6 +140,7 @@ awf/
 │   │   │   ├── webhook.go       # Generic webhook backend (JSON POST)
 │   │   │   ├── http.go          # Shared HTTP sender (10s timeout)
 │   │   │   └── doc.go           # Package documentation
+│   │   ├── acp/                 # ACP server adapters (agent.go, emitter.go, permission.go, renderer.go, event_projector.go)
 │   │   └── plugin/              # Plugin manager, composite provider (v0.5.43)
 │   │       ├── registry.go      # RPC plugin registry
 │   │       └── composite.go     # CompositeOperationProvider (multiplexes GitHub + Notify)
@@ -339,6 +340,7 @@ Implements domain ports with concrete tech.
 - `github/` - Built-in GitHub plugin with 9 declarative operations, auth detection, batch execution (v0.5.41)
 - `notify/` - Built-in notification plugin with 4 backends (desktop, ntfy, slack, webhook), dynamic backend registration (v0.5.43)
 - `plugin/` - RPC plugin registry + CompositeOperationProvider that multiplexes GitHub and Notify providers (v0.5.43)
+- `acp/` — ACP server adapters using `github.com/coder/acp-go-sdk`: `Agent` (session lifecycle), `Emitter` (SDK event dispatch), `PermissionClient` (tool-approval), `Renderer` (stream writing); `EventProjector` maps SDK events to domain events
 - `pluginmgr/` - `EventBus` (glob-pattern fan-out, 256-event buffered channels per plugin, depth-3 cycle detection), gRPC `EventService` adapter, `RPCPluginManager` with `SetEventBus()` (F090)
 
 ## Key Patterns
