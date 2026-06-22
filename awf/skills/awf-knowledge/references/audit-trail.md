@@ -132,3 +132,7 @@ The audit trail follows hexagonal architecture:
 Design decisions documented in:
 - ADR-0010: Paired JSONL audit trail with atomic append
 - ADR-0011: Application-layer secret masking for audit events
+
+## See Also
+
+- [Transcript Reference](transcript.md) — full agent exchange transcript (step-level messages, tool calls, and results per run)
