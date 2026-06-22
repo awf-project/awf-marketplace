@@ -15,6 +15,7 @@
 | `awf diagram <workflow>` | Generate workflow visualization |
 | `awf history` | Show execution history |
 | `awf config show` | Display project config |
+| `awf providers list` | List registered agent providers (includes `mistral_vibe`) |
 | `awf plugin list` | List installed plugins |
 | `awf plugin install <owner/repo>` | Install plugin from GitHub Releases |
 | `awf plugin update <name>` | Update installed plugin to latest release |
@@ -126,6 +127,16 @@ Place a file at `.awf/prompts/<pack>/override.md` to override any pack-embedded 
 | `--otel-exporter` | OTLP gRPC endpoint for distributed tracing (overrides `telemetry.exporter` in config) |
 | `--otel-service-name` | Service name for traces (overrides `telemetry.service_name` in config) |
 
+### Error Behavior
+
+When a workflow name, plugin name, or command is not found, AWF suggests the closest match using Levenshtein distance:
+
+```
+Error: workflow "deolpy" not found. Did you mean "deploy"?
+```
+
+This applies to `awf run`, `awf validate`, `awf diagram`, and plugin/command resolution.
+
 ### Execution Summary Ordering
 
 When a workflow completes, the `--- Execution Details ---` summary lists steps in workflow-defined order: `Initial` state first, then following the default path (unconditional transitions, then `on_success`), stopping at terminal states. This order is deterministic and consistent across repeated runs.
@@ -152,13 +163,13 @@ awf run deploy --verbose
 The `output_format` field on an agent step controls what appears on the terminal:
 
 | `output_format` | Terminal display |
-|-----------------|-----------------|
+|-----------------|------------------|
 | `text` or omitted | NDJSON filtered to plain text |
 | `json` | Raw NDJSON passed through |
 
 `--output silent` suppresses agent output regardless of `output_format`. Template interpolation (e.g. `{{.states.step.Output}}`) is unaffected by the output mode — `state.Output` always contains the full agent response.
 
-**`--verbose` with agent steps:** When combined with `--output streaming` or `buffered`, adds `[tool: Name(Arg)]` markers interleaved with filtered text output. Has no effect when `output_format: json` (NDJSON passes through unchanged). Tool arguments are truncated to 40 characters. Applies to all 5 providers: Claude, Codex, Gemini, OpenCode, OpenAI-Compatible.
+**`--verbose` with agent steps:** When combined with `--output streaming` or `buffered`, adds `[tool: Name(Arg)]` markers interleaved with filtered text output. Has no effect when `output_format: json` (NDJSON passes through unchanged). Tool arguments are truncated to 40 characters. Applies to all providers: Claude, Codex, Gemini, Mistral Vibe, OpenCode, OpenAI-Compatible, GitHub Copilot.
 
 **Details**: [Agent Steps - Streaming Output Display](agent-steps.md#streaming-output-display)
 
@@ -886,7 +897,7 @@ MCP (Model Context Protocol) integration commands.
 
 ### awf mcp serve
 
-Start a stdio JSON-RPC 2.0 MCP server that wraps AWF plugins. Any MCP-capable agent (Claude Code, Gemini, Codex, Copilot, OpenAI-compatible) can connect to it and invoke AWF tools via the standard MCP protocol.
+Start a stdio JSON-RPC 2.0 MCP server that wraps AWF plugins. Any MCP-capable agent (Claude Code, Gemini, Mistral Vibe, Codex, Copilot, OpenAI-compatible) can connect to it and invoke AWF tools via the standard MCP protocol.
 
 ```bash
 awf mcp serve [flags]

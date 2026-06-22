@@ -81,10 +81,10 @@ states:
   execute_claude:
     type: agent
     description: Execute skill update with Claude
-    provider: claude
+    provider: codex
     prompt_file: "{{.awf.prompts_dir}}/claude-skill-updater.md"
     options:
-      model: sonnet
+      model: gpt-5.5
       allowedTools: "Read,Grep,Glob,Edit,Write,Bash,Task"
       dangerously_skip_permissions: true
     timeout: 600

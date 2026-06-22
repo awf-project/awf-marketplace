@@ -189,6 +189,7 @@ CLI providers persist sessions across turns. `SessionID` is extracted from provi
 - **Claude**: `-r <session_id>` flag; session ID from NDJSON stream
 - **Codex**: `resume <thread_id>` subcommand; `thread_id` from `type: "thread.started"` NDJSON event
 - **Gemini**: `--resume <session_id>` flag; `session_id` from `type: "init"` NDJSON event
+- **Mistral Vibe**: native resume handling through the `vibe` CLI provider; session ID is extracted from provider output when emitted
 - **OpenCode**: `-s <sessionID>` flag; `sessionID` from `type: "step_start"` NDJSON event; falls back to `-c` when extraction fails but prior turns exist
 - **openai_compatible**: Resumes via Turns list (HTTP-level multi-turn history)
 - **github_copilot**: `--resume=<session-id>` flag; session ID from JSONL stream

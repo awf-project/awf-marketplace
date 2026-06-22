@@ -91,7 +91,7 @@ Code review focus:
 The role body is injected as the agent's system prompt before execution:
 
 - All three execution paths (single-turn, resumable, conversation mode) apply role injection
-- For CLI providers (Claude, Codex, Gemini, OpenCode), the system prompt is passed via the provider's system prompt flag
+- For CLI providers (Claude, Codex, Gemini, Mistral Vibe, OpenCode, GitHub Copilot), the system prompt is passed through provider-specific prompt or config handling
 - For `openai_compatible`, the system prompt is sent as a `system` role message in the conversation
 
 ## Composition with `system_prompt:`

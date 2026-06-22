@@ -1,6 +1,6 @@
 # Agent Steps Reference
 
-Invoke AI agents (Claude, Codex, Gemini, OpenCode, OpenAI-Compatible, GitHub Copilot) in workflows with structured prompts and response parsing.
+Invoke AI agents (Claude, Codex, Gemini, Mistral Vibe, OpenCode, OpenAI-Compatible, GitHub Copilot) in workflows with structured prompts and response parsing.
 
 ## Overview
 
@@ -197,6 +197,67 @@ deep_review:
 ```
 
 > `temperature` and `max_tokens` are **not forwarded** to the Copilot CLI.
+
+### Mistral Vibe
+
+Use Mistral's `vibe` CLI as an AWF agent provider:
+
+```yaml
+analyze:
+  type: agent
+  provider: mistral_vibe
+  prompt: "Code review: {{.inputs.file_content}}"
+  options:
+    model: mistral-large
+  timeout: 120
+  on_success: next
+```
+
+**Mistral Vibe Options:**
+| Option | Type | Description |
+|--------|------|-------------|
+| `model` | string | Model to pass to the `vibe` CLI |
+
+**Authentication and requirements:**
+- The `vibe` CLI binary must be installed, on `PATH`, and authenticated.
+- `mcp_proxy` is supported. Use unprefixed AWF tool names in YAML; see [MCP Proxy Reference](mcp-proxy.md#example-mistral-vibe-tool-names) for Vibe config isolation and tool-name prefixing.
+
+**MCP example:**
+
+```yaml
+inspect:
+  type: agent
+  provider: mistral_vibe
+  prompt: "Inspect {{.inputs.path}} and report risky shell scripts."
+  mcp_proxy:
+    enabled: true
+    allowed_tools:
+      - read
+      - glob
+      - grep
+  on_success: done
+```
+
+**Conversation tracking example:**
+
+```yaml
+initial_review:
+  type: agent
+  provider: mistral_vibe
+  prompt: "Review: {{.inputs.code}}"
+  conversation: {}
+  on_success: follow_up
+
+follow_up:
+  type: agent
+  provider: mistral_vibe
+  prompt: "Focus on reliability issues from the first review."
+  conversation:
+    continue_from: initial_review
+  on_success: done
+```
+
+> `temperature` and `max_tokens` are **not forwarded** to the Vibe CLI.
 
 ### OpenAI-Compatible Provider
 
@@ -630,6 +691,7 @@ query_step:
 | `claude` | Passes `--mcp-config` with proxy server address |
 | `gemini` | MCP config injected via config file |
 | `github_copilot` | MCP config injected |
+| `mistral_vibe` | Temporary `VIBE_HOME/config.toml`; tool names exposed as `awf-proxy_<tool>` |
 | `opencode` | Workspace config includes MCP server entry |
 | `openai_compatible` | Tool schemas injected at API level (no CLI subprocess) |
 | `codex` | Warning emitted; stdio MCP is not supported by Codex CLI |
@@ -642,7 +704,7 @@ Agent responses are captured in state:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `Output` | string | Extracted assistant text for all CLI providers (Claude, Codex, Gemini, OpenCode, GitHub Copilot); API response text for `openai_compatible`. Cleaned further if `output_format` is set. |
+| `Output` | string | Extracted assistant text for all CLI providers (Claude, Codex, Gemini, Mistral Vibe, OpenCode, GitHub Copilot); API response text for `openai_compatible`. Cleaned further if `output_format` is set. |
 | `Response` | object | Parsed JSON response — populated heuristically for ALL providers when `Output` is valid JSON. No `output_format: json` required. |
 | `JSON` | object | Parsed JSON from `output_format: json` (explicit, see [Output Formatting](#output-formatting)) |
 | `TokensInput` | int | Input tokens (real count from provider, or fallback estimate) |
@@ -659,6 +721,7 @@ Agent responses are captured in state:
 | `gemini` | `result` event `stats` |
 | `codex` | `turn.completed` event `usage` |
 | `github_copilot` | `assistant.message` event `outputTokens` |
+| `mistral_vibe` | Provider event usage when emitted; otherwise fallback estimate |
 | `opencode` | `step_finish` event `part.tokens` |
 | `openai_compatible` | API `usage` response fields |
 | Any (no data emitted) | Fallback: `len(output)/4`; sets `TokensEstimated: true` |
@@ -703,7 +766,7 @@ process:
   on_success: done
 ```
 
-This works for Claude, Codex, Gemini, OpenCode, GitHub Copilot, and `openai_compatible`. Use `{{.states.step.Response.field}}` to access parsed fields directly. For guaranteed JSON validation and fence-stripping, use `output_format: json` and access via `{{.states.step.JSON.field}}`.
+This works for Claude, Codex, Gemini, Mistral Vibe, OpenCode, GitHub Copilot, and `openai_compatible`. Use `{{.states.step.Response.field}}` to access parsed fields directly. For guaranteed JSON validation and fence-stripping, use `output_format: json` and access via `{{.states.step.JSON.field}}`.
 
 ## Output Formatting
 
@@ -787,7 +850,7 @@ save_code:
 
 #### No Format (Default)
 
-Omit `output_format` for backward compatibility. For all CLI providers (Claude, Codex, Gemini, OpenCode, GitHub Copilot), extracted assistant text is stored in `{{.states.step_name.Output}}` — never raw NDJSON. For the `openai_compatible` provider, the API response text is returned directly. If the extracted text is valid JSON, `{{.states.step_name.Response}}` is populated automatically regardless of `output_format`.
+Omit `output_format` for backward compatibility. For all CLI providers (Claude, Codex, Gemini, Mistral Vibe, OpenCode, GitHub Copilot), extracted assistant text is stored in `{{.states.step_name.Output}}` — never raw NDJSON. For the `openai_compatible` provider, the API response text is returned directly. If the extracted text is valid JSON, `{{.states.step_name.Response}}` is populated automatically regardless of `output_format`.
 
 ### Error Handling
 
@@ -814,7 +877,7 @@ handle_json_error:
 
 ### Lifecycle Hook Compatibility
 
-All CLI providers (Claude, Codex, Gemini, OpenCode, GitHub Copilot) extract clean text from the NDJSON stream unconditionally before passing output to `applyOutputFormat`. This means `output_format: json` works correctly even when tools that inject lifecycle events into the NDJSON stream (e.g. claude-mem, superpowers, zpm SessionStart hooks) are active. Previously, these extra events caused an `invalid JSON: invalid character '{' after top-level value` error because the raw multi-document stream was passed directly to JSON validation.
+All CLI providers (Claude, Codex, Gemini, Mistral Vibe, OpenCode, GitHub Copilot) extract clean text from the NDJSON stream unconditionally before passing output to `applyOutputFormat`. This means `output_format: json` works correctly even when tools that inject lifecycle events into the NDJSON stream (e.g. claude-mem, superpowers, zpm SessionStart hooks) are active. Previously, these extra events caused an `invalid JSON: invalid character '{' after top-level value` error because the raw multi-document stream was passed directly to JSON validation.
 
 If you see this error on an older AWF binary, upgrade AWF. No workflow YAML changes are required.
 
@@ -854,7 +917,7 @@ When `--verbose` is active and `output_format` is `text` or omitted, each tool i
 ```
 
 - Tool arguments are truncated to 40 characters.
-- All 6 providers (Claude, Codex, Gemini, OpenCode, OpenAI-Compatible, GitHub Copilot) emit markers through the same pipeline.
+- All providers (Claude, Codex, Gemini, Mistral Vibe, OpenCode, OpenAI-Compatible, GitHub Copilot) emit markers through the same pipeline.
 - `output_format: json` bypasses event parsing entirely — raw NDJSON passes through unchanged and `--verbose` has no effect.
 
 ### Behavior Details
@@ -876,7 +939,7 @@ command: echo "{{.states.analyze.DisplayOutput}}"
 command: echo "{{.states.analyze.Output}}"
 ```
 
-`state.Output` always contains the extracted assistant text for use in subsequent step templates, independent of what was displayed on the terminal. For all CLI providers (Claude, Codex, Gemini, OpenCode, GitHub Copilot) this is clean text extracted from the NDJSON stream — never raw wire format.
+`state.Output` always contains the extracted assistant text for use in subsequent step templates, independent of what was displayed on the terminal. For all CLI providers (Claude, Codex, Gemini, Mistral Vibe, OpenCode, GitHub Copilot) this is clean text extracted from the NDJSON stream — never raw wire format.
 
 ### Example: Streaming a JSON Agent Response
 
@@ -1007,6 +1070,7 @@ analyze:
 | Timeout | Response too slow | Increase timeout |
 | Invalid provider | Unsupported | Use valid provider name |
 | Command failed | CLI error | Check provider logs |
+| Mistral Vibe MCP tools missing | Pre-existing Vibe MCP config or stale credentials | Let AWF inject MCP through isolated `VIBE_HOME`; allow tools by unprefixed name in YAML |
 
 ## Parallel Execution
 
