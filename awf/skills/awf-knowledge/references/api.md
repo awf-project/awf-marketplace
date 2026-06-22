@@ -266,15 +266,23 @@ data: {"type":"terminal","status":"success","timestamp":"2026-05-17T10:00:12Z"}
 |------|-------------|
 | `step.started` | A step begins executing |
 | `step.done` | A step finishes (replaces `step.completed` in facade path; check `status` field) |
+| `step.completed` | A step finishes (check `exit_code` for outcome) |
 | `output.line` | A streaming output line from a running step |
-| `terminal` | Workflow reached terminal state (replaces `workflow.completed`/`workflow.failed`) |
-| `step.completed` | (legacy) A step finishes — still emitted for backward compatibility |
-| `workflow.completed` | (legacy) Success terminal — still emitted for backward compatibility |
-| `workflow.failed` | (legacy) Failure terminal — still emitted for backward compatibility |
+| `workflow.completed` | Workflow reaches a terminal success state |
+| `workflow.failed` | Workflow reaches a terminal failure state |
+| `input.required` | Workflow is paused waiting for user input |
 
 The facade event types (`step.done`, `output.line`, `terminal`) are the canonical events. Legacy types remain for backward compatibility.
 
-Each event is a JSON object with at minimum `type` and `timestamp` fields. Step events include `step` (state name). `step.completed` includes `exit_code`; `step.done` includes `status`.
+Each event is a JSON object with at minimum `type` and `timestamp` fields. Step events include `step` (state name). `step.completed` includes `exit_code`. `input.required` includes `prompt` with the text shown to the user.
+
+**`input.required` example:**
+
+```
+data: {"type":"input.required","prompt":"Enter the deployment target:","timestamp":"2026-05-17T10:00:08Z"}
+```
+
+Clients receiving `input.required` should display the `prompt` to the user and submit the response via `POST /api/executions/{id}/resume`.
 
 ### Get Synchronous Terminal Result
 
