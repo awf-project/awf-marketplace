@@ -274,7 +274,7 @@ awf plugin install myorg/awf-plugin-slack@v1.2.0   # pin version
 awf plugin install myorg/awf-plugin-slack --force   # reinstall
 ```
 
-Downloads the platform-matched binary, verifies SHA-256 checksum, and atomically installs. Uses `gh auth token` for auth; falls back to `GITHUB_TOKEN`. The `owner/repo` is persisted as `SOURCE` for future updates.
+Downloads the platform-matched binary, verifies SHA-256 checksum, and atomically installs. Uses `gh auth token` for auth; falls back to `GITHUB_TOKEN`. The `owner/repo` is persisted as `SOURCE` for future updates. Use inline exact SemVer for pinned installs; see [CLI Commands](cli-commands.md#awf-plugin-install-flags).
 
 ```bash
 awf plugin update awf-plugin-slack          # fetch latest from stored SOURCE

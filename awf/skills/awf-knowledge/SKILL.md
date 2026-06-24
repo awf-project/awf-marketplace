@@ -78,26 +78,29 @@ awf run hello --input name=Claude
 | `awf list` | List workflows (local + pack workflows with `pack/workflow` prefix) |
 | `awf resume [id] [--from current\|previous\|<step>]` | Resume interrupted (see below) |
 | `awf history` | Show history |
+| `awf --version` | Show CLI version, commit, and build time |
 | `awf config show` | Display project config |
 | `awf providers list` | List registered agent providers (includes `mistral_vibe`) |
 | `awf plugin list` | List plugins (built-in + external, with TYPE and SOURCE columns) |
 | `awf plugin list --operations` | List operations per plugin (triggers gRPC init for external plugins) |
 | `awf plugin verify [name]` | Verify plugin binary integrity (checksum) |
-| `awf plugin install <owner/repo>` | Install plugin from GitHub Releases |
+| `awf plugin install <owner/repo[@version]>` | Install plugin from GitHub Releases |
 | `awf plugin update <name>` | Update installed plugin to latest release |
 | `awf plugin remove <name>` | Remove installed plugin |
 | `awf plugin search <query>` | Search GitHub for AWF plugins |
-| `awf workflow install <owner/repo>` | Install workflow pack from GitHub Releases |
+| `awf workflow install <owner/repo[@version]>` | Install workflow pack from GitHub Releases |
 | `awf workflow list` | List installed workflow packs |
 | `awf workflow info <name>` | Show pack manifest details, plugin status, README |
 | `awf workflow update [--all] <name>` | Update workflow pack(s) to latest release |
 | `awf workflow search <query>` | Search GitHub for AWF workflow packs |
 | `awf workflow remove <name>` | Remove installed workflow pack |
-| `awf upgrade` | Self-update the AWF binary from GitHub Releases |
+| `awf upgrade [version]` | Self-update the AWF binary from GitHub Releases |
 | `awf serve [--host] [--port]` | Start HTTP REST API server (default: localhost:2511) |
 | `awf mcp serve` | Start stdio MCP server wrapping AWF plugins (for external MCP clients) |
 | `awf acp-serve` | Start stdio ACP server exposing workflows as JSON-RPC 2.0 slash commands |
 | `awf tui` | Launch interactive full-screen terminal dashboard |
+
+Release pins use inline `@version`; upgrade pins use positional `[version]`. Targets must be exact SemVer. Removed forms: `awf version`, `-v` for verbose, and install/upgrade `--version` flags.
 
 **Details**: [CLI Commands Reference](references/cli-commands.md)
 
@@ -481,4 +484,3 @@ Opt-in OpenTelemetry tracing via `.awf/config.yaml` (`telemetry.exporter`, `tele
 **Development**
 - [references/architecture.md](references/architecture.md) - Architecture & project structure
 - [references/code-quality.md](references/code-quality.md) - Linting, formatting, CI quality gates | [references/testing.md](references/testing.md) - Testing conventions
-- [references/testing.md](references/testing.md) - Testing conventions

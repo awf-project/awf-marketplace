@@ -5,14 +5,13 @@
 ## Synopsis
 
 ```bash
-awf upgrade [flags]
+awf upgrade [version] [flags]
 ```
 
 | Flag | Description |
 |------|-------------|
 | `--check` | Check for a newer version without downloading |
 | `--force` | Download and install even if already on the latest version |
-| `--version <tag>` | Install a specific release tag (e.g. `v0.6.33`) |
 
 ## Basic Usage
 
@@ -24,15 +23,24 @@ awf upgrade
 awf upgrade --check
 
 # Install a specific version
-awf upgrade --version v0.6.20
+awf upgrade v0.6.20
 
 # Force reinstall of the current version
 awf upgrade --force
 ```
 
+Version targets are positional and exact SemVer only. Accept `1.2.3` and `v1.2.3`; reject `latest`, partial versions, ranges, and `--version` before contacting GitHub.
+
+```bash
+awf upgrade 1.2.3
+awf upgrade v1.2.3
+```
+
+Invalid forms: `latest`, `1.2`, `>=1.0.0`, and `--version v1.2.3`.
+
 ## How It Works
 
-1. Resolves the target version from GitHub Releases (latest, or the tag given via `--version`).
+1. Resolves the target version from GitHub Releases (latest, or the positional version argument).
 2. Downloads the platform-specific archive (`linux_amd64`, `darwin_arm64`, etc.).
 3. Verifies the SHA-256 checksum against the release manifest.
 4. Atomically replaces the running binary: tries `os.Rename` (same filesystem) and falls back to a copy-then-rename when the temp directory and the binary live on different filesystems (e.g. `/tmp` vs `/usr/local/bin`).
@@ -63,7 +71,7 @@ This is the same token used by `awf plugin install` and `awf workflow install`.
 
 | Code | Description |
 |------|-------------|
-| `USER.UPGRADE.VERSION_NOT_FOUND` | The requested `--version` tag does not exist on GitHub Releases |
+| `USER.UPGRADE.VERSION_NOT_FOUND` | The requested version tag does not exist on GitHub Releases |
 | `USER.UPGRADE.ALREADY_LATEST` | Already on the latest version (only surfaced without `--force`) |
 | `SYSTEM.UPGRADE.CHECKSUM_MISMATCH` | Downloaded archive SHA-256 does not match the release manifest |
 | `SYSTEM.UPGRADE.BINARY_REPLACE_FAILED` | Could not replace the running binary (permissions, locked file) |
@@ -73,8 +81,10 @@ This is the same token used by `awf plugin install` and `awf workflow install`.
 
 ```bash
 # Check current version first
-awf version
-# awf v0.6.20
+awf --version
+# awf version X.Y.Z
+# commit: ...
+# built: ...
 
 # Check for upgrade without downloading
 awf upgrade --check
@@ -87,6 +97,8 @@ awf upgrade
 # Binary replaced: /usr/local/bin/awf
 
 # Verify
-awf version
-# awf v0.6.33
+awf --version
+# awf version X.Y.Z
+# commit: ...
+# built: ...
 ```

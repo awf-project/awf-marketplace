@@ -24,7 +24,10 @@ make install  # Optional: install to /usr/local/bin
 ## Verify
 
 ```bash
-awf version
+awf --version
+# awf version X.Y.Z
+# commit: ...
+# built: ...
 ```
 
 ## Shell Completion

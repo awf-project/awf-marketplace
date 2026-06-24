@@ -30,9 +30,9 @@
 | `awf workflow update <name>` | Update installed workflow pack to latest release |
 | `awf workflow search <query>` | Search GitHub for AWF workflow packs |
 | `awf workflow remove <name>` | Remove installed workflow pack |
-| `awf version` | Show version |
+| `awf --version` | Show CLI version, commit, and build time |
 | `awf completion <shell>` | Generate autocompletion |
-| `awf upgrade` | Self-update the AWF binary from GitHub Releases |
+| `awf upgrade [version]` | Self-update the AWF binary from GitHub Releases |
 | `awf upgrade --check` | Check for a newer version without installing |
 | `awf serve` | Start HTTP REST API server (`--host`, `--port 2511`) |
 | `awf mcp serve` | Start stdio MCP server wrapping AWF plugins |
@@ -43,7 +43,7 @@
 
 | Flag | Description |
 |------|-------------|
-| `--verbose, -v` | Verbose output; with `--output streaming`/`buffered` and agent steps, adds `[tool: Name(Arg)]` markers (no effect when `output_format: json`) |
+| `--verbose` | Verbose output; with `--output streaming`/`buffered` and agent steps, adds `[tool: Name(Arg)]` markers (no effect when `output_format: json`) |
 | `--quiet, -q` | Suppress non-error output |
 | `--no-color` | Disable colors |
 | `--format, -f` | Output format: text, json, table, quiet |
@@ -344,7 +344,7 @@ awf status <workflow-id> [-f json]
 Validate workflow syntax.
 
 ```bash
-awf validate <workflow> [-v] [--skip-plugins]
+awf validate <workflow> [--verbose] [--skip-plugins]
 ```
 
 | Flag | Description |
@@ -482,7 +482,7 @@ awf plugin list                          # List all plugins (built-in + external
 awf plugin list --operations             # List operations per plugin
 awf plugin list --step-types             # Show STEP TYPES capability column
 awf plugin list --validators             # Show VALIDATORS capability column
-awf plugin install <owner/repo>          # Install plugin from GitHub Releases
+awf plugin install <owner/repo[@version]> # Install plugin from GitHub Releases
 awf plugin update <name>                 # Update installed plugin to latest release
 awf plugin remove <name>                 # Remove installed plugin
 awf plugin search <query>                # Search GitHub for AWF plugins
@@ -550,6 +550,15 @@ awf plugin disable notify   # also works for built-ins
 
 Downloads the platform-matched binary from GitHub Releases, verifies SHA-256 checksum against the release manifest, and atomically installs via temp-file rename. Requires `gh` CLI or `GITHUB_TOKEN` for private repositories.
 
+Version pinning uses inline exact SemVer only:
+
+```bash
+awf plugin install myorg/awf-plugin-slack@1.2.0
+awf plugin install myorg/awf-plugin-slack@v1.2.0
+```
+
+Invalid forms: `owner/repo@>=1.0.0`, `owner/repo@1.2`, `owner/repo@latest`, and `--version v1.2.0`.
+
 ### awf plugin remove flags
 
 | Flag | Description |
@@ -596,8 +605,7 @@ Use `--update` after an intentional binary replacement (e.g. a manual local buil
 Manage workflow packs.
 
 ```bash
-awf workflow install <owner/repo>    # Install workflow pack from GitHub Releases
-awf workflow install <owner/repo>@<version>  # Pin to specific version
+awf workflow install <owner/repo[@version]>  # Install workflow pack from GitHub Releases
 awf workflow list                    # List installed packs
 awf workflow info <name>             # Show pack details
 awf workflow update <name>           # Update pack to latest release
@@ -620,6 +628,15 @@ awf workflow install <owner/repo>@v1.2.0     # pin to specific release tag
 | Flag | Description |
 |------|-------------|
 | `@<version>` | Pin to a specific release tag (e.g. `owner/repo@v1.2.0`) |
+
+Version pinning uses inline exact SemVer only. Accept bare and `v`-prefixed forms; reject ranges, partial versions, and `latest` before any network request.
+
+```bash
+awf workflow install myorg/my-workflows@1.2.0
+awf workflow install myorg/my-workflows@v1.2.0
+```
+
+Invalid forms: `owner/repo@>=1.0.0`, `owner/repo@1.2`, `owner/repo@latest`, and `--version v1.2.0`.
 
 **Behavior:**
 - Downloads and verifies SHA-256 checksum against the release manifest
@@ -837,14 +854,13 @@ awf completion fish > ~/.config/fish/completions/awf.fish
 Self-update the AWF binary from GitHub Releases.
 
 ```bash
-awf upgrade [flags]
+awf upgrade [version] [flags]
 ```
 
 | Flag | Description |
 |------|-------------|
 | `--check` | Check for a newer version without downloading |
 | `--force` | Download and install even if already on the latest version |
-| `--version <tag>` | Install a specific release tag (e.g. `v0.6.33`) |
 
 ```bash
 # Upgrade to the latest release
@@ -854,11 +870,13 @@ awf upgrade
 awf upgrade --check
 
 # Install a specific version
-awf upgrade --version v0.6.20
+awf upgrade v0.6.20
 
 # Force reinstall (bypass package manager detection)
 awf upgrade --force
 ```
+
+The optional version argument must be exact SemVer (`1.2.3` or `v1.2.3`). Reject `latest`, partial versions, ranges, and `--version` before release lookup.
 
 Set `GITHUB_TOKEN` to avoid GitHub API rate limits (shared with `awf plugin install` and `awf workflow install`).
 
