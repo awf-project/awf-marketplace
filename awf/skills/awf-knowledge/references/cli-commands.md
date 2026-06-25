@@ -17,6 +17,7 @@
 | `awf config show` | Display project config |
 | `awf providers list` | List registered agent providers (includes `mistral_vibe`) |
 | `awf plugin list` | List installed plugins |
+| `awf plugin init <name>` | Scaffold a new operation plugin repository |
 | `awf plugin install <owner/repo>` | Install plugin from GitHub Releases |
 | `awf plugin update <name>` | Update installed plugin to latest release |
 | `awf plugin remove <name>` | Remove installed plugin |
@@ -90,8 +91,11 @@ Execute a workflow or a workflow from an installed pack.
 ```bash
 awf run <workflow> [flags]
 awf run <pack>/<workflow> [flags]    # Run workflow from installed pack
+awf run path/to/workflow.yaml [flags] # Run an existing local workflow file
 awf run <workflow> --help            # Show workflow inputs
 ```
+
+If the argument resolves to an existing file, AWF treats it as a local workflow path even when it contains slashes. Use this for scaffolded plugin demos such as `awf run examples/demo.yaml`.
 
 ### Running Pack Workflows
 
@@ -482,6 +486,7 @@ awf plugin list                          # List all plugins (built-in + external
 awf plugin list --operations             # List operations per plugin
 awf plugin list --step-types             # Show STEP TYPES capability column
 awf plugin list --validators             # Show VALIDATORS capability column
+awf plugin init awf-plugin-example --kind operation # Scaffold operation plugin repo
 awf plugin install <owner/repo[@version]> # Install plugin from GitHub Releases
 awf plugin update <name>                 # Update installed plugin to latest release
 awf plugin remove <name>                 # Remove installed plugin
@@ -496,6 +501,54 @@ awf plugin disable <plugin-name>         # Disable a plugin
 **Plugin location:** `$XDG_DATA_HOME/awf/plugins/` (~/.local/share/awf/plugins/)
 
 Built-in providers (`github`, `http`, `notify`) are listed with `TYPE=builtin`. External plugins show `TYPE=external`. The `SOURCE` column shows the GitHub `owner/repo` for installed plugins. Disabling any plugin gates its operations at both `awf validate` and `awf run` time.
+
+### awf plugin init
+
+Scaffold a complete operation plugin repository.
+
+```bash
+awf plugin init awf-plugin-example
+awf plugin init awf-plugin-example --kind operation
+awf plugin init awf-plugin-example --output ./plugins
+awf plugin init awf-plugin-example --force
+```
+
+Generated distribution names must start with `awf-plugin-` and use lowercase ASCII letters, digits, and hyphens. The runtime plugin id is derived by removing the prefix:
+
+| Distribution name | Runtime id | Workflow operation |
+|-------------------|------------|--------------------|
+| `awf-plugin-example` | `example` | `example.echo` |
+| `awf-plugin-echo` | `echo` | `echo.echo` |
+
+First-run sequence:
+
+```bash
+cd awf-plugin-example
+make test
+make install-local
+awf plugin enable awf-plugin-example
+awf plugin list --operations
+awf run examples/demo.yaml
+```
+
+`awf plugin enable` accepts either the distribution name (`awf-plugin-example`) or runtime id (`example`) and resolves to the manifest id. Workflows always use runtime ids (`example.echo`).
+
+See [Plugins](plugins.md#create-a-plugin) for generated files, demo workflow, and scaffold contract.
+
+| Flag | Description |
+|------|-------------|
+| `--kind operation` | Plugin kind; only operation scaffolds are supported |
+| `--output <dir>` | Parent directory for the generated repository |
+| `--force` | Overwrite conflicting generated files |
+
+Common validation errors:
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `required-prefix` | Name does not start with `awf-plugin-` | Use `awf-plugin-<name>` |
+| `invalid-name` | Name contains uppercase, underscore, or unsupported characters | Use lowercase ASCII letters, digits, hyphens |
+| `unsupported-kind` | `--kind` is not `operation` | Use `--kind operation` |
+| conflict error | Target files already exist | Choose another output path or pass `--force` |
 
 ```bash
 # List plugins
@@ -536,8 +589,8 @@ awf plugin remove awf-plugin-slack --keep-data   # preserve plugin state
 awf plugin search slack
 
 # Enable / disable
-awf plugin enable awf-plugin-slack
-awf plugin disable awf-plugin-slack
+awf plugin enable awf-plugin-slack   # distribution name accepted
+awf plugin disable slack             # runtime id accepted
 awf plugin disable notify   # also works for built-ins
 ```
 
