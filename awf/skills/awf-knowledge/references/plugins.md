@@ -2,6 +2,98 @@
 
 AWF supports plugins to extend functionality with custom operations. AWF ships with a **built-in GitHub plugin** for common GitHub operations, and supports **external RPC plugins** for additional integrations.
 
+## Create a Plugin
+
+Prefer scaffold-first authoring. `awf plugin init` generates the repository layout, SDK wiring, tests, local install targets, demo workflow, and release workflow.
+
+```bash
+awf plugin init awf-plugin-example --kind operation
+cd awf-plugin-example
+make test
+make install-local
+awf plugin enable awf-plugin-example
+awf plugin list --operations
+awf run examples/demo.yaml
+```
+
+Generated files:
+
+```
+awf-plugin-example/
+├── main.go
+├── main_test.go
+├── plugin.yaml
+├── Makefile
+├── go.mod
+├── README.md
+├── AGENTS.md
+├── examples/demo.yaml
+└── .github/workflows/release.yml
+```
+
+### Distribution Name vs Runtime ID
+
+Use two names consistently:
+
+| Name | Example | Use |
+|------|---------|-----|
+| Distribution name | `awf-plugin-example` | Repository, directory, release assets, `awf plugin init`, `awf plugin install` |
+| Runtime id | `example` | `plugin.yaml` manifest id, `awf plugin list`, workflow operation prefix |
+
+`awf plugin init awf-plugin-example` derives runtime id `example` by removing the `awf-plugin-` prefix. `awf plugin enable awf-plugin-example` accepts the distribution name and resolves it to the runtime id.
+
+```yaml
+# examples/demo.yaml
+name: plugin-demo
+version: "1.0.0"
+
+states:
+  initial: echo_text
+
+  echo_text:
+    type: operation
+    operation: example.echo
+    inputs:
+      text: "hello"
+    on_success: done
+
+  done:
+    type: terminal
+    status: success
+```
+
+Do not use the distribution name in workflow operations:
+
+```yaml
+operation: awf-plugin-example.echo  # wrong
+operation: example.echo             # correct
+```
+
+### Scaffold Options
+
+```bash
+awf plugin init awf-plugin-example
+awf plugin init awf-plugin-example --kind operation
+awf plugin init awf-plugin-example --output ./plugins
+awf plugin init awf-plugin-example --force
+```
+
+| Flag | Description |
+|------|-------------|
+| `--kind operation` | Generate an operation plugin; other kinds are rejected |
+| `--output <dir>` | Parent directory for generated repository |
+| `--force` | Overwrite generated files when conflicts exist |
+
+Validation:
+- Distribution name must start with `awf-plugin-`
+- Name must use lowercase ASCII letters, digits, and hyphens
+- Existing conflicting files fail before writes unless `--force` is used
+- Symlink traversal is rejected during generation
+
+Generated Makefile targets include `test`, `lint`, `install-local`, `uninstall-local`, `package`, and `checksums`. Release assets use `awf-plugin-<name>_<version>_<os>_<arch>.tar.gz` plus checksums so `awf plugin install` can consume them.
+
+See [CLI Commands](cli-commands.md#awf-plugin-init) for command syntax and error table.
+
 ## Built-in GitHub Plugin
 
 AWF includes a built-in GitHub operation provider with 8 declarative operations for issues, PRs, labels, and comments. Runs in-process with zero IPC overhead.
@@ -121,10 +213,10 @@ Plugins extend AWF with custom operations via gRPC (HashiCorp go-plugin). Each p
 
 ### Operation Namespacing
 
-External plugin operations are prefixed with the plugin ID to avoid collisions with built-in providers:
+External plugin operations are prefixed with the runtime id to avoid collisions with built-in providers:
 
 ```
-{plugin-id}.{operation}       # e.g., awf-plugin-echo.echo
+{runtime-id}.{operation}       # e.g., echo.echo
 ```
 
 Use the namespaced form in workflow steps:
@@ -132,9 +224,9 @@ Use the namespaced form in workflow steps:
 ```yaml
 echo_step:
   type: operation
-  operation: awf-plugin-echo.echo
+  operation: echo.echo
   inputs:
-    message: "hello"
+    text: "hello"
   on_success: done
 ```
 
@@ -158,7 +250,7 @@ awf plugin remove awf-plugin-local
 ## Manifest
 
 ```yaml
-name: awf-plugin-slack
+name: slack
 version: 1.0.0
 description: Slack notifications for AWF
 awf_version: ">=0.4.0"
@@ -172,7 +264,7 @@ config:
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `name` | Yes | Plugin identifier (see naming rules below) |
+| `name` | Yes | Runtime plugin id used in workflows and `awf plugin list` |
 | `version` | Yes | Non-empty version string |
 | `awf_version` | Yes | AWF version constraint |
 | `capabilities` | Yes | `operations`, `step_types`, `validators`, `events` |
@@ -207,8 +299,8 @@ Plugin names must follow the `^[a-z][a-z0-9-]*$` pattern:
 - No uppercase, underscores, or special characters
 
 ```
-my-plugin       # Valid
-awf-plugin-slack # Valid
+my-plugin       # Valid runtime id
+slack           # Valid runtime id for distribution awf-plugin-slack
 MyPlugin        # Invalid: uppercase
 my_plugin       # Invalid: underscore
 123-plugin      # Invalid: starts with digit
@@ -310,8 +402,8 @@ awf-plugin-event-logger    external  1.0.0    running  yes      events        my
 ```bash
 awf plugin enable notify             # Enable built-in provider
 awf plugin disable notify            # Disable built-in provider (blocks notify.send at run time)
-awf plugin enable awf-plugin-slack   # Enable external plugin
-awf plugin disable awf-plugin-slack  # Disable external plugin
+awf plugin enable awf-plugin-slack   # Distribution name accepted; resolves to runtime id
+awf plugin disable slack             # Runtime id also accepted
 ```
 
 Disabling any plugin gates all its operations at both validation and execution time.
@@ -354,7 +446,7 @@ Plugin subprocess logs and stdout/stderr are forwarded to AWF's structured logge
 
 ## Using in Workflows
 
-Operation names follow the format `{plugin-id}.{operation}`. Built-in providers use short names (`github`, `notify`, `http`); external plugins use their full plugin ID as prefix:
+Operation names follow the format `{runtime-id}.{operation}`. Built-in providers use short names (`github`, `notify`, `http`); external plugins use their manifest runtime id as prefix:
 
 ```yaml
 # Built-in provider
@@ -366,12 +458,12 @@ notify:
     message: "Deploy completed"
   on_success: done
 
-# External plugin (namespaced with plugin ID)
+# External plugin (namespaced with runtime id)
 echo_step:
   type: operation
-  operation: awf-plugin-echo.echo   # plugin-id.operation
+  operation: echo.echo             # runtime-id.operation
   inputs:
-    message: "{{.states.build.Output}}"
+    text: "{{.states.build.Output}}"
   on_success: done
 ```
 
@@ -386,7 +478,7 @@ import "github.com/awf-project/cli/pkg/plugin/sdk"
 
 type MyPlugin struct{}
 
-func (p *MyPlugin) Name() string    { return "awf-plugin-example" }
+func (p *MyPlugin) Name() string    { return "example" }
 func (p *MyPlugin) Version() string { return "1.0.0" }
 
 func (p *MyPlugin) Init(config map[string]interface{}) error { return nil }
@@ -411,7 +503,7 @@ The `Handshake` config is exported from `sdk` as the single source of truth shar
 
 `BasePlugin` provides a no-op `HandleEvent` default — plugins that do not subscribe to events require no changes when the event system is active.
 
-See `examples/plugins/awf-plugin-echo/` for a minimal working plugin with `echo` and `reverse` operations.
+See `examples/plugins/awf-plugin-echo/` for the canonical operation scaffold contract. Its distribution name is `awf-plugin-echo`; its runtime id is `echo`.
 
 ## Schema Validation (v0.5.38)
 
@@ -524,7 +616,7 @@ See `examples/plugins/awf-plugin-security-validator/` for a complete example.
 
 ## Custom Step Types
 
-Plugins that declare the `step_types` capability implement `StepTypeService` gRPC. They register named step types that workflows use as the `type:` field, namespaced as `{plugin-id}.{step-type-name}`.
+Plugins that declare the `step_types` capability implement `StepTypeService` gRPC. They register named step types that workflows use as the `type:` field, namespaced as `{runtime-id}.{step-type-name}`.
 
 The `config:` block passes arbitrary key-value configuration to the step handler. All values support template interpolation.
 
@@ -573,7 +665,7 @@ func (p *DatabasePlugin) StepTypes() []sdk.StepType {
 func main() { sdk.Serve(&DatabasePlugin{}) }
 ```
 
-AWF validates step type names at `awf validate` time: unknown `{plugin-id}.{step-type}` references produce an error unless `--skip-plugins` is passed.
+AWF validates step type names at `awf validate` time: unknown `{runtime-id}.{step-type}` references produce an error unless `--skip-plugins` is passed.
 
 See `examples/plugins/awf-plugin-database/` for a complete example.
 
@@ -597,6 +689,6 @@ Declare the `events` capability in `plugin.yaml` and implement `HandleEvent` in 
 | Exec format error | Rebuild binary for your platform |
 | Version mismatch | Update AWF or use compatible plugin version |
 | Connection timeout (5s) | Plugin binary failed to start; check binary path and permissions |
-| Operation not found | Use namespaced form `{plugin-id}.{operation}` in workflow step |
+| Operation not found | Use namespaced form `{runtime-id}.{operation}` in workflow step |
 | Handshake mismatch | Rebuild plugin with same SDK version as AWF host |
 | `EXECUTION.PLUGIN.CHECKSUM_MISMATCH` | Binary was modified after install; run `awf plugin verify --update <name>` to recompute, or reinstall with `awf plugin install --force` |

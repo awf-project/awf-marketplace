@@ -19,7 +19,7 @@ argument-hint: "[topic]"
 
 **Running a workflow?**
 1. `awf run <name> --input key=value`
-2. To run a workflow from an installed pack: `awf run <pack>/<workflow> --input key=value`
+2. Use `awf run path/to/workflow.yaml` for an existing local file; otherwise `<pack>/<workflow>` means an installed pack
 3. Missing inputs? AWF prompts in terminal - see [Interactive Inputs](references/interactive-inputs.md)
 4. Use `--dry-run` to preview (config values pre-populate)
 5. Use `--interactive` for step-by-step (config values reduce prompts)
@@ -37,6 +37,12 @@ argument-hint: "[topic]"
 **Developing AWF?**
 1. See [Architecture](references/architecture.md)
 2. Follow hexagonal architecture — domain layer has no deps; application layer depends on ports only
+
+**Creating a plugin?**
+1. `awf plugin init awf-plugin-example --kind operation`
+2. Test: `cd awf-plugin-example && make test && make install-local`
+3. Enable by distribution name; use runtime id in workflows: `awf plugin enable awf-plugin-example`, `operation: example.echo`
+4. See [Plugins Reference](references/plugins.md#create-a-plugin)
 
 ## Quick Start
 
@@ -83,11 +89,12 @@ awf run hello --input name=Claude
 | `awf providers list` | List registered agent providers (includes `mistral_vibe`) |
 | `awf plugin list` | List plugins (built-in + external, with TYPE and SOURCE columns) |
 | `awf plugin list --operations` | List operations per plugin (triggers gRPC init for external plugins) |
-| `awf plugin verify [name]` | Verify plugin binary integrity (checksum) |
+| `awf plugin init awf-plugin-<name> [--kind operation]` | Scaffold an operation plugin repository |
 | `awf plugin install <owner/repo[@version]>` | Install plugin from GitHub Releases |
-| `awf plugin update <name>` | Update installed plugin to latest release |
+| `awf plugin verify [name]` | Verify plugin binary integrity (checksum) |
 | `awf plugin remove <name>` | Remove installed plugin |
 | `awf plugin search <query>` | Search GitHub for AWF plugins |
+| `awf plugin update <name>` | Update installed plugin to latest release |
 | `awf workflow install <owner/repo[@version]>` | Install workflow pack from GitHub Releases |
 | `awf workflow list` | List installed workflow packs |
 | `awf workflow info <name>` | Show pack manifest details, plugin status, README |
@@ -114,7 +121,7 @@ Release pins use inline `@version`; upgrade pins use positional `[version]`. Tar
 | `terminal` | End workflow |
 | `for_each` | Iterate over list (supports transitions) |
 | `while` | Repeat until false (supports transitions) |
-| `operation` | Invoke plugin operation (`{plugin-id}.{operation}`) |
+| `operation` | Invoke plugin operation (`{runtime-id}.{operation}`) |
 | `call_workflow` | Execute sub-workflow |
 | `{plugin-id}.{step-type}` | Execute custom plugin-defined step type with `config:` block |
 
