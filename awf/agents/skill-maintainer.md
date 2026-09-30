@@ -89,7 +89,8 @@ Follow these rules:
 
 After documentation updates:
 1. Update version in `.claude-plugin/marketplace.json` (plugin `version`)
-2. Ensure version strings have no trailing whitespace or newlines
+2. Keep `awf/.codex-plugin/plugin.json` at the same plugin version
+3. Ensure version strings have no trailing whitespace or newlines
 
 ## Documentation Patterns
 

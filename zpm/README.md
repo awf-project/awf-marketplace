@@ -1,139 +1,28 @@
-# ZPM Claude Code Integration
+# ZPM Plugin for Claude Code and Codex
 
-This directory extends Claude Code with ZPM-specific knowledge management capabilities,
+This directory extends Claude Code and Codex with ZPM-specific knowledge management capabilities,
 powered by the Prolog inference engine exposed via MCP.
-
-## Prerequisites
-
-- **Zig >= 0.15.2** — [ziglang.org/download](https://ziglang.org/download/)
-- **Rust stable** — `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
-- **Claude Code** — `npm install -g @anthropic-ai/claude-code` (or native install)
 
 ## Installation
 
-### 1. Build the ZPM server
+Install the ZPM executable in `PATH` and Python 3 (`python3` in `PATH`), then
+follow the [marketplace installation instructions](../README.md#installation).
+The plugin bundles the MCP connection (`zpm serve`) and lifecycle hooks.
 
-```bash
-cd /path/to/zpm
-make build
-```
+If building ZPM from source, follow the build prerequisites in the
+[ZPM repository](https://github.com/awf-project/ZPM) and expose the resulting
+`zig-out/bin/zpm` executable through `PATH`.
 
-This compiles the Rust FFI staticlib (scryer-prolog) then the Zig binary.
-Output: `zig-out/bin/zpm`
+In Claude Code, verify the server with `/mcp`: its plugin name is
+`plugin:zpm:zpm`. In Codex, start a new session and check the available ZPM tools.
+Use the tool names exposed by the installed runtime; a manually registered
+server and a plugin server have different namespaces.
 
-### 2. Register the MCP server in Claude Code
+A separate `claude mcp add zpm` registration is unnecessary when using the
+plugin's bundled connection. If you already registered the same server manually,
+choose one connection to avoid duplicate servers.
 
-```bash
-claude mcp add zpm --scope project -- /path/to/zpm/zig-out/bin/zpm serve
-```
-
-This adds the following to `~/.claude.json` under the project key:
-
-```json
-"zpm": {
-  "type": "stdio",
-  "command": "/path/to/zpm/zig-out/bin/zpm",
-  "args": ["serve"],
-  "env": {}
-}
-```
-
-### 3. Enable the server for the project
-
-In `.claude/settings.local.json`, ensure ZPM is enabled:
-
-```json
-{
-  "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["zpm"]
-}
-```
-
-### 4. Verify the connection
-
-Start a new Claude Code session in the project directory and run:
-
-```
-/mcp
-```
-
-ZPM should appear in the list of connected servers. You can also test with:
-
-```
-Tell Claude: "Use the echo tool to say hello"
-```
-
-### 5. (Optional) Enable session hooks
-
-The project ships with two hooks in `settings.local.json` that make Claude use ZPM proactively:
-
-- **SessionStart**: Checks KB health and loads existing facts at the start of each session
-- **Stop**: Prompts Claude to persist important discoveries before ending
-
-These are already configured if you use the project's `settings.local.json`. To add them manually:
-
-```json
-{
-  "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "prompt",
-            "prompt": "The ZPM Prolog MCP server is available. Run get_persistence_status to check health, then get_knowledge_schema to see what's already in the knowledge base..."
-          }
-        ]
-      }
-    ],
-    "TaskCompleted": [
-      {
-        "hooks": [
-          {
-            "type": "prompt",
-            "prompt": "Before ending, consider if any important discoveries should be persisted in the ZPM knowledge base..."
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-### 6. (Optional) Auto-approve ZPM tools
-
-To avoid permission prompts for every ZPM tool call, add them to the allow list
-in `.claude/settings.local.json`:
-
-```json
-{
-  "permissions": {
-    "allow": [
-      "mcp__zpm__echo",
-      "mcp__zpm__remember_fact",
-      "mcp__zpm__forget_fact",
-      "mcp__zpm__update_fact",
-      "mcp__zpm__upsert_fact",
-      "mcp__zpm__clear_context",
-      "mcp__zpm__define_rule",
-      "mcp__zpm__query_logic",
-      "mcp__zpm__explain_why",
-      "mcp__zpm__trace_dependency",
-      "mcp__zpm__assume_fact",
-      "mcp__zpm__retract_assumption",
-      "mcp__zpm__retract_assumptions",
-      "mcp__zpm__list_assumptions",
-      "mcp__zpm__get_belief_status",
-      "mcp__zpm__get_justification",
-      "mcp__zpm__verify_consistency",
-      "mcp__zpm__get_knowledge_schema",
-      "mcp__zpm__save_snapshot",
-      "mcp__zpm__restore_snapshot",
-      "mcp__zpm__list_snapshots",
-      "mcp__zpm__get_persistence_status"
-    ]
-  }
-}
-```
+Codex requires review and trust of the bundled hooks through `/hooks`.
 
 ### Rebuilding after code changes
 
@@ -150,35 +39,38 @@ Then reconnect the MCP server in Claude Code with `/mcp`.
 ## Quick Start
 
 ```
-/zpm-capture git-state       # Store current git state as Prolog facts
-/zpm-query what tasks are blocked?   # Query the knowledge base in natural language
-/zpm-snapshot save milestone_v1      # Persist KB to a named snapshot
-/zpm-cleanup stale                   # Remove stale assumptions
+/zpm:zpm-capture git-state       # Store current git state as Prolog facts
+/zpm:zpm-query what tasks are blocked?   # Query the knowledge base in natural language
+/zpm:zpm-snapshot save milestone_v1      # Persist KB to a named snapshot
+/zpm:zpm-cleanup stale                   # Remove stale assumptions
 ```
 
 ## Components
 
-### Hooks (`settings.local.json` > `hooks`)
+### Hooks (`hooks/hooks.json`)
 
-Automatic behaviors triggered by Claude Code lifecycle events, configured in `settings.local.json`.
+The bundled command hooks run a Python script shared by Claude Code and Codex.
 
 | Event | What it does |
 |-------|-------------|
-| `SessionStart` | Checks ZPM health (`get_persistence_status`), loads current KB schema (`get_knowledge_schema`), reminds Claude to use ZPM proactively |
-| `Stop` | Prompts Claude to persist important session discoveries before ending, auto-saves a dated snapshot if the KB has content |
+| `SessionStart` | Adds context asking the agent to check ZPM health and inspect the existing KB schema when tools become available |
+| `Stop` | Requests one continuation to consider persisting useful discoveries and saving a snapshot; skips the reminder when `stop_hook_active` is true |
 
-Hooks run automatically — no user action needed.
+The script does not call MCP tools directly. The agent decides whether there is
+anything worth storing; snapshot creation is not guaranteed. The continuation
+guard prevents the reminder from repeatedly blocking the end of a turn.
+Codex skips untrusted plugin hooks until you review them through `/hooks`.
 
 ### Commands (`commands/`)
 
-Slash commands invoked with `/<name>` in the Claude Code prompt.
+Claude Code slash commands invoked with `/zpm:<name>` in the Claude Code prompt.
 
 | Command | Arguments | Purpose |
 |---------|-----------|---------|
-| `/zpm-capture` | `<topic>` | Extract structured Prolog facts from context. Topics: `git-state`, `architecture`, `tasks`, `decisions`, or any freeform topic |
-| `/zpm-query` | `<question>` | Translate a natural language question into Prolog goals and return results. Supports "why" questions via proof tracing |
-| `/zpm-cleanup` | `[category\|all\|stale]` | Remove facts by predicate name, clear everything (with safety snapshot), or prune stale assumptions |
-| `/zpm-snapshot` | `<save\|restore\|list> [name]` | Save/restore/list KB snapshots. Default save name: `session_YYYY_MM_DD` |
+| `/zpm:zpm-capture` | `<topic>` | Extract structured Prolog facts from context. Topics: `git-state`, `architecture`, `tasks`, `decisions`, or any freeform topic |
+| `/zpm:zpm-query` | `<question>` | Translate a natural language question into Prolog goals and return results. Supports "why" questions via proof tracing |
+| `/zpm:zpm-cleanup` | `[category\|all\|stale]` | Remove facts by predicate name, clear everything (with safety snapshot), or prune stale assumptions |
+| `/zpm:zpm-snapshot` | `<save\|restore\|list> [name]` | Save/restore/list KB snapshots. Default save name: `session_YYYY_MM_DD` |
 
 ### Agents (`agents/`)
 
@@ -186,8 +78,8 @@ Specialized sub-agents spawned by Claude for complex tasks.
 
 | Agent | When to use |
 |-------|-------------|
-| `zpm-analyst` | Bulk knowledge extraction: analyze source code, map architecture, graph dependencies, store structured facts |
-| `zpm-reasoner` | Logical reasoning: "what-if" scenarios with assumptions, impact analysis, dependency tracing, proof explanations |
+| `zpm:zpm-analyst` | Bulk knowledge extraction: analyze source code, map architecture, graph dependencies, store structured facts |
+| `zpm:zpm-reasoner` | Logical reasoning: "what-if" scenarios with assumptions, impact analysis, dependency tracing, proof explanations |
 
 Agents are invoked by Claude automatically when the task matches, or manually via the Agent tool.
 
@@ -199,8 +91,8 @@ Reference documentation loaded when Claude needs to decide how to use ZPM tools.
 skills/zpm-knowledge/
 ├── SKILL.md                        # Decision tree, naming conventions, usage patterns
 └── references/
-    ├── tool-catalog.md             # All 22 tools: parameters, behavior, pitfalls
-    └── query-patterns.md           # Prolog query recipes: joins, negation, aggregation
+    ├── mcp-tools.md                # Tool parameters, behavior, and pitfalls
+    └── prolog-engine.md            # Prolog engine behavior
 ```
 
 The skill activates when Claude encounters ZPM-related tasks and provides:

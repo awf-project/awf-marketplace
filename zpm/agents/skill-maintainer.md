@@ -73,8 +73,9 @@ Follow these rules:
 
 After documentation updates:
 1. Update the `zpm` plugin `version` in `.claude-plugin/marketplace.json`
-2. Ensure version strings have no trailing whitespace or newlines
-3. Do not touch the `awf` plugin version or `metadata.version` unless explicitly asked
+2. Keep `zpm/.codex-plugin/plugin.json` at the same plugin version
+3. Ensure version strings have no trailing whitespace or newlines
+4. Do not touch the `awf` plugin version or `metadata.version` unless explicitly asked
 
 ## Documentation Patterns
 

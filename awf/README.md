@@ -1,14 +1,20 @@
-# AWF Plugin for Claude Code
+# AWF Plugin for Claude Code and Codex
 
 ## What it does
 
-This plugin gives Claude Code deep knowledge of [AWF](https://github.com/awf-project/cli), a Go CLI that orchestrates AI agents and shell commands via YAML workflow definitions.
+This plugin gives Claude Code and Codex deep knowledge of [AWF](https://github.com/awf-project/cli), a Go CLI that orchestrates AI agents and shell commands via YAML workflow definitions.
 
 It provides:
 
 - **AWF Skill** — Comprehensive reference documentation for AWF workflow syntax, agent integration, variable interpolation, CLI commands, plugins, loops, validation, and architecture. Loaded automatically when working on AWF-related tasks.
 - **AWF Skill Maintainer** — Agent that keeps the skill documentation in sync with AWF CLI releases. Reads PRs/changelogs, identifies affected reference files, and applies targeted updates following established patterns.
 - **AWF Workflow Designer** — Agent that generates valid AWF workflow YAML files from user specifications. Knows all state types, interpolation syntax, and common patterns (parallel execution, retry, loops, conditional branching).
+
+## Installation
+
+Follow the [marketplace installation instructions](../README.md#installation).
+Install `awf` in `PATH` to run or validate workflows. Codex loads the skill;
+the bundled agents are Claude Code components.
 
 ## Usage
 
@@ -18,7 +24,7 @@ The AWF skill activates automatically when Claude detects AWF-related context �
 
 ### Skill Maintainer agent
 
-Delegates to the `awf-skill-maintainer` agent when updating documentation after a CLI change:
+Delegates to the `awf:cli-skill-maintainer` agent when updating documentation after a CLI change:
 
 ```
 Update the AWF skill docs for PR #251
@@ -32,7 +38,7 @@ The agent reads the PR/diff, maps changes to the right reference files, applies 
 
 ### Workflow Designer agent
 
-Delegates to the `awf-workflow-designer` agent when creating workflows:
+Delegates to the `awf:cli-workflow-designer` agent when creating workflows:
 
 ```
 Create an AWF workflow that fetches GitHub issues, analyzes them with Claude, and posts a summary to Slack

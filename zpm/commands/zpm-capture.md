@@ -1,12 +1,12 @@
 ---
 description: Capture structured knowledge into ZPM from the current context (git state, project decisions, task status)
 allowed-tools:
-  - mcp__zpm__remember_fact
-  - mcp__zpm__upsert_fact
-  - mcp__zpm__assume_fact
-  - mcp__zpm__define_rule
-  - mcp__zpm__get_knowledge_schema
-  - mcp__zpm__verify_consistency
+  - mcp__plugin_zpm_zpm__remember_fact
+  - mcp__plugin_zpm_zpm__upsert_fact
+  - mcp__plugin_zpm_zpm__assume_fact
+  - mcp__plugin_zpm_zpm__define_rule
+  - mcp__plugin_zpm_zpm__get_knowledge_schema
+  - mcp__plugin_zpm_zpm__verify_consistency
   - Bash(git:*)
 argument-hint: "<topic> e.g., git-state, architecture, tasks, decisions"
 ---
@@ -16,10 +16,10 @@ Analyze the current context for the topic "$ARGUMENTS" and store structured Prol
 ## Guidelines
 
 - Use snake_case predicate names: `domain_relation(subject, object)`
-- Use `mcp__zpm__upsert_fact` for mutable state (statuses, configs), `mcp__zpm__remember_fact` for immutable facts
-- Use `mcp__zpm__mcp__zpm__assume_fact` with a named assumption for hypothetical or temporary context
+- Use `mcp__plugin_zpm_zpm__upsert_fact` for mutable state (statuses, configs), `mcp__plugin_zpm_zpm__remember_fact` for immutable facts
+- Use `mcp__plugin_zpm_zpm__assume_fact` with a named assumption for hypothetical or temporary context
 - After storing, run `get_knowledge_schema` to show what was added
-- Run `mcp__zpm__verify_consistency` if integrity rules exist
+- Run `mcp__plugin_zpm_zpm__verify_consistency` if integrity rules exist
 
 ## Topic-specific behavior
 

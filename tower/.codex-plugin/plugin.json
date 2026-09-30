@@ -1,6 +1,6 @@
 {
   "name": "tower",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Tower workspace MCP integration and skills for indexed search, safe edits, and semantic tools.",
   "author": {
     "name": "Alex pocky Balmes",

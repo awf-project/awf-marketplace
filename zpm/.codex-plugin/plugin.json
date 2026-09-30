@@ -1,6 +1,6 @@
 {
   "name": "zpm",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "ZPM MCP skills, hooks, and Prolog knowledge management for Codex.",
   "author": {
     "name": "Alex pocky Balmes",
@@ -10,7 +10,13 @@
   "homepage": "https://github.com/awf-project/ZPM",
   "repository": "https://github.com/awf-project/awf-marketplace",
   "license": "EUPL-1.2",
-  "keywords": ["zpm", "mcp", "prolog", "knowledge", "reasoning"],
+  "keywords": [
+    "zpm",
+    "mcp",
+    "prolog",
+    "knowledge",
+    "reasoning"
+  ],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
@@ -19,7 +25,10 @@
     "longDescription": "Reference guidance and bundled MCP configuration for using ZPM as a Prolog-backed knowledge and reasoning layer.",
     "developerName": "Alex pocky Balmes",
     "category": "Productivity",
-    "capabilities": ["Read", "Write"],
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
     "websiteURL": "https://github.com/awf-project/ZPM",
     "defaultPrompt": [
       "Use ZPM to capture project knowledge as structured facts.",

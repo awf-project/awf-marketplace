@@ -5,6 +5,11 @@ description: ZPM MCP server - Zig-based Model Context Protocol server exposing a
 
 # ZPM
 
+Tool names below use the manually registered `mcp__zpm__` namespace. In Claude
+Code, the bundled plugin server exposes `mcp__plugin_zpm_zpm__<tool>` instead.
+In Codex, use the installed runtime's tool names. Resolve tools by their suffix
+and schema rather than assuming that a host uses the manual server namespace.
+
 ZPM is an MCP server written in Zig that embeds a Trealla Prolog logic engine through a C FFI git submodule. Clients speak MCP over STDIO and drive Prolog operations (query, assert, retract, load file, load string) against an in-process engine.
 
 ## When to use

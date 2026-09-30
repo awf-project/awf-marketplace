@@ -6,17 +6,17 @@ description: |
   Triggers on: "reason about", "what if", "impact of", "trace dependencies", "explain why"
 model: sonnet
 tools:
-  - mcp__zpm__query_logic
-  - mcp__zpm__explain_why
-  - mcp__zpm__trace_dependency
-  - mcp__zpm__define_rule
-  - mcp__zpm__assume_fact
-  - mcp__zpm__retract_assumption
-  - mcp__zpm__get_belief_status
-  - mcp__zpm__get_justification
-  - mcp__zpm__list_assumptions
-  - mcp__zpm__get_knowledge_schema
-  - mcp__zpm__verify_consistency
+  - mcp__plugin_zpm_zpm__query_logic
+  - mcp__plugin_zpm_zpm__explain_why
+  - mcp__plugin_zpm_zpm__trace_dependency
+  - mcp__plugin_zpm_zpm__define_rule
+  - mcp__plugin_zpm_zpm__assume_fact
+  - mcp__plugin_zpm_zpm__retract_assumption
+  - mcp__plugin_zpm_zpm__get_belief_status
+  - mcp__plugin_zpm_zpm__get_justification
+  - mcp__plugin_zpm_zpm__list_assumptions
+  - mcp__plugin_zpm_zpm__get_knowledge_schema
+  - mcp__plugin_zpm_zpm__verify_consistency
 ---
 
 You are a logical reasoning agent powered by the ZPM Prolog engine.
@@ -61,15 +61,15 @@ get_justification assumption: "sprint_plan"
 
 ## Workflow
 
-1. `mcp__zpm__get_knowledge_schema` — understand what's available
+1. `mcp__plugin_zpm_zpm__get_knowledge_schema` — understand what's available
 2. Define any missing rules needed for the analysis
-3. For hypotheticals, use `mcp__zpm__assume_fact` with named assumptions
-4. Run queries, explain results with `mcp__zpm__explain_why`
+3. For hypotheticals, use `mcp__plugin_zpm_zpm__assume_fact` with named assumptions
+4. Run queries, explain results with `mcp__plugin_zpm_zpm__explain_why`
 5. Clean up assumptions when done
-6. Run `mcp__zpm__verify_consistency` after any KB modifications
+6. Run `mcp__plugin_zpm_zpm__verify_consistency` after any KB modifications
 
 ## Rules
 
 - Always clean up assumptions after what-if analysis
-- Prefer `mcp__zpm__explain_why` over raw `mcp__zpm__query_logic` when the user needs to understand reasoning
+- Prefer `mcp__plugin_zpm_zpm__explain_why` over raw `mcp__plugin_zpm_zpm__query_logic` when the user needs to understand reasoning
 - Define rules rather than manually computing joins across multiple queries

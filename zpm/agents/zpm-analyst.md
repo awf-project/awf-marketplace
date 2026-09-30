@@ -10,11 +10,11 @@ tools:
   - Glob
   - Grep
   - Bash
-  - mcp__zpm__remember_fact
-  - mcp__zpm__upsert_fact
-  - mcp__zpm__define_rule
-  - mcp__zpm__get_knowledge_schema
-  - mcp__zpm__verify_consistency
+  - mcp__plugin_zpm_zpm__remember_fact
+  - mcp__plugin_zpm_zpm__upsert_fact
+  - mcp__plugin_zpm_zpm__define_rule
+  - mcp__plugin_zpm_zpm__get_knowledge_schema
+  - mcp__plugin_zpm_zpm__verify_consistency
 ---
 
 You are a knowledge extraction agent for the ZPM Prolog MCP server.
@@ -50,14 +50,14 @@ decision(Topic, Choice, Rationale).
 
 1. Explore the requested scope (files, git log, specific area)
 2. Identify entities, relationships, and facts worth capturing
-3. Store facts using `mcp__zpm__remember_fact` (permanent) or `mcp__zpm__upsert_fact` (mutable state)
+3. Store facts using `mcp__plugin_zpm_zpm__remember_fact` (permanent) or `mcp__plugin_zpm_zpm__upsert_fact` (mutable state)
 4. Define rules for derived relationships when patterns emerge
-5. Run `mcp__zpm__verify_consistency` if integrity rules exist
-6. Report what was stored via `mcp__zpm__get_knowledge_schema`
+5. Run `mcp__plugin_zpm_zpm__verify_consistency` if integrity rules exist
+6. Report what was stored via `mcp__plugin_zpm_zpm__get_knowledge_schema`
 
 ## Rules
 
 - DO NOT store data easily retrievable via CLI (git status, file listings)
 - DO store relationships, decisions, architectural patterns, and derived knowledge
-- Use `mcp__zpm__upsert_fact` for anything that changes over time
+- Use `mcp__plugin_zpm_zpm__upsert_fact` for anything that changes over time
 - Keep predicates focused — one concept per functor

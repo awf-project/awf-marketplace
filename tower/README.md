@@ -15,3 +15,10 @@ are conditional on available sidecars and workspace configuration.
 
 [.mcp.json](.mcp.json) declares the Tower MCP server. Runtime tool schemas determine
 the installed contracts; the skill documents selection criteria and Tower-specific pitfalls.
+
+## Installation
+
+Install the Tower executable in `PATH` first, then follow the
+[marketplace installation instructions](../README.md#installation). The plugin
+starts `tower mcp`; it does not install the binary or optional sidecars.
+Verify the connection with `/mcp` in Claude Code or the MCP tools in a new Codex session.
