@@ -1,4 +1,5 @@
 {
   "awf-project/cli": "awf",
-  "awf-project/zpm": "zpm"
+  "awf-project/zpm": "zpm",
+  "awf-project/tower": "tower"
 }

@@ -1,0 +1,38 @@
+{
+  "name": "tower",
+  "version": "0.1.0",
+  "description": "Tower workspace MCP integration and skills for indexed search, safe edits, and semantic tools.",
+  "author": {
+    "name": "Alex pocky Balmes",
+    "email": "awf@alex.balmes.co",
+    "url": "https://alex.balmes.co"
+  },
+  "homepage": "https://github.com/awf-project/tower",
+  "repository": "https://github.com/awf-project/awf-marketplace",
+  "license": "EUPL-1.2",
+  "keywords": [
+    "tower",
+    "mcp",
+    "workspace",
+    "ast",
+    "lsp"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Tower",
+    "shortDescription": "Tower workspace tools and skills.",
+    "longDescription": "Guidance and MCP configuration for shared workspace indexing, concurrent edits, semantic navigation, lint fixes, and debugging.",
+    "developerName": "Alex pocky Balmes",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/awf-project/tower",
+    "defaultPrompt": [
+      "Use Tower to explore this workspace and find relevant symbols.",
+      "Use Tower to make a version-guarded edit and verify diagnostics."
+    ]
+  }
+}

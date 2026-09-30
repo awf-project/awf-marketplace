@@ -1,0 +1,29 @@
+# Tower local project configuration.
+#
+# [plugins]
+# disabled = ["ast"]   # skip loading a plugin by its *.wasm file stem
+#
+# [plugins.formatter.tools.<id>] — external formatters run by plugin_fmt when a
+# file changes. mode = "filter" (default, stdin->stdout) or "inplace".
+# Uninstalled tools are skipped, so you can safely keep entries you do not use.
+
+[plugins.formatter.tools.rustfmt]
+argv = ["rustfmt", "--edition", "2021"]
+extensions = ["rs"]
+
+[plugins.formatter.tools.gofmt]
+argv = ["gofmt"]
+extensions = ["go"]
+
+[plugins.formatter.tools.zigfmt]
+argv = ["zig", "fmt", "--stdin"]
+extensions = ["zig"]
+
+[plugins.formatter.tools.prettier]
+argv = ["prettier", "--stdin-filepath", "{path}"]
+extensions = ["ts", "tsx", "js", "jsx"]
+
+[plugins.formatter.tools.php-cs-fixer]
+mode = "inplace"
+argv = ["php-cs-fixer", "fix", "{path}"]
+extensions = ["php"]

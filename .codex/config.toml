@@ -1,0 +1,3 @@
+[mcp_servers.tower]
+command = "tower"
+args = ["mcp", "--workspace-dir", "/home/pocky/Sites/awf-project/awf-marketplace"]

@@ -1,6 +1,6 @@
 # AWF Marketplace
 
-Plugin marketplace for AWF CLI https://github.com/awf-project/cli and [ZPM](https://github.com/awf-project/ZPM), compatible with Claude Code and Codex.
+Plugin marketplace for [AWF CLI](https://github.com/awf-project/cli), [ZPM](https://github.com/awf-project/ZPM), and [Tower](https://github.com/awf-project/tower), compatible with Claude Code and Codex.
 
 ## Installation
 
@@ -24,6 +24,7 @@ Codex also discovers the repo-scoped marketplace at `.agents/plugins/marketplace
 |--------|-------------|
 | `awf` | AWF CLI - skills, agents, and commands for Claude; skills for Codex |
 | `zpm` | ZPM - skills, agents, hooks and commands for Claude; skills, hooks, and MCP config for Codex |
+| `tower` | Tower - workspace skills and MCP configuration for Claude and Codex |
 
 ## Author
 
@@ -31,7 +32,6 @@ Alex "pocky" Balmes
 
 - [alex.balmes.co](https://alex.balmes.co)
 - [vanoix.com](https://vanoix.com)
-- [akawaka.fr](https://akawaka.fr)
 
 ## License
 

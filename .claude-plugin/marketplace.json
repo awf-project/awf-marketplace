@@ -5,9 +5,9 @@
     "email": "awf@alex.balmes.co"
   },
   "metadata": {
-    "description": "AWF plugin for Claude Code",
+    "description": "AWF, ZPM, and Tower plugins for Claude Code and Codex",
     "homepage": "https://alex.balmes.co",
-    "version": "0.7.0"
+    "version": "0.8.0"
   },
   "plugins": [
     {
@@ -30,6 +30,17 @@
         "name": "Alex pocky Balmes"
       },
       "homepage": "https://alex.balmes.co",
+      "license": "EUPL-1.2"
+    },
+    {
+      "name": "tower",
+      "source": "./tower",
+      "description": "Tower workspace MCP - indexed search, safe edits, and semantic tooling skills",
+      "version": "0.1.0",
+      "author": {
+        "name": "Alex pocky Balmes"
+      },
+      "homepage": "https://github.com/awf-project/tower",
       "license": "EUPL-1.2"
     }
   ]
