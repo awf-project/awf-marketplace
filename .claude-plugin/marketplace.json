@@ -35,7 +35,7 @@
       "name": "tower",
       "source": "./tower",
       "description": "Tower workspace MCP - indexed search, safe edits, and semantic tooling skills",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "author": {
         "name": "Alex pocky Balmes"
       },

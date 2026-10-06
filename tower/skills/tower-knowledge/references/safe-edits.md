@@ -18,5 +18,7 @@ AST/LSP edits use host `workspace/applyEdits`. Preview with `dry_run:true`; appl
 recomputes against current content, so preview reserves nothing. Each mutating semantic
 span needs a matching `base_hash`; overlapping spans reject that file's batch.
 Inspect `per_file`, skipped edits, and `cas_conflict`; resolve/preview again after conflict.
-Writes are atomic **per file**, with no cross-file rollback; global replacement can also
-partially succeed. Tool-specific contracts: [semantic tools](semantic-tools.md).
+Writes are atomic **per file**, with no cross-file rollback; global replacement and LSP
+rename can partially succeed across files. LSP rename may return structured unsupported/error
+payloads before host writes; inspect `code`, `outcome`, and `per_file[*].error`.
+Tool-specific contracts: [semantic tools](semantic-tools.md).
