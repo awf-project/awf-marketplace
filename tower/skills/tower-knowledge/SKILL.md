@@ -9,6 +9,8 @@ One shared daemon per workspace; persistent index; optional native sidecars.
 The plugin supplies MCP configuration and guidance, not binaries or external dependencies.
 Use installed MCP schemas; sidecar tools are optional and client prefixes may wrap `tower_*`.
 Transport success can contain per-file failures or unsupported results.
+LSP tools route by file extension to configured language servers; inspect `supported`/`outcome`
+before assuming navigation, diagnostics, or rename succeeded.
 
 Read only the reference needed:
 

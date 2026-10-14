@@ -16,6 +16,8 @@ not `[plugins]`.
 
 Event subscribers require eager activation; lazy + subscriptions is rejected.
 Historical events are not replayed. Faults may skip/quarantine a sidecar without closing MCP.
+The LSP sidecar subscribes to file change/delete events for document sync and can emit
+resource-updated notifications for diagnostics; event delivery still requires eager activation.
 
 ## Development
 
@@ -26,6 +28,8 @@ access: native sidecars are not sandboxed.
 Semantic writers declare `request_apply_edits` and call `workspace/applyEdits` with byte
 spans/resolve-time hashes. Host owns validation, CAS, writes and index refresh; see
 [safe edits](safe-edits.md). Reads/index/log/format also use host callbacks.
+LSP rename uses `request_apply_edits`; read-only LSP tools use `read_file`; diagnostics
+push uses `notify`.
 Use `extension_sidecar_harness` to queue inbound host requests while waiting for host-call
 replies. Release mutation/registry locks before mutation events to avoid reentrant deadlocks.
 

@@ -25,4 +25,9 @@ Missing indexed files: check root, ignore rules, then freshness. `tower_reindex`
 files/search; `tower_ast_reindex` separately rebuilds symbols. Index absence does not prove
 disk absence. Deleting `.tower/db/` is not a routine refresh.
 
+LSP config is validated at daemon startup when the LSP sidecar is enabled. Empty commands,
+missing binaries, non-executable paths, and failed launch probes surface as LSP outcomes;
+fix `.tower/config.toml`, restart the daemon, then reconnect the MCP client. Language server
+config, idle timeout, and tool behavior: [semantic tools](semantic-tools.md).
+
 Sidecar discovery/install: [extensions](extensions.md).
