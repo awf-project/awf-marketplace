@@ -1245,41 +1245,13 @@ analyze:
   on_success: next
 ```
 
-### 2. Transitions Must Target Preparation Steps
+### 2. Preserve Prompt Preparation Dependencies
 
-When converting shell commands to agent steps, update **all transitions** to target the preparation step:
+When an agent prompt consumes a preparation state's output, incoming routes must execute that preparation first. Agents with self-contained `prompt` or `prompt_file` values can be targeted directly. Do not introduce preparation steps solely to satisfy a routing convention.
 
-```yaml
-# ❌ WRONG: Transition skips preparation step
-check_result:
-  transitions:
-    - goto: analyze_errors  # Agent step - will fail!
+### 3. Check Loop Body Routing
 
-# ✅ CORRECT: Transition targets preparation step
-check_result:
-  transitions:
-    - goto: prepare_analyze_prompt  # Shell step first
-```
-
-### 3. For-Each Body Must List All Steps
-
-Loop executors only run steps **explicitly listed** in `body`. They do NOT follow `on_success` transitions:
-
-```yaml
-# ❌ WRONG: Only prepare_prompt runs, agent step never executes
-process_items:
-  type: for_each
-  body:
-    - prepare_prompt  # on_success: do_work is IGNORED
-
-# ✅ CORRECT: Both steps listed in body
-process_items:
-  type: for_each
-  body:
-    - prepare_prompt
-    - do_work  # Must be explicitly listed
-  on_complete: verify
-```
+Inspect body membership and intra-body transitions when adding agent steps to a loop. See [Loop transitions](loop.md#intra-body-transitions-skip-steps); do not assume loop execution is equivalent to top-level routing.
 
 ### 4. Template Syntax: Use Uppercase for State Properties
 
@@ -1318,37 +1290,10 @@ command: |
   )
 ```
 
-### 6. Claude Agent Steps: Required Options for File Modifications
+### 6. Match Tool Access to the Execution Environment
 
-If agent needs to modify files, include both options (use snake_case keys):
+Check the provider's effective tool permissions when a step needs file writes. `allowed_tools` selects tools; it does not by itself establish every permission required by the host. `dangerously_skip_permissions` bypasses prompts and should be configured only when that behavior is intended. File modification alone is not a reason to add it or grant unrestricted Bash access.
 
-```yaml
-# ❌ WRONG: Missing dangerously_skip_permissions - agent can't write
-fix_code:
-  type: agent
-  provider: claude
-  options:
-    allowed_tools: "Read,Edit,Write"  # Not enough!
+## Verification
 
-# ✅ CORRECT: Both options for automated file changes
-fix_code:
-  type: agent
-  provider: claude
-  options:
-    allowed_tools: "Read,Grep,Glob,Edit,Write,Bash"
-    dangerously_skip_permissions: true
-```
-
-## Verification Checklist
-
-Before running a workflow with agent steps:
-
-- [ ] Agent prompts use either `prompt_file` (preferred) or a **preparation step** (legacy)
-- [ ] `prompt` and `prompt_file` are **never both set** on the same agent step
-- [ ] All **transitions** point to preparation steps (not directly to agents) when using legacy approach
-- [ ] **for_each/while body** lists all steps that should execute
-- [ ] Template syntax uses **PascalCase** (`.Output`, `.Item`, not `.output`, `.item`)
-- [ ] JSON values use **heredocs** with quoted delimiters
-- [ ] File-modifying agents have **`dangerously_skip_permissions: true`**
-
-Run `awf validate <workflow>` to catch syntax errors before execution.
+Validate the edited workflow with `awf validate <file>`. Check prompt-field exclusivity, referenced resources, routing through required preparation, and downstream output contracts. Inline `prompt` is supported. For runtime permission failures, inspect the provider's effective configuration rather than automatically bypassing permissions.

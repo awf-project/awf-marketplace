@@ -6,6 +6,7 @@ This plugin gives Claude Code and Codex deep knowledge of [AWF](https://github.c
 
 It provides:
 
+- **AWF Modernize** — Audits existing AWF workflows and configuration against a specific CLI version, separates required migrations from optional improvements, and proposes or applies scoped changes with validation.
 - **AWF Skill** — Comprehensive reference documentation for AWF workflow syntax, agent integration, variable interpolation, CLI commands, plugins, loops, validation, and architecture. Loaded automatically when working on AWF-related tasks.
 - **AWF Skill Maintainer** — Agent that keeps the skill documentation in sync with AWF CLI releases. Reads PRs/changelogs, identifies affected reference files, and applies targeted updates following established patterns.
 - **AWF Workflow Designer** — Agent that generates valid AWF workflow YAML files from user specifications. Knows all state types, interpolation syntax, and common patterns (parallel execution, retry, loops, conditional branching).

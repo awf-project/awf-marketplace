@@ -87,6 +87,8 @@ Follow these rules:
 
 ### 5. Version Bump
 
+When a CLI change affects workflow compatibility or modernization opportunities, also review `awf/skills/awf-modernize/references/migrations.md` and `optimizations.md`. Record verified target-version evidence and distinguish removed syntax from optional improvements; do not copy the full CLI reference into the modernization skill.
+
 After documentation updates:
 1. Update version in `.claude-plugin/marketplace.json` (plugin `version`)
 2. Keep `awf/.codex-plugin/plugin.json` at the same plugin version

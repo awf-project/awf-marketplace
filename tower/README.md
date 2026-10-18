@@ -13,6 +13,12 @@ The [tower-knowledge skill](skills/tower-knowledge/SKILL.md) guides agents throu
 The skill routes each task to its relevant reference. AST, LSP, lint, and debug tools
 are conditional on available sidecars and workspace configuration.
 
+The [tower-optimize skill](skills/tower-optimize/SKILL.md) reviews a project's workflows,
+Tower configuration, runtime tools, and compatible Tower sources to propose useful
+improvements. It provides prioritized recommendations and concrete configuration changes,
+with a read-only audit by default. During ordinary work, tower-knowledge can suggest a
+relevant capability when the current task would benefit from it.
+
 [.mcp.json](.mcp.json) declares the Tower MCP server. Runtime tool schemas determine
 the installed contracts; the skill documents selection criteria and Tower-specific pitfalls.
 

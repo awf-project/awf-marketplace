@@ -12,6 +12,12 @@ Transport success can contain per-file failures or unsupported results.
 LSP tools route by file extension to configured language servers; inspect `supported`/`outcome`
 before assuming navigation, diagnostics, or rename succeeded.
 
+When a concrete task would benefit from an unavailable or unconfigured Tower capability,
+briefly explain the benefit and prerequisite. For project setup reviews or a broader
+capability assessment, use [tower-optimize](../tower-optimize/SKILL.md). Keep suggestions
+relevant to the task; do not repeat suggestions already explained or declined in the
+conversation unless new evidence changes them. Continue useful work with available tools.
+
 Read only the reference needed:
 
 - Connection, workspace resolution, missing indexed files: [setup](references/setup.md).
