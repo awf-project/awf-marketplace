@@ -4,6 +4,24 @@ import json
 import sys
 
 
+MEMORY_CONTEXT = (
+    "Use one shared ZPM memory segment for the current task or feature. "
+    "Honor the memory selected by the user or coordinating agent. Otherwise use "
+    "list_memories and inspect existing .zpm/kb/<segment>/ directories to find "
+    "the relevant segment; mount it if it exists but is not mounted. Create and "
+    "mount a project segment only when no suitable segment exists. Do not create "
+    "a segment per agent, phase, finding, or date. Pass the selected memory name "
+    "to every delegated agent and use the explicit memory parameter on all "
+    "knowledge reads, writes, consistency checks, and snapshots. Inspect "
+    "get_knowledge_schema in that memory and query existing facts before adding "
+    "knowledge. Store findings, decisions, and relationships through ZPM tools; "
+    "do not write ad hoc .pl files or discovery reports as a substitute for "
+    "shared memory unless the user requests an export or deliverable. Let ZPM "
+    "manage knowledge.pl, WALs, and snapshots. Respect read-only mounts; do not "
+    "silently fall back to default or a new segment when a write fails."
+)
+
+
 def main():
     try:
         event = json.load(sys.stdin)
@@ -19,9 +37,10 @@ def main():
                 "additionalContext": (
                     "The ZPM plugin provides a Prolog knowledge MCP server. "
                     "When its tools are available, use get_persistence_status to "
-                    "check health and get_knowledge_schema to inspect existing "
-                    "knowledge. Use the tool names exposed by this runtime. "
-                    "If the server is unavailable, continue the user's task."
+                    "check health. Use the tool names exposed by this runtime. "
+                    + MEMORY_CONTEXT + " "
+                    "If the server is unavailable, continue the user's task "
+                    "without generating replacement knowledge files."
                 ),
             },
         }))
@@ -31,8 +50,10 @@ def main():
             "decision": "block",
             "reason": (
                 "Consider whether this turn produced useful project discoveries "
-                "to persist with the available ZPM tools. Store only relevant "
-                "new knowledge, and save a snapshot if useful. If nothing needs "
+                "to persist with the available ZPM tools. "
+                + MEMORY_CONTEXT + " "
+                "Store only relevant new knowledge in the selected memory, "
+                "and save a snapshot there only if useful. If nothing needs "
                 "storing or ZPM is unavailable, finish without further action."
             ),
         }))

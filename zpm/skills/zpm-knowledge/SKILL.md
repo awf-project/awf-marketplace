@@ -13,6 +13,16 @@ ZPM embeds Trealla Prolog in a Zig MCP server over STDIO. Use the runtime's inst
 2. Inspect `get_knowledge_schema` and query the relevant existing predicates before introducing facts or rules. Reuse the project's schema when it fits.
 3. Select the mounted segment with the optional `memory` parameter; omission targets `default`. Read-only segments reject writes. See [memory segments](references/memory-segments.md) for mounting and cross-segment reads.
 
+For task knowledge, reuse the segment chosen by the user or coordinating agent.
+Otherwise inspect `list_memories` and existing `.zpm/kb/<segment>/` directories;
+mount the relevant existing segment, creating a project segment only if none fits.
+Share its name with delegated agents and explicitly pass `memory` for all reads,
+writes, checks, and snapshots. Keep phases and findings in that shared segment,
+using predicates and task identifiers to distinguish them. Persist through ZPM
+tools instead of writing ad hoc `.pl` files or discovery reports, unless an export
+or deliverable was requested. Let ZPM manage its persistence files; do not bypass
+read-only mounts or failed writes by silently choosing another segment.
+
 Operational distinctions:
 
 - Omit the trailing period in MCP `fact`, `goal`, and `head`/`body` arguments; tools append it. This convention does not apply to raw Prolog source files or Engine API examples.

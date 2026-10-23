@@ -53,8 +53,15 @@ The bundled command hooks run a Python script shared by Claude Code and Codex.
 
 | Event | What it does |
 |-------|-------------|
-| `SessionStart` | Adds context asking the agent to check ZPM health and inspect the existing KB schema when tools become available |
-| `Stop` | Requests one continuation to consider persisting useful discoveries and saving a snapshot; skips the reminder when `stop_hook_active` is true |
+| `SessionStart` | Asks the agent to check health, select an existing task memory, inspect its schema, and share its name with delegated agents |
+| `Stop` | Reminds the agent to persist useful discoveries in the same memory through ZPM tools; skips the reminder when `stop_hook_active` is true |
+
+Agents reuse one segment per task or feature, with an explicit `memory` parameter
+for reads, writes, checks, and snapshots. Existing unmounted segments are mounted;
+a project segment is created only when none fits. Agents do not create a separate
+segment or `.pl` report for each phase, date, or finding. Requested exports and
+deliverables remain supported. Read-only mounts are respected, and unavailable
+ZPM tools do not trigger replacement knowledge files.
 
 The script does not call MCP tools directly. The agent decides whether there is
 anything worth storing; snapshot creation is not guaranteed. The continuation
@@ -149,8 +156,11 @@ session_note(finding, 'memory leak in handler').
 
 ## Data Directory
 
-ZPM persists data in `.zpm/data/` (project-local):
-- `journal.wal` — Write-Ahead Log of all assert/retract operations
-- `*.pl` — Snapshot files (raw Prolog clauses)
+ZPM manages project-local persistence by segment:
+
+- `.zpm/kb/<segment>/knowledge.pl` — segment knowledge
+- `.zpm/kb/<segment>/*.snap` — named snapshots
+- `.zpm/data/<segment>.wal` — Write-Ahead Log
+- `.zpm/mounts.json` — persisted mount list
 
 The WAL replays on server restart to restore the last known state.
