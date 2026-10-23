@@ -53,12 +53,18 @@ The bundled command hooks run a Python script shared by Claude Code and Codex.
 
 | Event | What it does |
 |-------|-------------|
-| `SessionStart` | Adds context asking the agent to check ZPM health and inspect the existing KB schema when tools become available |
-| `Stop` | Requests one continuation to consider persisting useful discoveries and saving a snapshot; skips the reminder when `stop_hook_active` is true |
+| `SessionStart` | Adds context asking the agent to check ZPM health and inspect the existing KB schema when tools become available; forbids creating snapshots via ZPM |
+| `Stop` | Requests one continuation to consider persisting useful discoveries without creating snapshots via ZPM; skips the reminder when `stop_hook_active` is true |
 
 The script does not call MCP tools directly. The agent decides whether there is
-anything worth storing; snapshot creation is not guaranteed. The continuation
+anything worth storing; both prompts forbid creating snapshots via ZPM. The continuation
 guard prevents the reminder from repeatedly blocking the end of a turn.
+Both prompts direct the agent to inspect available writable memories and save
+knowledge in the memory best suited to its content and scope: the corresponding
+feature memory for branch/feature-specific knowledge, architecture for architectural
+knowledge, feedback for user feedback, or another relevant specialized memory.
+When no suitable specialized memory is available, use the general (`default`)
+memory. Pass the selected memory explicitly to ZPM tools.
 Codex skips untrusted plugin hooks until you review them through `/hooks`.
 
 ### Commands (`commands/`)

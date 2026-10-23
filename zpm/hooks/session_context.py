@@ -4,6 +4,17 @@ import json
 import sys
 
 
+MEMORY_GUIDANCE = (
+    "Before saving knowledge, inspect the available writable memories and choose "
+    "the most relevant one for its content and scope. Use the corresponding "
+    "feature memory for knowledge specific to the current branch or feature; "
+    "use an architecture memory for architectural knowledge, a feedback memory "
+    "for user feedback, and other specialized memories when appropriate. "
+    "If no suitable specialized memory is available, use the general memory "
+    "(default). Pass the selected memory explicitly when using ZPM tools. "
+)
+
+
 def main():
     try:
         event = json.load(sys.stdin)
@@ -21,6 +32,8 @@ def main():
                     "When its tools are available, use get_persistence_status to "
                     "check health and get_knowledge_schema to inspect existing "
                     "knowledge. Use the tool names exposed by this runtime. "
+                    + MEMORY_GUIDANCE +
+                    "Do not create snapshots via ZPM. "
                     "If the server is unavailable, continue the user's task."
                 ),
             },
@@ -32,7 +45,9 @@ def main():
             "reason": (
                 "Consider whether this turn produced useful project discoveries "
                 "to persist with the available ZPM tools. Store only relevant "
-                "new knowledge, and save a snapshot if useful. If nothing needs "
+                "new knowledge. "
+                + MEMORY_GUIDANCE +
+                "Do not create snapshots via ZPM. If nothing needs "
                 "storing or ZPM is unavailable, finish without further action."
             ),
         }))

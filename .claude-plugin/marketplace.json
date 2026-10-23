@@ -13,7 +13,7 @@
       "name": "awf",
       "source": "./awf",
       "description": "AWF CLI - workflow skills and agents",
-      "version": "0.10.4",
+      "version": "0.10.5",
       "author": {
         "name": "Alex pocky Balmes"
       },
